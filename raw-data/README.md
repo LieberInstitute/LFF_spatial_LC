@@ -89,19 +89,19 @@ ln -s /dcs04/lieber/lcolladotor/rawDataTDSC_LIBD001/raw-data/2023-08-03_SPag0718
 ```bash
 ## V13M06-404_A1 (13v_LC_HRD)
 mkdir V13M06-404_A1
-ln -s /dcs04/lieber/lcolladotor/rawDataTDSC_LIBD001/raw-data/2023-03-10_Transfer10x_SPage/Transfer_to_LIBDrerun/LIBD_20230214-rerun/1432367/fastqs/1432367_1474389_0_1_HMYT2DSX5/bamtofastq_S1_L00* V13M06-404_A1/
+ln -s /dcs04/lieber/lcolladotor/rawDataTDSC_LIBD001/raw-data/2023-08-24_SPag080923_S4/13v-LC-HRD_S1_L00* V13M06-404_A1/
 
 ## V13M06-404_B1 (14v_LC_HRD) 
 mkdir V13M06-404_B1 
-ln -s /dcs04/lieber/lcolladotor/rawDataTDSC_LIBD001/raw-data/2023-03-10_Transfer10x_SPage/Transfer_to_LIBDrerun/LIBD_20230214-rerun/1432369/fastqs/1432369_1474391_0_1_HMYT2DSX5/bamtofastq_S1_L00* V13M06-404_B1/
+ln -s /dcs04/lieber/lcolladotor/rawDataTDSC_LIBD001/raw-data/2023-08-24_SPag080923_S4/14v-LC-HRD_S2_L00* V13M06-404_B1/
 
 ## V13M06-404_C1 (15v_LC_HRD)
 mkdir V13M06-404_C1
-ln -s //dcs04/lieber/lcolladotor/rawDataTDSC_LIBD001/raw-data/2023-03-10_Transfer10x_SPage/Transfer_to_LIBDrerun/LIBD_20230214-rerun/1432370/fastqs/1432370_1474392_0_1_HMYT2DSX5/bamtofastq_S1_L00* V13M06-404_C1/
+ln -s /dcs04/lieber/lcolladotor/rawDataTDSC_LIBD001/raw-data/2023-08-24_SPag080923_S4/15v-LC-HRD_S3_L00* V13M06-404_C1/
 
 ## V13M06-404_D1 (16v_LC_HRD)
 mkdir V13M06-404_D1
-ln -s //dcs04/lieber/lcolladotor/rawDataTDSC_LIBD001/raw-data/2023-03-10_Transfer10x_SPage/Transfer_to_LIBDrerun/LIBD_20230214-rerun/1432370/fastqs/1432370_1474392_0_1_HMYT2DSX5/bamtofastq_S1_L00* V13M06-404_D1/
+ln -s /dcs04/lieber/lcolladotor/rawDataTDSC_LIBD001/raw-data/2023-08-24_SPag080923_S4/16v-LC-HRD_S4_L00* V13M06-404_D1/
 ```
 # FASTQ
 
@@ -111,19 +111,19 @@ ln -s //dcs04/lieber/lcolladotor/rawDataTDSC_LIBD001/raw-data/2023-03-10_Transfe
 ```bash
 ## V13M06-403_A1 (17v_LC_HRD)
 mkdir V13M06-403_A1
-ln -s /dcs04/lieber/lcolladotor/rawDataTDSC_LIBD001/raw-data/2023-03-10_Transfer10x_SPage/Transfer_to_LIBDrerun/LIBD_20230214-rerun/1432367/fastqs/1432367_1474389_0_1_HMYT2DSX5/bamtofastq_S1_L00* V13M06-403_A1/
+ln -s /dcs04/lieber/lcolladotor/rawDataTDSC_LIBD001/raw-data/2023-08-24_SPag080923_S4/17v-LC-HRD_S5_L00* V13M06-403_A1/
 
 ## V13M06-403_B1 (18v_LC_HRD) 
 mkdir V13M06-403_B1 
-ln -s /dcs04/lieber/lcolladotor/rawDataTDSC_LIBD001/raw-data/2023-03-10_Transfer10x_SPage/Transfer_to_LIBDrerun/LIBD_20230214-rerun/1432369/fastqs/1432369_1474391_0_1_HMYT2DSX5/bamtofastq_S1_L00* V13M06-403_B1/
+ln -s /dcs04/lieber/lcolladotor/rawDataTDSC_LIBD001/raw-data/2023-08-24_SPag080923_S4/18v-LC-HRD_S6_L00* V13M06-403_B1/
 
 ## V13M06-403__C1 (19v_LC_HRD)
 mkdir V13M06-403_C1
-ln -s //dcs04/lieber/lcolladotor/rawDataTDSC_LIBD001/raw-data/2023-03-10_Transfer10x_SPage/Transfer_to_LIBDrerun/LIBD_20230214-rerun/1432370/fastqs/1432370_1474392_0_1_HMYT2DSX5/bamtofastq_S1_L00* V13M06-403_C1/
+ln -s /dcs04/lieber/lcolladotor/rawDataTDSC_LIBD001/raw-data/2023-08-24_SPag080923_S4/19v-LC-HRD_S7_L00* V13M06-403_C1/
 
 ## V13M06-403_D1 (20v_LC_HRD)
 mkdir V13M06-403_D1
-ln -s //dcs04/lieber/lcolladotor/rawDataTDSC_LIBD001/raw-data/2023-03-10_Transfer10x_SPage/Transfer_to_LIBDrerun/LIBD_20230214-rerun/1432370/fastqs/1432370_1474392_0_1_HMYT2DSX5/bamtofastq_S1_L00* V13M06-403_D1/
+ln -s /dcs04/lieber/lcolladotor/rawDataTDSC_LIBD001/raw-data/2023-08-24_SPag080923_S4/20v-LC-HRD_S8_L00* V13M06-403_D1/
 ```
 
 # FASTQ
@@ -134,19 +134,19 @@ ln -s //dcs04/lieber/lcolladotor/rawDataTDSC_LIBD001/raw-data/2023-03-10_Transfe
 ```bash
 ## V13M06-402_A1 (21v_LC_HRD)
 mkdir V13M06-402_A1
-ln -s /dcs04/lieber/lcolladotor/rawDataTDSC_LIBD001/raw-data/2023-03-10_Transfer10x_SPage/Transfer_to_LIBDrerun/LIBD_20230214-rerun/1432367/fastqs/1432367_1474389_0_1_HMYT2DSX5/bamtofastq_S1_L00* V13M06-402_A1/
+ln -s /dcs04/lieber/lcolladotor/rawDataTDSC_LIBD001/raw-data/2023-08-24_SPag080923_S4/21v-LC-HRD_S9_L00* V13M06-402_A1/
 
 ## V13M06-404_B1 (22v_LC_HRD) 
 mkdir V13M06-402_B1 
-ln -s /dcs04/lieber/lcolladotor/rawDataTDSC_LIBD001/raw-data/2023-03-10_Transfer10x_SPage/Transfer_to_LIBDrerun/LIBD_20230214-rerun/1432369/fastqs/1432369_1474391_0_1_HMYT2DSX5/bamtofastq_S1_L00* V13M06-402_B1/
+ln -s /dcs04/lieber/lcolladotor/rawDataTDSC_LIBD001/raw-data/2023-08-24_SPag080923_S4/22v-LC-HRD_S10_L00* V13M06-402_B1/
 
 ## V13M06-404_C1 (23v_LC_HRD)
 mkdir V13M06-402_C1
-ln -s //dcs04/lieber/lcolladotor/rawDataTDSC_LIBD001/raw-data/2023-03-10_Transfer10x_SPage/Transfer_to_LIBDrerun/LIBD_20230214-rerun/1432370/fastqs/1432370_1474392_0_1_HMYT2DSX5/bamtofastq_S1_L00* V13M06-402_C1/
+ln -s /dcs04/lieber/lcolladotor/rawDataTDSC_LIBD001/raw-data/2023-08-24_SPag080923_S4/23v-LC-HRD_S11_L00* V13M06-402_C1/
 
 ## V13M06-404_D1 (24v_LC_HRD)
 mkdir V13M06-402_D1
-ln -s //dcs04/lieber/lcolladotor/rawDataTDSC_LIBD001/raw-data/2023-03-10_Transfer10x_SPage/Transfer_to_LIBDrerun/LIBD_20230214-rerun/1432370/fastqs/1432370_1474392_0_1_HMYT2DSX5/bamtofastq_S1_L00* V13M06-402_D1/
+ln -s /dcs04/lieber/lcolladotor/rawDataTDSC_LIBD001/raw-data/2023-08-24_SPag080923_S4/24v-LC-HRD_S12_L00* V13M06-402_D1/
 ```
 
 # FASTQ
@@ -157,19 +157,19 @@ ln -s //dcs04/lieber/lcolladotor/rawDataTDSC_LIBD001/raw-data/2023-03-10_Transfe
 ```bash
 ## V13M06-404_A1 (25v_LC_HRD)
 mkdir V13M06-401_A1
-ln -s /dcs04/lieber/lcolladotor/rawDataTDSC_LIBD001/raw-data/2023-03-10_Transfer10x_SPage/Transfer_to_LIBDrerun/LIBD_20230214-rerun/1432367/fastqs/1432367_1474389_0_1_HMYT2DSX5/bamtofastq_S1_L00* V13M06-401_A1/
+ln -s /dcs04/lieber/lcolladotor/rawDataTDSC_LIBD001/raw-data/2023-08-24_SPag080923_S4/25v-LC-HRD_S13_L00* V13M06-401_A1/
 
 ## V13M06-404_B1 (26v_LC_HRD) 
 mkdir V13M06-401_B1 
-ln -s /dcs04/lieber/lcolladotor/rawDataTDSC_LIBD001/raw-data/2023-03-10_Transfer10x_SPage/Transfer_to_LIBDrerun/LIBD_20230214-rerun/1432369/fastqs/1432369_1474391_0_1_HMYT2DSX5/bamtofastq_S1_L00* V13M06-401_B1/
+ln -s //dcs04/lieber/lcolladotor/rawDataTDSC_LIBD001/raw-data/2023-08-24_SPag080923_S4/26v-LC-HRD_S14_L00* V13M06-401_B1/
 
 ## V13M06-404_C1 (27v_LC_HRD)
 mkdir V13M06-401_C1
-ln -s //dcs04/lieber/lcolladotor/rawDataTDSC_LIBD001/raw-data/2023-03-10_Transfer10x_SPage/Transfer_to_LIBDrerun/LIBD_20230214-rerun/1432370/fastqs/1432370_1474392_0_1_HMYT2DSX5/bamtofastq_S1_L00* V13M06-401_C1/
+ln -s /dcs04/lieber/lcolladotor/rawDataTDSC_LIBD001/raw-data/2023-08-24_SPag080923_S4/27v-LC-HRD_S15_L00* V13M06-401_C1/
 
 ## V13M06-404_D1 (28v_LC_HRD)
 mkdir V13M06-401_D1
-ln -s //dcs04/lieber/lcolladotor/rawDataTDSC_LIBD001/raw-data/2023-03-10_Transfer10x_SPage/Transfer_to_LIBDrerun/LIBD_20230214-rerun/1432370/fastqs/1432370_1474392_0_1_HMYT2DSX5/bamtofastq_S1_L00* V13M06-401_D1/
+ln -s /dcs04/lieber/lcolladotor/rawDataTDSC_LIBD001/raw-data/2023-08-24_SPag080923_S4/28v-LC-HRD_S16_L000* V13M06-401_D1/
 ```
 # FASTQ
 
@@ -179,18 +179,18 @@ ln -s //dcs04/lieber/lcolladotor/rawDataTDSC_LIBD001/raw-data/2023-03-10_Transfe
 ```bash
 ## V13M06-404_A1 (29v_LC_HRD)
 mkdir V13M06-386_A1
-ln -s /dcs04/lieber/lcolladotor/rawDataTDSC_LIBD001/raw-data/2023-03-10_Transfer10x_SPage/Transfer_to_LIBDrerun/LIBD_20230214-rerun/1432367/fastqs/1432367_1474389_0_1_HMYT2DSX5/bamtofastq_S1_L00* V13M06-386_A1/
+ln -s /dcs04/lieber/lcolladotor/rawDataTDSC_LIBD001/raw-data/2023-08-24_SPag080923_S4/29v-LC-HRD_S17_L00* V13M06-386_A1/
 
 ## V13M06-404_B1 (30v_LC_HRD) 
 mkdir V13M06-386_B1 
-ln -s /dcs04/lieber/lcolladotor/rawDataTDSC_LIBD001/raw-data/2023-03-10_Transfer10x_SPage/Transfer_to_LIBDrerun/LIBD_20230214-rerun/1432369/fastqs/1432369_1474391_0_1_HMYT2DSX5/bamtofastq_S1_L00* V13M06-386_B1/
+ln -s /dcs04/lieber/lcolladotor/rawDataTDSC_LIBD001/raw-data/2023-08-24_SPag080923_S4/30v-LC-HRD_S18_L00* V13M06-386_B1/
 
 ## V13M06-404_C1 (31v_LC_HRD)
 mkdir V13M06-386_C1
-ln -s //dcs04/lieber/lcolladotor/rawDataTDSC_LIBD001/raw-data/2023-03-10_Transfer10x_SPage/Transfer_to_LIBDrerun/LIBD_20230214-rerun/1432370/fastqs/1432370_1474392_0_1_HMYT2DSX5/bamtofastq_S1_L00* V13M06-386_C1/
+ln -s /dcs04/lieber/lcolladotor/rawDataTDSC_LIBD001/raw-data/2023-08-24_SPag080923_S4/31v-LC-HRD_S19_L00* V13M06-386_C1/
 
 ## V13M06-404_D1 (32v_LC_HRD)
 mkdir V13M06-386_D1
-ln -s //dcs04/lieber/lcolladotor/rawDataTDSC_LIBD001/raw-data/2023-03-10_Transfer10x_SPage/Transfer_to_LIBDrerun/LIBD_20230214-rerun/1432370/fastqs/1432370_1474392_0_1_HMYT2DSX5/bamtofastq_S1_L00* V13M06-386_D1/
+ln -s /dcs04/lieber/lcolladotor/rawDataTDSC_LIBD001/raw-data/2023-08-24_SPag080923_S4/32v-LC-HRD_S20_L00* V13M06-386_D1/
 ```
 
