@@ -169,7 +169,7 @@ ln -s /dcs04/lieber/lcolladotor/rawDataTDSC_LIBD001/raw-data/2023-08-24_SPag0809
 
 ## V13M06-404_D1 (28v_LC_HRD)
 mkdir V13M06-401_D1
-ln -s /dcs04/lieber/lcolladotor/rawDataTDSC_LIBD001/raw-data/2023-08-24_SPag080923_S4/28v-LC-HRD_S16_L000* V13M06-401_D1/
+ln -s /dcs04/lieber/lcolladotor/rawDataTDSC_LIBD001/raw-data/2023-08-24_SPag080923_S4/28v-LC-HRD_S16_L00* V13M06-401_D1/
 ```
 # FASTQ
 
