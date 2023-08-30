@@ -32,7 +32,7 @@ module load matlab/R2019a
 toolbox='/dcs05/lieber/marmaypag/LFF_spatialLC_LIBD4140/LFF_spatial_LC/code/VistoSeg/code'
 
 ## Read inputs from splitSlide.txt file
-fname=$(awk 'BEGIN {FS="\t"} {print $1}' refineVNS_list.txt | awk "NR==${SGE_TASK_ID}")
+fname=$(awk 'BEGIN {FS="\t"} {print $1}' splitSlide.txt | awk "NR==${SGE_TASK_ID}")
 
 ## Run splitSlide function
 matlab -nodesktop -nosplash -nojvm -r "addpath(genpath('$toolbox')), splitSlide('$fname',0,0,0,0)"
