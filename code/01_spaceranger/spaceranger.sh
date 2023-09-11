@@ -3,8 +3,8 @@
 #$ -l mem_free=8G,h_vmem=8G,h_fsize=100G
 #$ -pe local 8
 #$ -N LFF_spatial_LC_spaceranger
-#$ -o /dcs05/lieber/marmaypag/LFF_spatialLC_LIBD4140/LFF_spatial_LC/code/VistoSeg/code/logs/$TASK_ID_spaceranger.txt
-#$ -e /dcs05/lieber/marmaypag/LFF_spatialLC_LIBD4140/LFF_spatial_LC/code/VistoSeg/code/logs/$TASK_ID_spaceranger.txt
+#$ -o /dcs05/lieber/marmaypag/LFF_spatialLC_LIBD4140/LFF_spatial_LC/code/01_spaceranger/logs/$TASK_ID_spaceranger.txt
+#$ -e /dcs05/lieber/marmaypag/LFF_spatialLC_LIBD4140/LFF_spatial_LC/code/01_spaceranger/logs/$TASK_ID_spaceranger.txt
 #$ -m e
 #$ -M heenadivecha@gmail.com
 #$ -t 3-32
