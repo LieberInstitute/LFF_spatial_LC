@@ -1,11 +1,11 @@
-setwd("/dcs04/lieber/marmaypag/lifespanDG_LIBD001/spatial_DG_lifespan/")
+setwd("/dcs05/lieber/marmaypag/LFF_spatialLC_LIBD4140/LFF_spatial_LC")
 
 library("spatialLIBD")
 library("lobstr")
 library("here")
 
 # Load SPE
-spe <- readRDS(here::here("processed-data", "harmony_processed_spe", "harmony_spe.rds"))
+spe <- readRDS(here::here("processed-data", "02_build_spe"))
 
 # Order by age
 spe <- spe[, order(spe$age)]
