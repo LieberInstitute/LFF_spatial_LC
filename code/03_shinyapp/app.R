@@ -8,19 +8,17 @@ options("golem.app.prod" = TRUE)
 options(repos = BiocManager::repositories())
 
 ## Load the data (all paths are relative to this script's location)
-spe <- readRDS("spe.rds")
-spe_pseudo <- readRDS("pseudobulk_spe.rds")
-modeling_results <- readRDS("modeling_results.rds")
+spe <- readRDS("spe_subsetted.rds")
 vars <- colnames(colData(spe))
 
 ## Deploy the website
 spatialLIBD::run_app(
     spe,
-    sce_layer = spe_pseudo,
-    modeling_results = modeling_results,
+    sce_layer = NULL,
+    modeling_results = NULL,
     sig_genes = NULL,
-    title = "spatial_DG_lifespan, Visium",
-    spe_discrete_vars = c("BayesSpace", "ManualAnnotation"),
+    title = "LFF_spatial_LC, Visium",
+    spe_discrete_vars = c(vars[grep("10x_", vars)], "ManualAnnotation"),
     spe_continuous_vars = c("sum_umi", "sum_gene", "expr_chrM", "expr_chrM_ratio"),
-    default_cluster = "BayesSpace"
+    default_cluster = "10x_graphclust"
 )

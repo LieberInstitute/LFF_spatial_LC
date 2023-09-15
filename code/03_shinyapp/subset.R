@@ -21,25 +21,25 @@ lobstr::obj_size(spe)
 ## to run every time someone accesses the shiny app.
 imgData(spe) <-
     imgData(spe)[!imgData(spe)$image_id %in% c("hires", "detected", "aligned"), ]
-assays(spe)$counts <- NULL
+#assays(spe)$counts <- NULL
 lobstr::obj_size(spe)
-# 152.44 MB
+# 1.33 GB MB
 ## Ok, this is reasonable.
 
 # Remove columns in colData(spe) that are unnecessary for Shiny app
 
-# Don't need 10x clusters
-colData(spe)[, c(6:15)] <- NULL
-# Don't need rin
-spe$rin <- NULL
-# Don't need NBW to sizeFactor
-colData(spe)[, c(17:31)] <- NULL
-#Don't need in_tissue
-spe$in_tissue <- NULL
-
-# Rename bayesSpace_harmony_10 to BayesSpace
-spe$BayesSpace <- spe$bayesSpace_harmony_10
-spe$bayesSpace_harmony_10 <- NULL
+# # Don't need 10x clusters
+# colData(spe)[, c(6:15)] <- NULL
+# # Don't need rin
+# spe$rin <- NULL
+# # Don't need NBW to sizeFactor
+# colData(spe)[, c(17:31)] <- NULL
+# #Don't need in_tissue
+# spe$in_tissue <- NULL
+#
+# # Rename bayesSpace_harmony_10 to BayesSpace
+# spe$BayesSpace <- spe$bayesSpace_harmony_10
+# spe$bayesSpace_harmony_10 <- NULL
 
 ## Save the reduced version of the spe object in the shiny app directory
 ## instead of using soft links.
