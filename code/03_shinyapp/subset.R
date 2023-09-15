@@ -5,14 +5,14 @@ library("lobstr")
 library("here")
 
 # Load SPE
-spe <- readRDS(here::here("processed-data", "02_build_spe"))
+spe <- readRDS(here::here("processed-data", "02_build_spe", "spe.rds"))
 
-# Order by age
-spe <- spe[, order(spe$age)]
+# # Order by age
+# spe <- spe[, order(spe$age)]
 
 ## Check how big it is in memory
 lobstr::obj_size(spe)
-# 4.93 GB GB
+# 4.26 GB
 ## That's too big for shinyapps.io. Aim to have an object near 2GB.
 
 ## Subset the spe object outside of shinyapps.io. Otherwise, the peak memory is
@@ -23,7 +23,7 @@ imgData(spe) <-
     imgData(spe)[!imgData(spe)$image_id %in% c("hires", "detected", "aligned"), ]
 assays(spe)$counts <- NULL
 lobstr::obj_size(spe)
-# 1.79 GB
+# 152.44 MB
 ## Ok, this is reasonable.
 
 # Remove columns in colData(spe) that are unnecessary for Shiny app
@@ -43,4 +43,4 @@ spe$bayesSpace_harmony_10 <- NULL
 
 ## Save the reduced version of the spe object in the shiny app directory
 ## instead of using soft links.
-saveRDS(spe, file = here::here("code", "03_shinyapp", "spe.rds"))
+saveRDS(spe, file = here::here("code", "03_shinyapp", "spe_subsetted.rds"))
