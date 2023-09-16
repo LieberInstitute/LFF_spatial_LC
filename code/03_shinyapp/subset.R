@@ -20,10 +20,10 @@ lobstr::obj_size(spe)
 ## Also, running lobstr::obj_size() takes a while to run, which we don't need
 ## to run every time someone accesses the shiny app.
 imgData(spe) <-
-    imgData(spe)[!imgData(spe)$image_id %in% c("hires", "detected", "aligned"), ]
+    imgData(spe)[!imgData(spe)$image_id %in% c("lowres", "detected", "aligned"), ]
 #assays(spe)$counts <- NULL
 lobstr::obj_size(spe)
-# 1.33 GB MB
+# 2.22 GB
 ## Ok, this is reasonable.
 
 # Remove columns in colData(spe) that are unnecessary for Shiny app
