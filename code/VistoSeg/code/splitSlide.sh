@@ -6,7 +6,7 @@
 #$ -e /dcs05/lieber/marmaypag/LFF_spatialLC_LIBD4140/LFF_spatial_LC/code/VistoSeg/code/logs/$TASK_ID_splitSlide.txt
 #$ -m e
 #$ -M heenadivecha@gmail.com
-#$ -t 4-8
+#$ -t 9
 #$ -tc 4
 
 
