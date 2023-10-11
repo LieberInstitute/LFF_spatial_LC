@@ -194,3 +194,34 @@ mkdir V13M06-386_D1
 ln -s /dcs04/lieber/lcolladotor/rawDataTDSC_LIBD001/raw-data/2023-08-24_SPag080923_S4/32v-LC-HRD_S20_L00* V13M06-386_D1/
 ```
 
+MiSeq run for re-run samples
+
+# Sample (library prep) information
+
+## Visium Samples 1-4
+
+`1v-4v_re-run_LC_hrd_10_02_2023_Sequencing_info.xlsx`
+
+# FASTQ
+
+## Visium re-run Slide1
+
+```bash
+## V13F27-339_A1 (1v_LC_re_HRD)
+mkdir V13F27-339_A1
+ln -s /dcs04/lieber/lcolladotor/rawDataTDSC_LIBD001/raw-data/23-10-11_LIBD_KMay231010/Alignment_1/20231011_075305/Fastq/1v-LC-re-HRD_S1_L00* V13F27-339_A1/
+
+## V13F27-339_B1 (2v_LC_re_HRD)
+mkdir V13F27-339_B1
+ln -s /dcs04/lieber/lcolladotor/rawDataTDSC_LIBD001/raw-data/23-10-11_LIBD_KMay231010/Alignment_1/20231011_075305/Fastq/2v-LC-re-HRD_S2_L00* V13F27-339_B1/
+
+## V13F27-339_C1 (3v_LC_re_HRD)
+mkdir V13F27-339_C1
+ln -s /dcs04/lieber/lcolladotor/rawDataTDSC_LIBD001/raw-data/23-10-11_LIBD_KMay231010/Alignment_1/20231011_075305/Fastq/3v-LC-re-HRD_S3_L00* V13F27-339_C1/
+
+
+## V13F27-339_D1 (4v_LC_re_HRD)
+mkdir V13F27-339_D1
+ln -s /dcs04/lieber/lcolladotor/rawDataTDSC_LIBD001/raw-data/23-10-11_LIBD_KMay231010/Alignment_1/20231011_075305/Fastq/4v-LC-re-HRD_S4_L00* V13F27-339_D1/
+
+```
