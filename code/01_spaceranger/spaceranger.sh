@@ -7,7 +7,7 @@
 #$ -e /dcs05/lieber/marmaypag/LFF_spatialLC_LIBD4140/LFF_spatial_LC/code/01_spaceranger/logs/$TASK_ID_spaceranger.txt
 #$ -m e
 #$ -M heenadivecha@gmail.com
-#$ -t 1-4
+#$ -t 33-36
 #$ -tc 4
 
 echo "**** Job starts ****"
