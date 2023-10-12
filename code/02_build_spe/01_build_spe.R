@@ -47,7 +47,11 @@ sample_info <- data.frame(
         "V13M06-386-A1",
         "V13M06-386-B1",
         "V13M06-386-C1",
-        "V13M06-386-D1"
+        "V13M06-386-D1",
+        "V13F27-339-A1",
+        "V13F27-339-B1",
+        "V13F27-339-C1",
+        "V13F27-339-D1"
     )
 )
 sample_info$subject <- sample_info$sample_id
@@ -63,13 +67,13 @@ stopifnot(all(file.exists(sample_info$sample_path)))
 ## https://github.com/LieberInstitute/spatial_DG_lifespan/blob/main/raw-data/sample_info/Visium_HPC_Round1_20220113_Master_ADR.xlsx
 ## https://github.com/LieberInstitute/spatial_DG_lifespan/blob/main/raw-data/sample_info/Visium_HPC_Round2_20220223_Master_ADR.xlsx
 donor_info <- data.frame(
-    subject = c("V13M06-331-A1","V13M06-331-B1","V13M06-331-C1","V13M06-331-D1", "V13M06-333-A1","V13M06-333-B1","V13M06-333-C1","V13M06-333-D1","V13M06-332-A1", "V13M06-332-B1","V13M06-332-C1","V13M06-332-D1","V13M06-404-A1","V13M06-404-B1", "V13M06-404-C1","V13M06-404-D1","V13M06-403-A1","V13M06-403-B1","V13M06-403-C1", "V13M06-403-D1","V13M06-402-A1","V13M06-402-B1","V13M06-402-C1","V13M06-402-D1", "V13M06-401-A1","V13M06-401-B1","V13M06-401-C1","V13M06-401-D1","V13M06-386-A1", "V13M06-386-B1","V13M06-386-C1","V13M06-386-D1"),
-    age = c(42.19, 48.69, 60.56, 48.75, 29.95, 53.92, 60.83, 42.39, 68.38, 62.7, 67.75, 61.92, 61.34, 60.84, 46.53, 41.44, 54.88, 36.67, 59.86, 44.14, 31.31, 38.48, 59.98, 52.92, 50.2, 51.73, 51.45, 48.59, 50.08, 63.98, 58.19, 51.11),
-    sex = c("M","F","M","F", "F", "M", "M", "F", "M", "M", "M", "M", "M", "M", "F", "M", "F", "F", "M", "F", "F", "M", "M", "M", "M", "M", "F","M", "M", "M", "M", "M"),
-    race = c("AA", "AA", "EA/CAUC", "AA", "AA", "AA", "AA", "AA", "AA", "AA", "EA/CAU", "EA/CAUC", "AA", "EA/CAUC", "AA", "EA/CAUC", "AA", "EA/CAUC", "EA/CAUC", "AA", "EA/CAUC", "AA", "AA", "EA/CAUC", "AA", "EA/CAUC", "AA", "AA", "EA/CAUC", "EA/CAUC", "AA", "EA/CAUC"),
-    diagnosis = c("Control", "Control", "Control", "Control", "Control", "Control", "Control", "Control", "Control", "Control", "Control", "Control", "Control", "Control", "Control", "Control", "Control", "Control", "Control", "Control", "Control", "Control", "Control", "Control", "Control", "Control", "Control", "Control", "Control", "Control", "Control", "Control"),
-    rin = c(9, 5.2, 7.8, 9.2, 9.3, 1, 8.7, 7.1, 9, 7.2, 6.8, 8.4, 8.5, 7.4, 8.5, 7.3, 8, 7.5, 7.4, 5.3,6.6, 8.6, 9.3, 8.7, 8.3, 7.1, 8.6, 7, 8.2, 9.4, 8.7, 8.6), #fix rin for 1 sample that is currently marked as 1
-    apoe = c("E4/E4", "E2/E2", "E3/E4", "E2/E3", "E2/E2", "E4/E4","E2/E3","E3/E4", "E2/ E3", "E3/ E4", "E2/ E2", "E4/E4", "E3/ E4", "E2/ E3", "E4/ E4", "E2/ E2", "E4/ E4", "E2/ E3", "E3/ E4", "E4/E4", "E2/ E3","E4/E4","E3/ E4","E3/ E4", "E3/ E4","E2/ E3","E4/ E4", "E3/ E4", "E4/ E4", "E3/ E4", "E4/E4", "E2/ E3")
+    subject = c("V13M06-331-A1","V13M06-331-B1","V13M06-331-C1","V13M06-331-D1", "V13M06-333-A1","V13M06-333-B1","V13M06-333-C1","V13M06-333-D1","V13M06-332-A1", "V13M06-332-B1","V13M06-332-C1","V13M06-332-D1","V13M06-404-A1","V13M06-404-B1", "V13M06-404-C1","V13M06-404-D1","V13M06-403-A1","V13M06-403-B1","V13M06-403-C1", "V13M06-403-D1","V13M06-402-A1","V13M06-402-B1","V13M06-402-C1","V13M06-402-D1", "V13M06-401-A1","V13M06-401-B1","V13M06-401-C1","V13M06-401-D1","V13M06-386-A1", "V13M06-386-B1","V13M06-386-C1","V13M06-386-D1", "V13F27-339-A1", "V13F27-339-B1", "V13F27-339-C1", "V13F27-339-D1"),
+    age = c(42.19, 48.69, 60.56, 48.75, 29.95, 53.92, 60.83, 42.39, 68.38, 62.7, 67.75, 61.92, 61.34, 60.84, 46.53, 41.44, 54.88, 36.67, 59.86, 44.14, 31.31, 38.48, 59.98, 52.92, 50.2, 51.73, 51.45, 48.59, 50.08, 63.98, 58.19, 51.11, 44.14, 48.69, 50.08, 36.67),
+    sex = c("M","F","M","F", "F", "M", "M", "F", "M", "M", "M", "M", "M", "M", "F", "M", "F", "F", "M", "F", "F", "M", "M", "M", "M", "M", "F","M", "M", "M", "M", "M", "F", "F", "M", "F"),
+    race = c("AA", "AA", "EA/CAUC", "AA", "AA", "AA", "AA", "AA", "AA", "AA", "EA/CAU", "EA/CAUC", "AA", "EA/CAUC", "AA", "EA/CAUC", "AA", "EA/CAUC", "EA/CAUC", "AA", "EA/CAUC", "AA", "AA", "EA/CAUC", "AA", "EA/CAUC", "AA", "AA", "EA/CAUC", "EA/CAUC", "AA", "EA/CAUC", "AA", "AA", "EA/CAUC", "EA/CAUC"),
+    diagnosis = c("Control", "Control", "Control", "Control", "Control", "Control", "Control", "Control", "Control", "Control", "Control", "Control", "Control", "Control", "Control", "Control", "Control", "Control", "Control", "Control", "Control", "Control", "Control", "Control", "Control", "Control", "Control", "Control", "Control", "Control", "Control", "Control", "Control", "Control", "Control", "Control"),
+    rin = c(9, 5.2, 7.8, 9.2, 9.3, 1, 8.7, 7.1, 9, 7.2, 6.8, 8.4, 8.5, 7.4, 8.5, 7.3, 8, 7.5, 7.4, 5.3,6.6, 8.6, 9.3, 8.7, 8.3, 7.1, 8.6, 7, 8.2, 9.4, 8.7, 8.6, 5.3, 5.2, 8.2, 7.5), #fix rin for 1 sample that is currently marked as 1
+    apoe = c("E4/E4", "E2/E2", "E3/E4", "E2/E3", "E2/E2", "E4/E4","E2/E3","E3/E4", "E2/ E3", "E3/ E4", "E2/ E2", "E4/E4", "E3/ E4", "E2/ E3", "E4/ E4", "E2/ E2", "E4/ E4", "E2/ E3", "E3/ E4", "E4/E4", "E2/ E3","E4/E4","E3/ E4","E3/ E4", "E3/ E4","E2/ E3","E4/ E4", "E3/ E4", "E4/ E4", "E3/ E4", "E4/E4", "E2/ E3", "E4/E4", "E2/E2", "E4/E4", "E2/E3")
 )
 
 ## Combine sample info with the donor info
