@@ -12,7 +12,7 @@ spe <- readRDS(here::here("processed-data", "02_build_spe", "spe.rds"))
 
 ## Check how big it is in memory
 lobstr::obj_size(spe)
-# 4.26 GB
+# 4.66 GB
 ## That's too big for shinyapps.io. Aim to have an object near 2GB.
 
 ## Subset the spe object outside of shinyapps.io. Otherwise, the peak memory is
@@ -23,7 +23,7 @@ imgData(spe) <-
     imgData(spe)[!imgData(spe)$image_id %in% c("lowres", "detected", "aligned"), ]
 #assays(spe)$counts <- NULL
 lobstr::obj_size(spe)
-# 2.22 GB
+# 2.39 GB
 ## Ok, this is reasonable.
 
 # Remove columns in colData(spe) that are unnecessary for Shiny app
