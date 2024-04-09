@@ -194,7 +194,48 @@ mkdir V13M06-386_D1
 ln -s /dcs04/lieber/lcolladotor/rawDataTDSC_LIBD001/raw-data/2023-08-24_SPag080923_S4/32v-LC-HRD_S20_L00* V13M06-386_D1/
 ```
 
-MiSeq run for re-run samples
+## Visium Sample 33v
+
+`33v_LC_hrd_01_25_2024_Sequencing_info.xlsx`
+
+# FASTQ
+
+## Visium Slide8 (ERC slide containing LC sample on array A1)
+
+```bash
+## V13M23-366_A1 (33v_LC_HRD)
+mkdir V13M23-366_A1
+ln -s /dcs04/lieber/lcolladotor/rawDataTDSC_LIBD001/raw-data/24-03-25/FC01JHU501/33v_LC_HRD_S25_L00* V13M23-366_A1/
+
+```
+## Visium Sample 34v-37v
+
+`33v_LC_hrd_01_25_2024_Sequencing_info.xlsx`
+
+# FASTQ
+
+## Visium Slide9 LC slide containing all the left hemisphere blocks) [Filepath needs to be updated when we get the sequenced data back]
+
+```bash
+## V13M23-284_A1 (34v_LC_HRD)
+mkdir V13M23-284_A1
+ln -s /dcs04/lieber/lcolladotor/rawDataTDSC_LIBD001/raw-data/2023-08-24_SPag080923_S4/29v-LC-HRD_S17_L00* V13M23-284_A1/
+
+## V13M23-284_B1 (35v_LC_HRD)
+mkdir V13M23-284_B1
+ln -s /dcs04/lieber/lcolladotor/rawDataTDSC_LIBD001/raw-data/2023-08-24_SPag080923_S4/29v-LC-HRD_S17_L00* V13M23-284_B1/
+
+## V13M23-284_C1 (36v_LC_HRD)
+mkdir V13M23-284_C1
+ln -s /dcs04/lieber/lcolladotor/rawDataTDSC_LIBD001/raw-data/2023-08-24_SPag080923_S4/29v-LC-HRD_S17_L00* V13M23-284_C1/
+
+## V13M23-284_D1 (37v_LC_HRD)
+mkdir V13M23-284_D1
+ln -s /dcs04/lieber/lcolladotor/rawDataTDSC_LIBD001/raw-data/2023-08-24_SPag080923_S4/29v-LC-HRD_S17_L00* V13M23-284_D1/
+
+```
+
+MiSeq run for re-run Slide1 (samples 1v-4v)
 
 # Sample (library prep) information
 
@@ -225,3 +266,63 @@ mkdir V13F27-339_D1
 ln -s /dcs04/lieber/lcolladotor/rawDataTDSC_LIBD001/raw-data/23-10-11_LIBD_KMay231010/Alignment_1/20231011_075305/Fastq/4v-LC-re-HRD_S4_L00* V13F27-339_D1/
 
 ```
+
+Full length sequencing for re-run Slide1 (samples 1v-4v)
+
+# Sample (library prep) information
+
+## Visium Samples 1v-4v
+
+`1v-4v_re-run_LC_hrd_10_02_2023_Sequencing_info.xlsx`
+
+# FASTQ
+
+## Visium re-run Slide1
+
+```bash
+## V13F27-339_A1 (1v_LC_re_HRD)
+mkdir V13F27-339_A1
+ln -s /dcs04/lieber/lcolladotor/rawDataTDSC_LIBD001/raw-data/24-01-02_SPag110823/1---1v-LC-re-HRD-LC_S1_L00* V13F27-339_A1/
+
+## V13F27-339_B1 (2v_LC_re_HRD)
+mkdir V13F27-339_B1
+ln -s /dcs04/lieber/lcolladotor/rawDataTDSC_LIBD001/raw-data/24-01-02_SPag110823/2---2v-LC-re-HRD-LC_S2_L00* V13F27-339_B1/
+ln -s /dcs04/lieber/lcolladotor/rawDataTDSC_LIBD001/raw-data/24-01-02_SPag110823/2--CSZF02_S30_L00* V13F27-339_B1/
+
+## V13F27-339_C1 (3v_LC_re_HRD)
+mkdir V13F27-339_C1
+ln -s /dcs04/lieber/lcolladotor/rawDataTDSC_LIBD001/raw-data/24-01-02_SPag110823/3---3v-LC-re-HRD-LC_S3_L00* V13F27-339_C1/
+
+
+## V13F27-339_D1 (4v_LC_re_HRD)
+mkdir V13F27-339_D1
+ln -s /dcs04/lieber/lcolladotor/rawDataTDSC_LIBD001/raw-data/24-01-02_SPag110823/4---4v-LC-re-HRD-LC_S4_L00* V13F27-339_D1/
+ln -s /dcs04/lieber/lcolladotor/rawDataTDSC_LIBD001/raw-data/24-01-02_SPag110823/4--CSZF04_S32_L00* V13F27-339_D1/
+
+```
+
+
+Full length sequencing for re-run Slide2 (samples 5v-6v)
+
+# Sample (library prep) information
+
+## Visium Samples 5v-6v
+
+`5v-6v_LC_re-run_Slide2_hrd_03_21_2024_Sequencing_info.xlsx`
+
+# FASTQ
+
+## Visium re-run Slide1
+
+```bash
+## V13B23-286_A1 (5v_LC_re_HRD)
+mkdir V13B23-286_A1
+ln -s /dcs04/lieber/lcolladotor/rawDataTDSC_LIBD001/raw-data/23-10-11_LIBD_KMay231010/Alignment_1/20231011_075305/Fastq/1v-LC-re-HRD_S1_L00* V13B23-286_A1/
+
+## V13B23-286_B1 (6v_LC_re_HRD)
+mkdir V13B23-286_B1
+ln -s /dcs04/lieber/lcolladotor/rawDataTDSC_LIBD001/raw-data/23-10-11_LIBD_KMay231010/Alignment_1/20231011_075305/Fastq/2v-LC-re-HRD_S2_L00* V13B23-286_B1/
+
+```
+
+
