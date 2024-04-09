@@ -2,13 +2,13 @@
 
 # Sample (library prep) information
 
-## Visium Samples 1-12
+## Visium Samples 1v-12v
 
 `1v-12v_LC_hrd_07_17_23_Sequencing_info.xlsx`
 
 # FASTQ
 
-## Visium Slide2
+## Visium Slide2 (samples 1v-4v)
 
 ```bash
 ## V13M06-331_A1 (1v_LC_HRD)
@@ -32,7 +32,7 @@ ln -s /dcs04/lieber/lcolladotor/rawDataTDSC_LIBD001/raw-data/2023-08-03_SPag0718
 
 # FASTQ
 
-## Visium Slide1
+## Visium Slide1 (samples 5v-8v)
 
 
 ```bash
@@ -55,7 +55,7 @@ ln -s /dcs04/lieber/lcolladotor/rawDataTDSC_LIBD001/raw-data/2023-08-03_SPag0718
 
 # FASTQ
 
-## Visium Slide3
+## Visium Slide3 (samples 9v-12v)
 
 
 ```bash
@@ -83,8 +83,7 @@ ln -s /dcs04/lieber/lcolladotor/rawDataTDSC_LIBD001/raw-data/2023-08-03_SPag0718
 
 # FASTQ
 
-## Visium Slide4
-
+## Visium Slide4 (samples 13v-16v)
 
 ```bash
 ## V13M06-404_A1 (13v_LC_HRD)
@@ -105,7 +104,7 @@ ln -s /dcs04/lieber/lcolladotor/rawDataTDSC_LIBD001/raw-data/2023-08-24_SPag0809
 ```
 # FASTQ
 
-## Visium Slide5
+## Visium Slide5 (samples 17v-20v)
 
 
 ```bash
@@ -128,7 +127,7 @@ ln -s /dcs04/lieber/lcolladotor/rawDataTDSC_LIBD001/raw-data/2023-08-24_SPag0809
 
 # FASTQ
 
-## Visium Slide6
+## Visium Slide6 (samples 21v-24v)
 
 
 ```bash
@@ -151,7 +150,7 @@ ln -s /dcs04/lieber/lcolladotor/rawDataTDSC_LIBD001/raw-data/2023-08-24_SPag0809
 
 # FASTQ
 
-## Visium Slide7
+## Visium Slide7 (samples 25v-28v)
 
 
 ```bash
@@ -173,7 +172,7 @@ ln -s /dcs04/lieber/lcolladotor/rawDataTDSC_LIBD001/raw-data/2023-08-24_SPag0809
 ```
 # FASTQ
 
-## Visium Slide8
+## Visium Slide8 (samples 29v-32v)
 
 
 ```bash
@@ -200,7 +199,7 @@ ln -s /dcs04/lieber/lcolladotor/rawDataTDSC_LIBD001/raw-data/2023-08-24_SPag0809
 
 # FASTQ
 
-## Visium Slide8 (ERC slide containing LC sample on array A1)
+## Visium Slide8 (sample 33v: ERC slide containing LC sample on array A1)
 
 ```bash
 ## V13M23-366_A1 (33v_LC_HRD)
@@ -208,13 +207,13 @@ mkdir V13M23-366_A1
 ln -s /dcs04/lieber/lcolladotor/rawDataTDSC_LIBD001/raw-data/24-03-25/FC01JHU501/33v_LC_HRD_S25_L00* V13M23-366_A1/
 
 ```
-## Visium Sample 34v-37v
+## Visium Samples 34v-37v
 
 `33v_LC_hrd_01_25_2024_Sequencing_info.xlsx`
 
 # FASTQ
 
-## Visium Slide9 LC slide containing all the left hemisphere blocks) [Filepath needs to be updated when we get the sequenced data back]
+## Visium Slide9 (samples 34v-37v: LC slide containing all the left hemisphere blocks) [Filepath needs to be updated when we get the sequenced data back]
 
 ```bash
 ## V13M23-284_A1 (34v_LC_HRD)
@@ -235,7 +234,7 @@ ln -s /dcs04/lieber/lcolladotor/rawDataTDSC_LIBD001/raw-data/2023-08-24_SPag0809
 
 ```
 
-MiSeq run for re-run Slide1 (samples 1v-4v)
+MiSeq run for re-run Slide1 
 
 # Sample (library prep) information
 
@@ -245,7 +244,7 @@ MiSeq run for re-run Slide1 (samples 1v-4v)
 
 # FASTQ
 
-## Visium re-run Slide1
+## Visium re-run Slide1 (samples 1v-4v)
 
 ```bash
 ## V13F27-339_A1 (1v_LC_re_HRD)
@@ -267,7 +266,7 @@ ln -s /dcs04/lieber/lcolladotor/rawDataTDSC_LIBD001/raw-data/23-10-11_LIBD_KMay2
 
 ```
 
-Full length sequencing for re-run Slide1 (samples 1v-4v)
+Full length sequencing for re-run Slide1 
 
 # Sample (library prep) information
 
@@ -277,7 +276,7 @@ Full length sequencing for re-run Slide1 (samples 1v-4v)
 
 # FASTQ
 
-## Visium re-run Slide1
+## Visium re-run Slide1 (samples 1v-4v)
 
 ```bash
 ## V13F27-339_A1 (1v_LC_re_HRD)
@@ -302,7 +301,7 @@ ln -s /dcs04/lieber/lcolladotor/rawDataTDSC_LIBD001/raw-data/24-01-02_SPag110823
 ```
 
 
-Full length sequencing for re-run Slide2 (samples 5v-6v)
+Full length sequencing for re-run Slide2 
 
 # Sample (library prep) information
 
@@ -312,7 +311,7 @@ Full length sequencing for re-run Slide2 (samples 5v-6v)
 
 # FASTQ
 
-## Visium re-run Slide1
+## Visium re-run Slide2 (samples 5v-6v)
 
 ```bash
 ## V13B23-286_A1 (5v_LC_re_HRD)
