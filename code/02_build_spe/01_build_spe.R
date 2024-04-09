@@ -72,7 +72,7 @@ donor_info <- data.frame(
     sex = c("M","F","M","F", "F", "M", "M", "F", "M", "M", "M", "M", "M", "M", "F", "M", "F", "F", "M", "F", "F", "M", "M", "M", "M", "M", "F","M", "M", "M", "M", "M", "F", "F", "M", "F"),
     race = c("AA", "AA", "EA/CAUC", "AA", "AA", "AA", "AA", "AA", "AA", "AA", "EA/CAU", "EA/CAUC", "AA", "EA/CAUC", "AA", "EA/CAUC", "AA", "EA/CAUC", "EA/CAUC", "AA", "EA/CAUC", "AA", "AA", "EA/CAUC", "AA", "EA/CAUC", "AA", "AA", "EA/CAUC", "EA/CAUC", "AA", "EA/CAUC", "AA", "AA", "EA/CAUC", "EA/CAUC"),
     diagnosis = c("Control", "Control", "Control", "Control", "Control", "Control", "Control", "Control", "Control", "Control", "Control", "Control", "Control", "Control", "Control", "Control", "Control", "Control", "Control", "Control", "Control", "Control", "Control", "Control", "Control", "Control", "Control", "Control", "Control", "Control", "Control", "Control", "Control", "Control", "Control", "Control"),
-    rin = c(9, 5.2, 7.8, 9.2, 9.3, 1, 8.7, 7.1, 9, 7.2, 6.8, 8.4, 8.5, 7.4, 8.5, 7.3, 8, 7.5, 7.4, 5.3,6.6, 8.6, 9.3, 8.7, 8.3, 7.1, 8.6, 7, 8.2, 9.4, 8.7, 8.6, 5.3, 5.2, 8.2, 7.5), #fix rin for 1 sample that is currently marked as 1
+    rin = c(9, 5.2, 7.8, 9.2, 9.3, 9, 8.7, 7.1, 9, 7.2, 6.8, 8.4, 8.5, 7.4, 8.5, 7.3, 8, 7.5, 7.4, 5.3,6.6, 8.6, 9.3, 8.7, 8.3, 7.1, 8.6, 7, 8.2, 9.4, 8.7, 8.6, 5.3, 5.2, 8.2, 7.5), #Fixed rin for V13M06-333_B1 sample
     apoe = c("E4/E4", "E2/E2", "E3/E4", "E2/E3", "E2/E2", "E4/E4","E2/E3","E3/E4", "E2/ E3", "E3/ E4", "E2/ E2", "E4/E4", "E3/ E4", "E2/ E3", "E4/ E4", "E2/ E2", "E4/ E4", "E2/ E3", "E3/ E4", "E4/E4", "E2/ E3","E4/E4","E3/ E4","E3/ E4", "E3/ E4","E2/ E3","E4/ E4", "E3/ E4", "E4/ E4", "E3/ E4", "E4/E4", "E2/ E3", "E4/E4", "E2/E2", "E4/E4", "E2/E3")
 )
 
