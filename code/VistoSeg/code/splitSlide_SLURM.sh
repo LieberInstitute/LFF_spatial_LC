@@ -1,8 +1,8 @@
 #!/bin/bash
 #SBATCH --mem=80G
-#SBATCH -o /dcs05/lieber/marmaypag/LFF_spatialLC_LIBD4140/LFF_spatial_LC/code/VistoSeg/code/logs/$SLURM_ARRAY_TASK_ID_splitSlide.txt 
-#SBATCH -e /dcs05/lieber/marmaypag/LFF_spatialLC_LIBD4140/LFF_spatial_LC/code/VistoSeg/code/logs/$SLURM_ARRAY_TASK_ID_splitSlide.txt
-#SBATCH --array=9
+#SBATCH -o /dcs05/lieber/marmaypag/LFF_spatialLC_LIBD4140/LFF_spatial_LC/code/VistoSeg/code/logs/splitSlide_%a.txt
+#SBATCH -e /dcs05/lieber/marmaypag/LFF_spatialLC_LIBD4140/LFF_spatial_LC/code/VistoSeg/code/logs/splitSlide_%a.txt
+#SBATCH --array=10-11%2
 #SBATCH --mail-user=heenadivecha@gmail.com
  
 echo "**** Job starts ****"
