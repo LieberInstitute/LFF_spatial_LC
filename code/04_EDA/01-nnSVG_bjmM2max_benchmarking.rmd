@@ -1,0 +1,119 @@
+---
+title: "01-estimate time to run nnSVG and number of genes qualifying for per-sample nnsvg analysis"
+author: "Bernie Mulvey"
+date: "2023-09-25"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+#### sets tab autocompletion for directories to begin from the directory containing the .Rproj session, instead of the script's directory if different
+knitr::opts_knit$set(root.dir = "~/Desktop/KM Lab/")
+
+library(data.table)
+library(SpatialExperiment)
+library(ggspavis)
+library(scater) # addPerCellQC
+library(BiocParallel)
+library(scran)
+library(parallel)
+library(nnSVG)
+
+theme_set(theme_bw()+theme(axis.text.x = element_text(size = 14), axis.title.x = element_text(size = 16), axis.text.y = element_text(size = 14), axis.title.y = element_text(size =16), plot.title = element_text(size = 20,hjust=0.5), strip.text = element_text(size=18), legend.text = element_text(size=10), legend.title = element_text(size=11,hjust=0.5)))
+```
+
+### Without batch, etc correction ###
+
+### scran - variable genes (HVG), spatially agnostic
+### OSTA verbatim: "If the biologically meaningful spatial information in this dataset mainly reflects spatial distributions of major cell types, then relying on HVGs for downstream analyses may be sufficient. But if there are additional important spatial features in the dataset, then it may be more meaningful to define spatially variable genes."
+### We won't know with the hyp samples til we know. So let's start unsupervised.
+```{r}
+# ordinarily, we exclude mitochondrial genes as not of interest. but the LC spatial preprint highlighted that LC neurons had very high mitochondrial reads, so what the hey, we'll keep them in here and just grab extra top HVGs to account for the fact that the 13 mito genes might take up some of the list.
+
+lc <- readRDS("~/Desktop/KM Lab/local_lffLC/LFF_spatial_LC/processed-data/02_build_spe/spe.rds")
+lc <- lc[,colData(lc)$sum_umi>200&colData(lc)$sum_gene>100&colData(lc)$overlaps_tissue=="in"&colData(lc)$expr_chrM_ratio<0.85]
+library(scran)
+lc <- computeLibraryFactors(lc)
+lc <- scater::logNormCounts(lc)
+# first, we model gene-level mean-variance relationships
+lc.vars <- modelGeneVar(lc)
+lc.vars.fit <- metadata(lc.vars)
+
+```
+
+#### HVGs continued: pull out the top p % of variable genes (returns a vector of identifiers,no stats etc)
+```{r}
+lc.hvg10 <- scran::getTopHVGs(lc.vars,prop = 0.1)
+lc.hvg20 <- scran::getTopHVGs(lc.vars,prop=0.2)
+#saveRDS(lc.hvg10,"analysis/data/spe_070123/01-feature_selection/top10pct_HVGs_NOharmony.RDS")
+#saveRDS(lc.hvg20,"analysis/data/spe_070123/01-feature_selection/top20pct_HVGs_NOharmony.RDS")
+```
+
+
+### Spatially variable genes--nnSVG, per sample
+### the workhorse function nnSVG can use parallel processing through BiocParallel. Set up the preferred (i.e., compatible) param. the parallelization is within the nnsvg call, so no need to match cpu # to sample #
+```{r}
+lc <- readRDS("data/processing/hyp_umi600_gene450_chrm35_lognorm_D07-075_B1 crop 070223.RDS")
+sbp <- MulticoreParam(10)
+register(sbp)
+
+# SUPER CRITICAL IMPORTANT NOTES: 
+# 1. RECALCULATE LOG COUNTS AFTER FILTERING ^
+# 2.nnSVG works ONE SAMPLE (one capture area) at a time. So need to wrap this in a loop. 
+# 3. as such, perform filtering PER SAMPLE. 
+# filter_genes_ncounts (N) and filter_genes_pcspots (S) work together: genes will be filtered to those with at least N counts in at least S% of spots.  filter_genes_pcspots expects a %age as 0-100, NOT a fraction.
+# tried N=2 (instead of 3) and S = 0.25 instead of 0.5, since most spots are pretty diverse and high-depth (and the cell type diversity is also unknown), but didn't get past the first sample in 3 hours on 10 CPUs. 
+# with 3, 0.5 and with n_threads 10 about 2000 genes per sample / 5 min runtime per sample on local machine. 
+
+# With vignette as a guide...:
+caps <- unique(colData(lc)$sample_id)
+res_list2 <- as.list(rep(NA, length(caps)))
+names(res_list2) <- caps
+
+i<-1
+for (i in c(1:length(caps))){
+    cap <- caps[i]
+    message(paste0("Starting sample ",i," of ",length(caps)))
+    lc.samp <- lc[,colData(lc)$sample_id==cap]
+    # dim(lc.samp)
+    lc.samp <- filter_genes(lc.samp,filter_genes_ncounts = 3, filter_genes_pcspots = 0.5,filter_mito = F)
+    #recalculate logcounts
+    lc.samp <- computeLibraryFactors(lc.samp)
+    lc.samp <- scater::logNormCounts(lc.samp)
+    # main call -- defaults to logcounts but shown for posterity; X if using covariates; n_neighbors defaults to 10, slower but potentially more granular with higher values eg 15, order = don't touch unless you have < 70 spots total; n_threads or BPPARAM for parallelization
+  res_list2[[i]] <- nnSVG(lc.samp,assay_name = "logcounts",n_threads = 10)
+  rm(lc.samp,cap)
+  gc(full=T)
+}
+
+# extract SVG results
+res_list3 <- lapply(res_list2,FUN=function(x){
+    # this first line renders rownames invalid, so don't carry them along
+    rowData(x) <- rowData(x)[order(rowData(x)$rank),]
+    colnames(rowData(x))[8:21] <- paste0("nnSVG_",colnames(rowData(x))[8:21])
+    as.data.table(as.data.frame(rowData(x)),keep.rownames=F)
+})
+
+```
+
+### To determine experiment-wide nnSVG-derived SVGs, average the ranks from each sample in our results list.
+
+```{r}
+i<-1
+for (i in c(1:sum(unique(colData(lc)$sample_id)%in%names(nnsvg_N3Spt5)))){
+  if(i==1){
+  nnsvg_ranks <- nnsvg_N3Spt5[[i]][nnSVG_padj<0.05]
+  nnsvg_ranks <- nnsvg_ranks[,.(gene_id,gene_name,nnSVG_rank)]
+  setnames(nnsvg_ranks,3,names(nnsvg_N3Spt5)[i])
+  }
+  else{
+  tmp <- nnsvg_N3Spt5[[i]][nnSVG_padj<0.05]
+  tmp <- tmp[,.(gene_id,gene_name,nnSVG_rank)]
+  setnames(tmp,3,names(nnsvg_N3Spt5)[i])
+  nnsvg_ranks <- merge.data.table(nnsvg_ranks,tmp,by=c("gene_id","gene_name"),all.x=T,all.y=T,incomparables = NA)
+  rm(tmp)
+  }
+}
+rm(i)
+
+nnsvg_ranks[,meanrank:=rowMeans(.SD,na.rm=T),.SDcols=c(3:10)]
+```
