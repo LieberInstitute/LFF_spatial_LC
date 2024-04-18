@@ -202,9 +202,9 @@ ln -s /dcs04/lieber/lcolladotor/rawDataTDSC_LIBD001/raw-data/2023-08-24_SPag0809
 ## Visium Slide8 (sample 33v: ERC slide containing LC sample on array A1)
 
 ```bash
-## V13M23-366_A1 (33v_LC_HRD)
-mkdir V13M23-366_A1
-ln -s /dcs04/lieber/lcolladotor/rawDataTDSC_LIBD001/raw-data/24-03-25/FC01JHU501/33v_LC_HRD_S25_L00* V13M23-366_A1/
+## V13B23-366_A1 (33v_LC_HRD)
+mkdir V13B23-366_A1
+ln -s /dcs04/lieber/lcolladotor/rawDataTDSC_LIBD001/raw-data/24-03-25/FC01JHU501/33v_LC_HRD_S25_L00* V13B23-366_A1/
 
 ```
 ## Visium Samples 34v-37v
@@ -216,21 +216,21 @@ ln -s /dcs04/lieber/lcolladotor/rawDataTDSC_LIBD001/raw-data/24-03-25/FC01JHU501
 ## Visium Slide9 (samples 34v-37v: LC slide containing all the left hemisphere blocks) [Filepath needs to be updated when we get the sequenced data back]
 
 ```bash
-## V13M23-284_A1 (34v_LC_HRD)
-mkdir V13M23-284_A1
-ln -s /dcs04/lieber/lcolladotor/rawDataTDSC_LIBD001/raw-data/2023-08-24_SPag080923_S4/29v-LC-HRD_S17_L00* V13M23-284_A1/
+## V13B23-284_A1 (34v_LC_HRD)
+mkdir V13B23-284_A1
+ln -s /dcs04/lieber/lcolladotor/rawDataTDSC_LIBD001/raw-data/2023-08-24_SPag080923_S4/29v-LC-HRD_S17_L00* V13B23-284_A1/
 
-## V13M23-284_B1 (35v_LC_HRD)
-mkdir V13M23-284_B1
-ln -s /dcs04/lieber/lcolladotor/rawDataTDSC_LIBD001/raw-data/2023-08-24_SPag080923_S4/29v-LC-HRD_S17_L00* V13M23-284_B1/
+## V13B23-284_B1 (35v_LC_HRD)
+mkdir V13B23-284_B1
+ln -s /dcs04/lieber/lcolladotor/rawDataTDSC_LIBD001/raw-data/2023-08-24_SPag080923_S4/29v-LC-HRD_S17_L00* V13B23-284_B1/
 
-## V13M23-284_C1 (36v_LC_HRD)
-mkdir V13M23-284_C1
-ln -s /dcs04/lieber/lcolladotor/rawDataTDSC_LIBD001/raw-data/2023-08-24_SPag080923_S4/29v-LC-HRD_S17_L00* V13M23-284_C1/
+## V13B23-284_C1 (36v_LC_HRD)
+mkdir V13B23-284_C1
+ln -s /dcs04/lieber/lcolladotor/rawDataTDSC_LIBD001/raw-data/2023-08-24_SPag080923_S4/29v-LC-HRD_S17_L00* V13B23-284_C1/
 
-## V13M23-284_D1 (37v_LC_HRD)
-mkdir V13M23-284_D1
-ln -s /dcs04/lieber/lcolladotor/rawDataTDSC_LIBD001/raw-data/2023-08-24_SPag080923_S4/29v-LC-HRD_S17_L00* V13M23-284_D1/
+## V13B23-284_D1 (37v_LC_HRD)
+mkdir V13B23-284_D1
+ln -s /dcs04/lieber/lcolladotor/rawDataTDSC_LIBD001/raw-data/2023-08-24_SPag080923_S4/29v-LC-HRD_S17_L00* V13B23-284_D1/
 
 ```
 
@@ -248,21 +248,21 @@ MiSeq run for re-run Slide1
 
 ```bash
 ## V13F27-339_A1 (1v_LC_re_HRD)
-mkdir V13F27-339_A1
-ln -s /dcs04/lieber/lcolladotor/rawDataTDSC_LIBD001/raw-data/23-10-11_LIBD_KMay231010/Alignment_1/20231011_075305/Fastq/1v-LC-re-HRD_S1_L00* V13F27-339_A1/
+mkdir V13F27-339_A1_MiSeq
+ln -s /dcs04/lieber/lcolladotor/rawDataTDSC_LIBD001/raw-data/23-10-11_LIBD_KMay231010/Alignment_1/20231011_075305/Fastq/1v-LC-re-HRD_S1_L00* V13F27-339_A1_MiSeq/
 
 ## V13F27-339_B1 (2v_LC_re_HRD)
-mkdir V13F27-339_B1
-ln -s /dcs04/lieber/lcolladotor/rawDataTDSC_LIBD001/raw-data/23-10-11_LIBD_KMay231010/Alignment_1/20231011_075305/Fastq/2v-LC-re-HRD_S2_L00* V13F27-339_B1/
+mkdir V13F27-339_B1_MiSeq
+ln -s /dcs04/lieber/lcolladotor/rawDataTDSC_LIBD001/raw-data/23-10-11_LIBD_KMay231010/Alignment_1/20231011_075305/Fastq/2v-LC-re-HRD_S2_L00* V13F27-339_B1_MiSeq/
 
 ## V13F27-339_C1 (3v_LC_re_HRD)
-mkdir V13F27-339_C1
-ln -s /dcs04/lieber/lcolladotor/rawDataTDSC_LIBD001/raw-data/23-10-11_LIBD_KMay231010/Alignment_1/20231011_075305/Fastq/3v-LC-re-HRD_S3_L00* V13F27-339_C1/
+mkdir V13F27-339_C1_MiSeq
+ln -s /dcs04/lieber/lcolladotor/rawDataTDSC_LIBD001/raw-data/23-10-11_LIBD_KMay231010/Alignment_1/20231011_075305/Fastq/3v-LC-re-HRD_S3_L00* V13F27-339_C1_MiSeq/
 
 
 ## V13F27-339_D1 (4v_LC_re_HRD)
-mkdir V13F27-339_D1
-ln -s /dcs04/lieber/lcolladotor/rawDataTDSC_LIBD001/raw-data/23-10-11_LIBD_KMay231010/Alignment_1/20231011_075305/Fastq/4v-LC-re-HRD_S4_L00* V13F27-339_D1/
+mkdir V13F27-339_D1_MiSeq
+ln -s /dcs04/lieber/lcolladotor/rawDataTDSC_LIBD001/raw-data/23-10-11_LIBD_KMay231010/Alignment_1/20231011_075305/Fastq/4v-LC-re-HRD_S4_L00* V13F27-339_D1_MiSeq/
 
 ```
 
