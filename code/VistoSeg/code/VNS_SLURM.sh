@@ -2,7 +2,7 @@
 #SBATCH --mem=80G
 #SBATCH -o /dcs05/lieber/marmaypag/LFF_spatialLC_LIBD4140/LFF_spatial_LC/code/VistoSeg/code/logs/VNS_%a.txt
 #SBATCH -e /dcs05/lieber/marmaypag/LFF_spatialLC_LIBD4140/LFF_spatial_LC/code/VistoSeg/code/logs/VNS_%a.txt
-#SBATCH --array=1-36%8
+#SBATCH --array=1-43%9
 #SBATCH --mail-user=heenadivecha@gmail.com
  
 echo "**** Job starts ****"
