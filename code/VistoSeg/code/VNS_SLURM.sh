@@ -1,8 +1,8 @@
 #!/bin/bash
 #SBATCH --mem=80G
-#SBATCH -o /dcs05/lieber/marmaypag/LFF_spatialERC_LIBD4140/LFF_spatial_ERC/code/VistoSeg/code/logs/VNS_%a.txt
-#SBATCH -e /dcs05/lieber/marmaypag/LFF_spatialERC_LIBD4140/LFF_spatial_ERC/code/VistoSeg/code/logs/VNS_%a.txt
-#SBATCH --array=25-31%8
+#SBATCH -o /dcs05/lieber/marmaypag/LFF_spatialLC_LIBD4140/LFF_spatial_LC/code/VistoSeg/code/logs/VNS_%a.txt
+#SBATCH -e /dcs05/lieber/marmaypag/LFF_spatialLC_LIBD4140/LFF_spatial_LC/code/VistoSeg/code/logs/VNS_%a.txt
+#SBATCH --array=1-36%8
 #SBATCH --mail-user=heenadivecha@gmail.com
  
 echo "**** Job starts ****"
@@ -20,7 +20,7 @@ echo "Task id: ${SLURM_ARRAY_TASK_ID}"
 module load matlab/R2023a
 
 ## Load toolbox for VistoSeg
-toolbox='/dcs05/lieber/marmaypag/LFF_spatialERC_LIBD4140/LFF_spatial_ERC/code/VistoSeg'
+toolbox='/dcs05/lieber/marmaypag/LFF_spatialLC_LIBD4140/LFF_spatial_LC/code/VistoSeg'
 samplelist="VNS.txt"
 
 ## Read inputs from VNS.txt file
