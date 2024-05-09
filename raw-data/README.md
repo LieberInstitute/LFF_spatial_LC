@@ -197,7 +197,7 @@ ln -s /dcs04/lieber/lcolladotor/rawDataTDSC_LIBD001/raw-data/2023-08-24_SPag0809
 
 `33v_LC_hrd_01_25_2024_Sequencing_info.xlsx`
 
-# FASTQ Trimmed samples
+# FASTQ
 
 ## Visium Slide8 (sample 33v: ERC slide containing LC sample on array A1)
 
@@ -207,18 +207,6 @@ mkdir V13B23-366_A1
 ln -s /dcs04/lieber/lcolladotor/rawDataTDSC_LIBD001/raw-data/24-03-25/FC01JHU501/33v_LC_HRD_S25_L00* V13B23-366_A1/
 
 ```
-
-# FASTQ un-trimmed samples
-
-## Visium Slide8 (sample 33v: ERC slide containing LC sample on array A1)
-
-```bash
-## V13B23-366_A1 (33v_LC_HRD)
-mkdir V13B23-366_A1_new
-ln -s /dcs04/lieber/lcolladotor/rawDataTDSC_LIBD001/raw-data/2024-04-26-SKCC_rerun/33v_LC_HRD_S25_L00* V13B23-366_A1_new/
-
-```
-
 ## Visium Samples 34v-37v
 
 `33v_LC_hrd_01_25_2024_Sequencing_info.xlsx`
