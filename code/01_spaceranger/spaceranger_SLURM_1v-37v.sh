@@ -1,9 +1,9 @@
 #!/bin/bash
 #SBATCH --mem=80G
 #SBATCH -n 8
-#SBATCH -o /dcs05/lieber/marmaypag/LFF_spatialERC_LIBD4140/LFF_spatial_ERC/code/01_spaceranger/logs/spaceranger_1v-16v_%a.txt
-#SBATCH -e /dcs05/lieber/marmaypag/LFF_spatialERC_LIBD4140/LFF_spatial_ERC/code/01_spaceranger/logs/spaceranger_1v-16v_%a.txt
-#SBATCH --array=1-16
+#SBATCH -o /dcs05/lieber/marmaypag/LFF_spatialLC_LIBD4140/LFF_spatial_LC/code/01_spaceranger/logs/spaceranger_1v-37v_%a.txt
+#SBATCH -e /dcs05/lieber/marmaypag/LFF_spatialLC_LIBD4140/LFF_spatial_LC/code/01_spaceranger/logs/spaceranger_1v-37v_%a.txt
+#SBATCH --array=1-37
 #SBATCH --mail-user=heenadivecha@gmail.com
  
 echo "**** Job starts ****"
@@ -18,13 +18,13 @@ echo "Hostname: ${SLURM_NODENAME}"
 echo "Task id: ${SLURM_ARRAY_TASK_ID}"
 
 ## load SpaceRanger
-module load spaceranger/2.1.0
+module load spaceranger/3.0.0
 
 ## List current modules for reproducibility
 module list
 
-## Read inputs from spaceranger_parameters_1v-16v.txt file
-FILE=$(awk "NR==${SLURM_ARRAY_TASK_ID}" spaceranger_parameters_1v-16v.txt)
+## Read inputs from spaceranger_parameters_1v-37v.txt file
+FILE=$(awk "NR==${SLURM_ARRAY_TASK_ID}" spaceranger_parameters_1v-37v.txt)
 SAMPLE=$(echo ${FILE} | cut -d "," -f 1)
 SLIDE=$(echo ${FILE} | cut -d "," -f 2)
 CAPTUREAREA=$(echo ${FILE} | cut -d "," -f 3)
@@ -60,8 +60,8 @@ spaceranger count \
 ## Move output
 echo "Moving results to new location"
 date
-mkdir -p /dcs05/lieber/marmaypag/LFF_spatialERC_LIBD4140/LFF_spatial_ERC/processed-data/01_spaceranger/
-mv ${SAMPLE} /dcs05/lieber/marmaypag/LFF_spatialERC_LIBD4140/LFF_spatial_ERC/processed-data/01_spaceranger/
+mkdir -p /dcs05/lieber/marmaypag/LFF_spatialLC_LIBD4140/LFF_spatial_LC/processed-data/01_spaceranger/
+mv ${SAMPLE} /dcs05/lieber/marmaypag/LFF_spatialLC_LIBD4140/LFF_spatial_LC/processed-data/01_spaceranger/
 
 echo "**** Job ends ****"
 date
