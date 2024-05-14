@@ -202,10 +202,13 @@ ln -s /dcs04/lieber/lcolladotor/rawDataTDSC_LIBD001/raw-data/2023-08-24_SPag0809
 ## Visium Slide8 (sample 33v: ERC slide containing LC sample on array A1)
 
 ```bash
-## V13B23-366_A1 (33v_LC_HRD)
-mkdir V13B23-366_A1
-ln -s /dcs04/lieber/lcolladotor/rawDataTDSC_LIBD001/raw-data/24-03-25/FC01JHU501/33v_LC_HRD_S25_L00* V13B23-366_A1/
+## V13B23-366_A1 (33v_LC_HRD) [Trimmed R1 read length]
+mkdir V13B23-366_A1_trimmed
+ln -s /dcs04/lieber/lcolladotor/rawDataTDSC_LIBD001/raw-data/24-03-25/FC01JHU501/33v_LC_HRD_S25_L00* V13B23-366_A1_trimmed/
 
+## V13B23-366_A1 (33v_LC_HRD) [Untrimmed R1 read length, samples re-sequenced]
+mkdir V13B23-366_A1_untrimmed
+ln -s /dcs04/lieber/lcolladotor/rawDataTDSC_LIBD001/raw-data/2024-04-26-SKCC_rerun/33v_LC_HRD_S25_L00* V13B23-366_A1_untrimmed/
 ```
 ## Visium Samples 34v-37v
 
@@ -311,7 +314,7 @@ Full length sequencing for re-run Slide2
 
 # FASTQ
 
-## Visium re-run Slide2 (samples 5v-6v)
+## Visium re-run Slide2 (samples 5v-6v) [Filepath needs to be updated when we get the sequenced data back]
 
 ```bash
 ## V13B23-286_A1 (5v_LC_re_HRD)
