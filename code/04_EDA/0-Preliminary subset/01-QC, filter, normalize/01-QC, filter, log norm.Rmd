@@ -1,7 +1,7 @@
 ---
 title: "01-QC, filter, log norm"
 author: "Bernard Mulvey"
-date: "2023-09-20"
+date: "2024-05-12       "
 output: html_document
 ---
 
@@ -31,12 +31,13 @@ theme_set(theme_bw()+theme(axis.text.x = element_text(size = 14), axis.title.x =
 ```
 
 
-### from the initial sample set (Sept 2023), the following samples had few or no TH+ or DBH+ spots, so we'll remove them for now:
+### from the initial sample set (Oct 2023), the following samples had few or no TH+ or DBH+ spots, so we'll remove them for now:
 exclude: br5854, br5712, br1691, br2305, br5276,br1039,br5517
 ```{r}
-lc <- readRDS("processed-data/02_build_spe/spe.rds")
+lc <- readRDS("processed-data/02_build_spe/spe_raw_uniquecolnames.RDS")
 colnames(lc) <- lc$key
 lc$sample_id <- gsub(lc$sample_id,pattern="^(.*-.*)-(.*)$",replacement=paste0("\\1","_","\\2"))
+
 ### add brnums and filter
 demos <- fread("raw-data/demos.txt")
 demos <- demos[,.(slide,array,Donors)]
@@ -155,5 +156,5 @@ dev.off()
 # append log counts using scater (don't use the SpatialExpt:: function here, that's for RETRIEVING an assay by the name of "logcounts" from spe objs)
 lc2 <- scater::logNormCounts(lc2)
 ### save
-saveRDS(lc2,"processed-data/lc_spe_nomitofilt_200umi-130gene_nonLCsampsdropped_102923.RDS")
+saveRDS(lc2,"local_ref/eda_lc_spe_nomitofilt_200umi-130gene_nonLCsampsdropped_051224.RDS")
 ```

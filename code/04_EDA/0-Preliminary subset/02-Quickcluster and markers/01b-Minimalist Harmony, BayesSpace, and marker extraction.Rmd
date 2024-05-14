@@ -1,0 +1,135 @@
+---
+title: "01-Minimalist Harmony, bayesspace, and marker extraction"
+author: "Bernard Mulvey"
+date: "2024-05-13"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(fig.height = 10,fig.width = 7,include = FALSE)
+knitr::opts_chunk$set(fig.width=7,fig.height=10)
+#### sets tab autocompletion for directories to begin from the directory containing the .Rproj session, instead of the script's directory if different
+knitr::opts_knit$set(root.dir = here::here())
+
+library(data.table)
+library(Biostrings)
+library(ggplot2)
+library(gridExtra)
+library(SpatialExperiment)
+library(spatialLIBD)
+require(colorout)
+library(BiocParallel)
+library(harmony)
+library(magrittr)
+source("~/.R/calc_tau_for_cellOrTissueSpecificity_metric.R")
+ColorOut()
+options("styler.addins_style_transformer" = "biocthis::bioc_style()")
+
+## change write.table to output a TSV without quotes or rownames by default
+library(default)
+default(write.table) <- list(row.names=F,col.names=T,sep='\t',quote=F)
+
+theme_set(theme_bw()+theme(axis.text.x = element_text(size = 14), axis.title.x = element_text(size = 16), axis.text.y = element_text(size = 14), axis.title.y = element_text(size =16), plot.title = element_text(size = 20,hjust=0.5), strip.text = element_text(size=18), legend.text = element_text(size=10), legend.title = element_text(size=11,hjust=0.5)))
+```
+
+
+get lognorm counts, 10%ile HVGs, and run PCA (let SpatialPreprocess do this since that seemed to work with BS 1.14.0) -> HARMONY -> BayesSpace -> get markers
+```{r}
+lc2 <- readRDS("local_ref/eda_lc_spe_nomitofilt_200umi-130gene_nonLCsampsdropped_051224.RDS")
+
+
+
+lc2 <- spatialPreprocess(lc2,"Visium",n.PCs=50,n.HVGs=0.1*nrow(lc2))
+
+# remove 10x dimensionality reductions
+reducedDims(lc2)$`10x_pca` <- NULL
+reducedDims(lc2)$`10x_umap` <- NULL
+reducedDimNames(lc2)[1] <- "other10xcrap"
+
+### run a minimalist harmony correction, will use the reducedDim "PCA" by default
+set.seed(42)
+lc2 <- harmony:::RunHarmony.SingleCellExperiment(lc2,group.by.vars = "sample_id",max_iter=100,lambda=NULL)
+
+gc(full=T)
+```
+
+#### BayesSpace: q=10 (arbitrary), 7.5k iter
+```{r}
+library(BayesSpace)
+
+colData(lc2)$row <- colData(lc2)$array_row
+colData(lc2)$col <- colData(lc2)$array_col
+
+set.seed(42)
+tmp <- BayesSpace::spatialCluster(sce = lc2,q = 10,use.dimred="HARMONY",d = 50,platform = "Visium",nrep = 7500,init.method = "mclust")
+
+bsq10.i7500 <- as.data.table(colData(tmp),keep.rownames=T)[,.(rn,cluster.init,spatial.cluster)]
+fwrite(bsq10.i7500,"processed-data/04-EDA/0-preliminary subset/02-clustering and markers/01-hvg10_harmony_BS_k10_7500iter.txt",sep='\t',quote=F)
+
+rm(tmp)
+gc(full=T)
+```
+
+### examine the BS clusters
+```{r}
+bsq10.i7500 <- DataFrame(bsq10.i7500)
+rownames(bsq10.i7500) <- bsq10.i7500$rn
+bsq10.i7500 <- bsq10.i7500[colnames(lc2),]
+
+# if doing marker stuff, run the following line; if spotplotting, don't (or the cluster assignments don't stick): 
+bsq10.i7500$spatial.cluster <- paste0("X",bsq10.i7500$spatial.cluster)
+
+colLabels(lc2) <- factor(bsq10.i7500[,3])
+library(Polychrome)
+pal <- Polychrome::palette36.colors(n = 18)[c(2:9,15,18)]
+# next line is needed for consistency in color-cluster assignments between libdspatial and the generated legend below
+names(pal) <- c(1:length(unique(lc2$label)))
+
+plt <- vis_grid_clus(lc2,"label",pdf_file = NULL,return_plots = T,spatial=F,point_size = 2,auto_crop = T,sort_clust = F,colors = pal)
+plt <- lapply(plt,FUN=function(x){
+    y <-x+
+        guides(colour = guide_legend(override.aes = list(size=6)))+
+        theme(axis.title = element_blank(),axis.text = element_blank(),legend.title = element_text(size=16),legend.text=element_text(size=15),plot.title = element_text(size=14,hjust=0.5),strip.text=element_text(size=11),plot.subtitle = element_text(size=11))
+    return(y)
+})
+
+library(gridExtra)
+do.call("grid.arrange",plt)
+dev.off()
+```
+
+Get markers
+```{r}
+bsq10.i7500 <- bsq10.i7500[colnames(lc2),]
+# if doing marker stuff, run the following line; if spotplotting, don't (or the cluster assignments don't stick): 
+bsq10.i7500$spatial.cluster <- paste0("X",bsq10.i7500$spatial.cluster)
+
+colLabels(lc2) <- factor(bsq10.i7500[,3])
+
+library(dreamlet)
+library(BiocParallel)
+sbp <- MulticoreParam(10)
+register(sbp)
+
+pb <- dreamlet::aggregateToPseudoBulk(lc2,assay = "counts",sample_id = "sample_id",cluster_id = "label",BPPARAM = sbp)
+typespec <- dreamlet::cellTypeSpecificity(pb)
+
+slibdmk <- spatialLIBD::registration_wrapper(lc2,"label","sample_id",gene_ensembl = "gene_id",gene_name = "gene_name",min_ncells = 8)
+
+slibdmks <- as.data.table(slibdmk[["enrichment"]])
+
+lccompare <- as.data.table(slibdmk[["pairwise"]])
+lccompare <- lccompare[,c(182,1:180,181)]
+keepname <- c("gene",grep(names(lccompare),pattern="X2-X8|X8-X2",value=T))
+
+lccompare <- lccompare[,..keepname]
+lcvsall <- grep(names(slibdmks),pattern="X2|X8|gene",value=T)
+lcvsall <- grep(lcvsall,pattern="fdr|p_value|logFC|gene",value=T)
+
+lcvsall <- slibdmks[,..lcvsall]
+setnames(lcvsall,paste0(names(lcvsall),"_all"))
+lccompare <- merge.data.table(lccompare,lcvsall,by.x="gene",by.y="gene_all")
+names(lccompare)
+lccompare <- lccompare[,c(1,8,9,3,10,11,2,6,7,4,5)]
+#### looks like these are due to differential content of mixed nonneuronal cell types. (e.g. olig2, aldh1l...) 
+```
