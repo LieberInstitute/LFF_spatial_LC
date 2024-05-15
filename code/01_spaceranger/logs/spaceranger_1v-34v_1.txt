@@ -1,0 +1,33 @@
+**** Job starts ****
+Wed May 15 09:40:46 AM EDT 2024
+**** JHPCE info ****
+User: hdivecha
+Job id: 5504798
+Job name: spaceranger_SLURM_1v-34v.sh
+Hostname: 
+Task id: 1
+Loading LIBD SLURM module for spaceranger/3.0.0
+Reference files, for use with the '--transcriptome' argument, can be accessed
+or downloaded into /dcs04/lieber/lcolladotor/annotationFiles_LIBD001/10x. 
+
+Currently Loaded Modules:
+  1) JHPCE_ROCKY9_DEFAULT_ENV   3) ruby/3.2.2     5) spaceranger/3.0.0
+  2) JHPCE_tools/3.0            4) rmate/1.5.10
+
+ 
+
+Processing sample V13M06-331_A1 from slide V13M06-331 and capture area A1 with image /dcs05/lieber/marmaypag/LFF_spatialLC_LIBD4140/LFF_spatial_LC/raw-data/Images/V13M06-331_LC_slide2_07_05_23_A1.tif and aligned with /dcs05/lieber/marmaypag/LFF_spatialLC_LIBD4140/LFF_spatial_LC/processed-data/Images/loupe-alignment/V13M06-331-A1.json with FASTQs: /dcs05/lieber/marmaypag/LFF_spatialLC_LIBD4140/LFF_spatial_LC/raw-data/FASTQ/V13M06-331_A1
+Wed May 15 09:40:46 AM EDT 2024
+-rwxrwx---+ 1 hdivecha lieber_marmaypag 2.3G Sep 11  2023 /dcs05/lieber/marmaypag/LFF_spatialLC_LIBD4140/LFF_spatial_LC/raw-data/Images/V13M06-331_LC_slide2_07_05_23_A1.tif
+-rwxrwx---+ 1 hdivecha lieber_marmaypag 564K Sep 11  2023 /dcs05/lieber/marmaypag/LFF_spatialLC_LIBD4140/LFF_spatial_LC/processed-data/Images/loupe-alignment/V13M06-331-A1.json
+error: the following required arguments were not provided:
+  --create-bam <true|false>
+
+Usage: spaceranger count --id <ID> --transcriptome <PATH> --create-bam <true|false> --fastqs <PATH> --slide <TEXT> --area <TEXT> --loupe-alignment <PATH> --jobmode <MODE> --localcores <NUM> --localmem <NUM> <--image <IMG>|--darkimage <IMG>|--colorizedimage <IMG>|--cytaimage <IMG>>
+
+For more information, try '--help'.
+Moving results to new location
+Wed May 15 09:40:46 AM EDT 2024
+mv: cannot stat 'V13M06-331_A1': No such file or directory
+**** Job ends ****
+Wed May 15 09:40:46 AM EDT 2024
