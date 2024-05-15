@@ -3,7 +3,7 @@
 #SBATCH -n 8
 #SBATCH -o /dcs05/lieber/marmaypag/LFF_spatialLC_LIBD4140/LFF_spatial_LC/code/01_spaceranger/logs/spaceranger_1v-34v_%a.txt
 #SBATCH -e /dcs05/lieber/marmaypag/LFF_spatialLC_LIBD4140/LFF_spatial_LC/code/01_spaceranger/logs/spaceranger_1v-34v_%a.txt
-#SBATCH --array=1
+#SBATCH --array=2-34
 #SBATCH --mail-user=heenadivecha@gmail.com
  
 echo "**** Job starts ****"
@@ -39,10 +39,10 @@ date
 ls -lh ${IMAGEPATH}
 ls -lh ${LOUPEPATH}
 
-
-
 ## Hank from 10x Genomics recommended setting this environment
 export NUMBA_NUM_THREADS=1
+
+## Adding an argument "--create-bam=true" as this seems to be a requirement for latest spaceranger version (3.0.0)
 
 ## Run SpaceRanger
 spaceranger count \
@@ -54,6 +54,7 @@ spaceranger count \
     --area=${CAPTUREAREA} \
     --loupe-alignment=${LOUPEPATH} \
     --jobmode=local \
+    --create-bam=true
     --localcores=8 \
     --localmem=64 \
 
