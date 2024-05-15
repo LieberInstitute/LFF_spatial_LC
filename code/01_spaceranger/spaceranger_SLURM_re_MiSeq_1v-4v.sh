@@ -39,10 +39,10 @@ date
 ls -lh ${IMAGEPATH}
 ls -lh ${LOUPEPATH}
 
-
-
 ## Hank from 10x Genomics recommended setting this environment
 export NUMBA_NUM_THREADS=1
+
+## Adding an argument "--create-bam=true" as this seems to be a requirement for latest spaceranger version (3.0.0)
 
 ## Run SpaceRanger
 spaceranger count \
@@ -53,6 +53,7 @@ spaceranger count \
     --slide=${SLIDE} \
     --area=${CAPTUREAREA} \
     --loupe-alignment=${LOUPEPATH} \
+    --create-bam=true
     --jobmode=local \
     --localcores=8 \
     --localmem=64 \

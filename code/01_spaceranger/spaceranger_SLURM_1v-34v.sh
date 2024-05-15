@@ -53,8 +53,8 @@ spaceranger count \
     --slide=${SLIDE} \
     --area=${CAPTUREAREA} \
     --loupe-alignment=${LOUPEPATH} \
-    --jobmode=local \
     --create-bam=true
+    --jobmode=local \
     --localcores=8 \
     --localmem=64 \
 
