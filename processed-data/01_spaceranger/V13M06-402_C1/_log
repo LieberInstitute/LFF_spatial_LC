@@ -1,0 +1,1142 @@
+Martian Runtime - v4.0.12
+2024-05-15 14:37:08 [build  ] Built with Go version go1.21.5 X:nocoverageredesign
+2024-05-15 14:37:08 [cmdline] mrp __V13M06-402_C1.mro V13M06-402_C1 --jobmode=local
+2024-05-15 14:37:08 [pid    ] 3399361
+2024-05-15 14:37:08 [environ] SHELL=/bin/bash
+2024-05-15 14:37:08 [environ] SLURM_STEP_NUM_TASKS=1
+2024-05-15 14:37:08 [environ] SLURM_JOB_USER=hdivecha
+2024-05-15 14:37:08 [environ] SLURM_TASKS_PER_NODE=8
+2024-05-15 14:37:08 [environ] SLURM_JOB_UID=42395
+2024-05-15 14:37:08 [environ] SLURM_CPU_BIND=quiet,mask_cpu:0x0000000000000000000000000400000000000000000000000000000004000000
+2024-05-15 14:37:08 [environ] SLURM_TASK_PID=3399306
+2024-05-15 14:37:08 [environ] SLURM_ARRAY_TASK_STEP=1
+2024-05-15 14:37:08 [environ] SLURM_LOCALID=0
+2024-05-15 14:37:08 [environ] SLURM_SUBMIT_DIR=/dcs05/lieber/marmaypag/LFF_spatialLC_LIBD4140/LFF_spatial_LC/code/01_spaceranger
+2024-05-15 14:37:08 [environ] SLURM_CPU_BIND_VERBOSE=quiet
+2024-05-15 14:37:08 [environ] HOSTNAME=compute-153
+2024-05-15 14:37:08 [environ] SLURM_STEP_NODELIST=compute-124
+2024-05-15 14:37:08 [environ] SLURM_NODE_ALIASES=(null)
+2024-05-15 14:37:08 [environ] SLURM_CLUSTER_NAME=jhpce3
+2024-05-15 14:37:08 [environ] SLURM_CPUS_ON_NODE=8
+2024-05-15 14:37:08 [environ] SLURM_JOB_CPUS_PER_NODE=8
+2024-05-15 14:37:08 [environ] PWD=/dcs05/lieber/marmaypag/LFF_spatialLC_LIBD4140/LFF_spatial_LC/code/01_spaceranger
+2024-05-15 14:37:08 [environ] SLURM_GTIDS=0
+2024-05-15 14:37:08 [environ] LOGNAME=hdivecha
+2024-05-15 14:37:08 [environ] XDG_SESSION_TYPE=tty
+2024-05-15 14:37:08 [environ] SLURM_JOB_PARTITION=shared
+2024-05-15 14:37:08 [environ] SLURM_JOB_NUM_NODES=1
+2024-05-15 14:37:08 [environ] SLURM_STEPID=0
+2024-05-15 14:37:08 [environ] SLURM_CPU_BIND_LIST=0x0000000000000000000000000400000000000000000000000000000004000000
+2024-05-15 14:37:08 [environ] SLURM_JOBID=5515347
+2024-05-15 14:37:08 [environ] SLURM_PTY_PORT=61496
+2024-05-15 14:37:08 [environ] SLURM_JOB_QOS=normal
+2024-05-15 14:37:08 [environ] SLURM_LAUNCH_NODE_IPADDR=192.168.11.17
+2024-05-15 14:37:08 [environ] HOME=/users/hdivecha
+2024-05-15 14:37:08 [environ] SLURM_PTY_WIN_ROW=48
+2024-05-15 14:37:08 [environ] LANG=C
+2024-05-15 14:37:08 [environ] SLURM_CPU_BIND_TYPE=mask_cpu:
+2024-05-15 14:37:08 [environ] LS_COLORS=di=0;32:ln=0;36:so=0;35:pi=0;93:ex=0;31:bd=0;34;46:cd=0;34;43:su=0;41:sg=0;46:tw=0;47:ow=0;43:fi=0;33
+2024-05-15 14:37:08 [environ] SLURM_PROCID=0
+2024-05-15 14:37:08 [environ] SLURM_ARRAY_TASK_MAX=34
+2024-05-15 14:37:08 [environ] TMPDIR=/tmp
+2024-05-15 14:37:08 [environ] SLURM_NTASKS=8
+2024-05-15 14:37:08 [environ] SLURM_TOPOLOGY_ADDR=compute-153
+2024-05-15 14:37:08 [environ] SSH_CONNECTION=10.17.10.178 50514 162.129.223.103 22
+2024-05-15 14:37:08 [environ] SLURM_DISTRIBUTION=cyclic
+2024-05-15 14:37:08 [environ] SLURM_TOPOLOGY_ADDR_PATTERN=node
+2024-05-15 14:37:08 [environ] SLURM_SRUN_COMM_HOST=192.168.11.17
+2024-05-15 14:37:08 [environ] XDG_SESSION_CLASS=user
+2024-05-15 14:37:08 [environ] SLURM_SCRIPT_CONTEXT=prolog_task
+2024-05-15 14:37:08 [environ] SLURM_MEM_PER_NODE=81920
+2024-05-15 14:37:08 [environ] SLURM_WORKING_CLUSTER=jhpce3:usher05:6817:9728:109
+2024-05-15 14:37:08 [environ] TERM=xterm-256color
+2024-05-15 14:37:08 [environ] SLURM_PTY_WIN_COL=120
+2024-05-15 14:37:08 [environ] USER=hdivecha
+2024-05-15 14:37:08 [environ] SLURM_NODELIST=compute-153
+2024-05-15 14:37:08 [environ] ENVIRONMENT=BATCH
+2024-05-15 14:37:08 [environ] SLURM_ARRAY_TASK_ID=23
+2024-05-15 14:37:08 [environ] SLURM_SRUN_COMM_PORT=61497
+2024-05-15 14:37:08 [environ] SLURM_STEP_ID=0
+2024-05-15 14:37:08 [environ] SLURM_JOB_ACCOUNT=jhpce
+2024-05-15 14:37:08 [environ] SLURM_PRIO_PROCESS=0
+2024-05-15 14:37:08 [environ] SLURM_NPROCS=8
+2024-05-15 14:37:08 [environ] SHLVL=3
+2024-05-15 14:37:08 [environ] SLURM_NNODES=1
+2024-05-15 14:37:08 [environ] BASH_ENV=/usr/share/lmod/lmod/init/bash
+2024-05-15 14:37:08 [environ] SLURM_ARRAY_TASK_MIN=2
+2024-05-15 14:37:08 [environ] XDG_SESSION_ID=4294967295
+2024-05-15 14:37:08 [environ] SLURM_SUBMIT_HOST=compute-124.cm.cluster
+2024-05-15 14:37:08 [environ] XDG_RUNTIME_DIR=/run/user/42395
+2024-05-15 14:37:08 [environ] SLURM_JOB_ID=5515347
+2024-05-15 14:37:08 [environ] SLURM_NODEID=0
+2024-05-15 14:37:08 [environ] SLURM_STEP_NUM_NODES=1
+2024-05-15 14:37:08 [environ] SSH_CLIENT=10.17.10.178 50514 22
+2024-05-15 14:37:08 [environ] OMP_NUM_THREADS=1
+2024-05-15 14:37:08 [environ] SLURM_STEP_TASKS_PER_NODE=1
+2024-05-15 14:37:08 [environ] XDG_DATA_DIRS=/users/hdivecha/.local/share/flatpak/exports/share:/var/lib/flatpak/exports/share:/usr/local/share:/usr/share
+2024-05-15 14:37:08 [environ] SLURM_CONF=/etc/slurm/slurm.conf
+2024-05-15 14:37:08 [environ] SLURM_ARRAY_TASK_COUNT=33
+2024-05-15 14:37:08 [environ] PATH=/jhpce/shared/libd/core/spaceranger/3.0.0/spaceranger-3.0.0/lib/bin:/jhpce/shared/libd/core/spaceranger/3.0.0/spaceranger-3.0.0/external/martian/bin:/jhpce/shared/libd/core/spaceranger/3.0.0/spaceranger-3.0.0/external/anaconda/bin:/jhpce/shared/libd/core/spaceranger/3.0.0/spaceranger-3.0.0/bin/tenkit:/jhpce/shared/libd/core/spaceranger/3.0.0/spaceranger-3.0.0/bin:/jhpce/shared/libd/core/spaceranger/3.0.0/spaceranger-3.0.0:/jhpce/shared/libd/core/rmate/1.5.10/rmate/bin:/jhpce/shared/libd/core/ruby/3.2.2/rubyinstall/bin:/jhpce/shared/jhpce/core/JHPCE_tools/3.0/bin:/usr/local/bin:/usr/bin:/usr/local/sbin:/usr/sbin
+2024-05-15 14:37:08 [environ] SLURM_ARRAY_JOB_ID=5511147
+2024-05-15 14:37:08 [environ] SLURM_JOB_NAME=spaceranger_SLURM_1v-34v.sh
+2024-05-15 14:37:08 [environ] SSH_TTY=/dev/pts/182
+2024-05-15 14:37:08 [environ] SLURM_STEP_LAUNCHER_PORT=61497
+2024-05-15 14:37:08 [environ] SLURM_JOB_GID=4129
+2024-05-15 14:37:08 [environ] SLURM_JOB_NODELIST=compute-153
+2024-05-15 14:37:08 [environ] BASH_FUNC_ml%%=() {  eval "$($LMOD_DIR/ml_cmd "$@")"
+}
+2024-05-15 14:37:08 [environ] BASH_FUNC_which%%=() {  ( alias;
+ eval ${which_declare} ) | /usr/bin/which --tty-only --read-alias --read-functions --show-tilde --show-dot $@
+}
+2024-05-15 14:37:08 [environ] BASH_FUNC_module%%=() {  if [ -z "${LMOD_SH_DBG_ON+x}" ]; then
+ case "$-" in 
+ *v*x*)
+ __lmod_sh_dbg='vx'
+ ;;
+ *v*)
+ __lmod_sh_dbg='v'
+ ;;
+ *x*)
+ __lmod_sh_dbg='x'
+ ;;
+ esac;
+ fi;
+ if [ -n "${__lmod_sh_dbg:-}" ]; then
+ set +$__lmod_sh_dbg;
+ echo "Shell debugging temporarily silenced: export LMOD_SH_DBG_ON=1 for Lmod's output" 1>&2;
+ fi;
+ eval "$($LMOD_CMD shell "$@")" && eval "$(${LMOD_SETTARG_CMD:-:} -s sh)";
+ __lmod_my_status=$?;
+ if [ -n "${__lmod_sh_dbg:-}" ]; then
+ echo "Shell debugging restarted" 1>&2;
+ set -$__lmod_sh_dbg;
+ fi;
+ unset __lmod_sh_dbg;
+ return $__lmod_my_status
+}
+2024-05-15 14:37:08 [environ] BASH_FUNC_scl%%=() {  if [ "$1" = "load" -o "$1" = "unload" ]; then
+ eval "module $@";
+ else
+ /usr/bin/scl "$@";
+ fi
+}
+2024-05-15 14:37:08 [environ] _=/jhpce/shared/libd/core/spaceranger/3.0.0/spaceranger-3.0.0/spaceranger
+2024-05-15 14:37:08 [environ] LC_CTYPE=en_US.UTF-8
+2024-05-15 14:37:08 [environ] PYTHONNOUSERSITE=1
+2024-05-15 14:37:08 [environ] MKL_CBWR=COMPATIBLE
+2024-05-15 14:37:08 [environ] HDF5_USE_FILE_LOCKING=FALSE
+2024-05-15 14:37:08 [environ] RUST_BACKTRACE=1
+2024-05-15 14:37:08 [environ] PYTHONPATH=/jhpce/shared/libd/core/spaceranger/3.0.0/spaceranger-3.0.0/lib/python:/jhpce/shared/libd/core/spaceranger/3.0.0/spaceranger-3.0.0/external/martian/adapters/python
+2024-05-15 14:37:08 [environ] TENX_PRODUCT=spaceranger
+2024-05-15 14:37:08 [environ] TENX_VERSION=spaceranger-3.0.0
+2024-05-15 14:37:08 [environ] TENX_COPYRIGHT=Copyright 2023 10x Genomics, Inc. All rights reserved.
+2024-05-15 14:37:08 [environ] MROPATH=/jhpce/shared/libd/core/spaceranger/3.0.0/spaceranger-3.0.0/mro
+2024-05-15 14:37:08 [version] MRO Version=spaceranger-3.0.0
+2024-05-15 14:37:08 [options] --jobmode=local
+2024-05-15 14:37:08 [options] --vdrmode=rolling
+2024-05-15 14:37:08 [options] --profile=disable
+2024-05-15 14:37:08 [options] --stackvars=false
+2024-05-15 14:37:08 [options] --zip=false
+2024-05-15 14:37:08 [options] --limit-loadavg=false
+2024-05-15 14:37:08 [options] --noexit=false
+2024-05-15 14:37:08 [options] --nopreflight=false
+2024-05-15 14:37:08 [jobmngr] Job config = /jhpce/shared/libd/core/spaceranger/3.0.0/spaceranger-3.0.0/external/martian/jobmanagers/config.json
+2024-05-15 14:37:08 [jobmngr] Using 16 logical cores available on system.
+2024-05-15 14:37:08 [jobmngr] Using 453 GB, 90% of system memory.
+2024-05-15 14:37:08 [jobmngr] WARNING: configured to use 453GB of local memory, but only 415.7GB is currently available.
+2024-05-15 14:37:09 [sysinfo] linux amd64
+2024-05-15 14:37:09 [sysinfo] Linux kernel release version: 5.14.0-284.11.1.el9_2.x86_64
+2024-05-15 14:37:09 [sysinfo] glibc version: 2.34
+2024-05-15 14:37:09 [filesys] Pipestance path /dcs05/lieber/marmaypag/LFF_spatialLC_LIBD4140/LFF_spatial_LC/code/01_spaceranger/V13M06-402_C1
+2024-05-15 14:37:09 [filesys] Pipestance filesystem type nfs
+2024-05-15 14:37:09 [filesys] 157 TB and 306,028,825,916 inodes available.
+2024-05-15 14:37:09 [filesys] Pipestance filesystem nfs4 mount options: rw,noatime,rw,vers=4.2,rsize=1048576,wsize=1048576,namlen=255,hard,proto=tcp,timeo=600,retrans=2,sec=sys,clientaddr=192.168.11.153,local_lock=none,addr=192.168.11.201
+2024-05-15 14:37:09 [filesys] Pipestance directory permissions dgrwxrwx--- owned by uid 42395 gid 4218
+2024-05-15 14:37:09 [filesys] Bin path /jhpce/shared/libd/core/spaceranger/3.0.0/spaceranger-3.0.0/external/martian/bin
+2024-05-15 14:37:09 [filesys] Bin filesystem type nfs
+2024-05-15 14:37:09 [filesys] Bin filesystem nfs4 mount options: rw,noatime,nodiratime,rw,vers=4.0,rsize=1048576,wsize=1048576,namlen=255,hard,proto=tcp,timeo=600,retrans=2,sec=sys,clientaddr=192.168.11.153,local_lock=none,addr=192.168.11.205
+2024-05-15 14:37:09 [filesys] Executable file permissions -rwxrwxr-x owned by uid 42792 gid 4246
+2024-05-15 14:37:09 [user   ] User hdivecha uid 42395 / gid 4129
+Serving UI at http://compute-153.cm.cluster:42357?auth=uAOxmLHz9GDG_HmQ7wQIoy8peoE6rBJDfk4grp2HWlw
+
+Running preflight checks (please wait)...
+2024-05-15 14:37:09 [runtime] (ready)           ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPACERANGER_PREFLIGHT
+2024-05-15 14:37:09 [runtime] (run:local)       ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPACERANGER_PREFLIGHT.fork0.split
+2024-05-15 14:37:10 [runtime] (ready)           ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPACERANGER_PREFLIGHT_LOCAL
+2024-05-15 14:37:10 [runtime] (run:local)       ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPACERANGER_PREFLIGHT_LOCAL.fork0.chnk0.main
+2024-05-15 14:37:17 [jobmngr] 58.3GB less memory than expected was free
+2024-05-15 14:37:17 [jobmngr] 58.6GB less memory than expected was free
+2024-05-15 14:37:17 [runtime] (split_complete)  ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPACERANGER_PREFLIGHT
+2024-05-15 14:37:17 [runtime] (run:local)       ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPACERANGER_PREFLIGHT.fork0.join
+2024-05-15 14:37:19 [jobmngr] 62.9GB less memory than expected was free
+2024-05-15 14:37:19 [runtime] (chunks_complete) ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPACERANGER_PREFLIGHT_LOCAL
+2024-05-15 14:37:22 [jobmngr] 68.5GB less memory than expected was free
+2024-05-15 14:37:25 [jobmngr] 75.5GB less memory than expected was free
+2024-05-15 14:37:25 [runtime] (join_complete)   ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPACERANGER_PREFLIGHT
+2024-05-15 14:37:25 [jobmngr] 75.7GB less memory than expected was free
+2024-05-15 14:37:25 [runtime] (ready)           ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER.WRITE_GENE_INDEX
+2024-05-15 14:37:25 [runtime] (run:local)       ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER.WRITE_GENE_INDEX.fork0.chnk0.main
+2024-05-15 14:37:25 [jobmngr] 75.8GB less memory than expected was free
+2024-05-15 14:37:25 [runtime] (ready)           ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER_PREP.COPY_CHEMISTRY_SPEC
+2024-05-15 14:37:25 [runtime] (run:local)       ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER_PREP.COPY_CHEMISTRY_SPEC.fork0.chnk0.main
+2024-05-15 14:37:25 [runtime] (ready)           ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER.DISABLE_FEATURE_STAGES
+2024-05-15 14:37:25 [runtime] (run:local)       ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER.DISABLE_FEATURE_STAGES.fork0.chnk0.main
+2024-05-15 14:37:25 [runtime] (ready)           ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER._BASIC_SPATIAL_RNA_COUNTER._MATRIX_COMPUTER.DISABLE_CORRECTION_FACTOR
+2024-05-15 14:37:25 [runtime] (run:local)       ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER._BASIC_SPATIAL_RNA_COUNTER._MATRIX_COMPUTER.DISABLE_CORRECTION_FACTOR.fork0.chnk0.main
+2024-05-15 14:37:25 [jobmngr] 76.0GB less memory than expected was free
+2024-05-15 14:37:25 [runtime] (chunks_complete) ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER_PREP.COPY_CHEMISTRY_SPEC
+2024-05-15 14:37:25 [runtime] (ready)           ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER_PREP.DETECT_CHEMISTRY
+2024-05-15 14:37:25 [runtime] (run:local)       ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER_PREP.DETECT_CHEMISTRY.fork0.chnk0.main
+2024-05-15 14:37:25 [jobmngr] 76.3GB less memory than expected was free
+2024-05-15 14:37:25 [runtime] (chunks_complete) ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER.DISABLE_FEATURE_STAGES
+2024-05-15 14:37:26 [runtime] (chunks_complete) ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER._BASIC_SPATIAL_RNA_COUNTER._MATRIX_COMPUTER.DISABLE_CORRECTION_FACTOR
+2024-05-15 14:37:26 [jobmngr] 76.4GB less memory than expected was free
+2024-05-15 14:37:29 [jobmngr] 72.2GB less memory than expected was free
+2024-05-15 14:37:29 [runtime] (chunks_complete) ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER_PREP.DETECT_CHEMISTRY
+2024-05-15 14:37:29 [jobmngr] 72.3GB less memory than expected was free
+2024-05-15 14:37:29 [runtime] (ready)           ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER_PREP.MULTI_SETUP_CHUNKS
+2024-05-15 14:37:29 [runtime] (run:local)       ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER_PREP.MULTI_SETUP_CHUNKS.fork0.chnk0.main
+2024-05-15 14:37:29 [runtime] (chunks_complete) ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER_PREP.MULTI_SETUP_CHUNKS
+2024-05-15 14:37:29 [runtime] (ready)           ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER.BIN_HD_DATA.SETUP_BINNING
+2024-05-15 14:37:29 [runtime] (run:local)       ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER.BIN_HD_DATA.SETUP_BINNING.fork0.chnk0.main
+2024-05-15 14:37:29 [runtime] (ready)           ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_IMAGING_CS.DETERMINE_PIPELINE_MODE
+2024-05-15 14:37:29 [runtime] (run:local)       ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_IMAGING_CS.DETERMINE_PIPELINE_MODE.fork0.chnk0.main
+2024-05-15 14:37:29 [runtime] (chunks_complete) ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER.BIN_HD_DATA.SETUP_BINNING
+2024-05-15 14:37:29 [jobmngr] 72.1GB less memory than expected was free
+2024-05-15 14:37:29 [jobmngr] 72.3GB less memory than expected was free
+2024-05-15 14:37:29 [runtime] (chunks_complete) ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_IMAGING_CS.DETERMINE_PIPELINE_MODE
+2024-05-15 14:37:29 [runtime] (ready)           ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER.DISABLE_DECONVOLUTION
+2024-05-15 14:37:29 [runtime] (run:local)       ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER.DISABLE_DECONVOLUTION.fork0.chnk0.main
+2024-05-15 14:37:29 [runtime] (ready)           ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER.WEBSUMMARY_ALERTS
+2024-05-15 14:37:29 [runtime] (run:local)       ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER.WEBSUMMARY_ALERTS.fork0.chnk0.main
+2024-05-15 14:37:29 [runtime] (ready)           ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_IMAGING_CS.STANDARDIZE_IMAGES
+2024-05-15 14:37:29 [runtime] (run:local)       ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_IMAGING_CS.STANDARDIZE_IMAGES.fork0.split
+2024-05-15 14:37:30 [jobmngr] 72.6GB less memory than expected was free
+2024-05-15 14:37:30 [runtime] (chunks_complete) ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER.DISABLE_DECONVOLUTION
+2024-05-15 14:37:30 [jobmngr] 73.5GB less memory than expected was free
+2024-05-15 14:37:30 [runtime] (chunks_complete) ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER.WEBSUMMARY_ALERTS
+2024-05-15 14:37:30 [jobmngr] 73.5GB less memory than expected was free
+2024-05-15 14:37:31 [jobmngr] 74.8GB less memory than expected was free
+2024-05-15 14:37:31 [runtime] (split_complete)  ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_IMAGING_CS.STANDARDIZE_IMAGES
+2024-05-15 14:37:31 [runtime] (run:local)       ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_IMAGING_CS.STANDARDIZE_IMAGES.fork0.join
+2024-05-15 14:37:35 [jobmngr] 75.8GB less memory than expected was free
+2024-05-15 14:37:38 [jobmngr] 81.8GB less memory than expected was free
+2024-05-15 14:37:38 [jobmngr] 85.9GB less memory than expected was free
+2024-05-15 14:37:38 [runtime] (chunks_complete) ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER.WRITE_GENE_INDEX
+2024-05-15 14:37:38 [jobmngr] 86.1GB less memory than expected was free
+2024-05-15 14:37:38 [runtime] (ready)           ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER.PARSE_TARGET_FEATURES
+2024-05-15 14:37:38 [runtime] (run:local)       ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER.PARSE_TARGET_FEATURES.fork0.chnk0.main
+2024-05-15 14:37:39 [jobmngr] 91.9GB less memory than expected was free
+2024-05-15 14:37:39 [runtime] (chunks_complete) ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER.PARSE_TARGET_FEATURES
+2024-05-15 14:37:39 [jobmngr] 92.2GB less memory than expected was free
+2024-05-15 14:37:39 [runtime] (ready)           ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER._BASIC_SPATIAL_RNA_COUNTER._MATRIX_COMPUTER.MAKE_SHARD
+2024-05-15 14:37:39 [runtime] (run:local)       ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER._BASIC_SPATIAL_RNA_COUNTER._MATRIX_COMPUTER.MAKE_SHARD.fork0.split
+2024-05-15 14:37:39 [runtime] (ready)           ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER._TARGETED_ANALYZER.DISABLE_TARGETED_STAGES
+2024-05-15 14:37:39 [runtime] (disabled)        ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER._TARGETED_ANALYZER.DISABLE_TARGETED_STAGES
+2024-05-15 14:37:39 [jobmngr] 92.3GB less memory than expected was free
+2024-05-15 14:37:42 [jobmngr] 108.4GB less memory than expected was free
+2024-05-15 14:37:44 [jobmngr] 116.7GB less memory than expected was free
+2024-05-15 14:37:44 [runtime] (split_complete)  ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER._BASIC_SPATIAL_RNA_COUNTER._MATRIX_COMPUTER.MAKE_SHARD
+2024-05-15 14:37:44 [runtime] (run:local)       ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER._BASIC_SPATIAL_RNA_COUNTER._MATRIX_COMPUTER.MAKE_SHARD.fork0.chnk0.main
+2024-05-15 14:37:44 [runtime] (run:local)       ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER._BASIC_SPATIAL_RNA_COUNTER._MATRIX_COMPUTER.MAKE_SHARD.fork0.chnk1.main
+2024-05-15 14:37:44 [runtime] (run:local)       ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER._BASIC_SPATIAL_RNA_COUNTER._MATRIX_COMPUTER.MAKE_SHARD.fork0.chnk2.main
+2024-05-15 14:37:44 [runtime] (run:local)       ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER._BASIC_SPATIAL_RNA_COUNTER._MATRIX_COMPUTER.MAKE_SHARD.fork0.chnk3.main
+2024-05-15 14:37:47 [jobmngr] 127.7GB less memory than expected was free
+2024-05-15 14:37:53 [jobmngr] 130.4GB less memory than expected was free
+2024-05-15 14:37:56 [jobmngr] 130.6GB less memory than expected was free
+2024-05-15 14:37:58 [jobmngr] 130.7GB less memory than expected was free
+2024-05-15 14:37:58 [runtime] (join_complete)   ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_IMAGING_CS.STANDARDIZE_IMAGES
+2024-05-15 14:37:58 [runtime] (ready)           ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_IMAGING_CS.LOUPE_ALIGNMENT_READER
+2024-05-15 14:37:58 [runtime] (run:local)       ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_IMAGING_CS.LOUPE_ALIGNMENT_READER.fork0.split
+2024-05-15 14:37:58 [runtime] (ready)           ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.CLOUPE_TILE_IMAGES
+2024-05-15 14:37:58 [runtime] (run:local)       ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.CLOUPE_TILE_IMAGES.fork0.split
+2024-05-15 14:37:58 [jobmngr] 130.8GB less memory than expected was free
+2024-05-15 14:37:58 [runtime] (split_complete)  ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.CLOUPE_TILE_IMAGES
+2024-05-15 14:37:58 [runtime] (run:local)       ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.CLOUPE_TILE_IMAGES.fork0.join
+2024-05-15 14:37:59 [runtime] (split_complete)  ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_IMAGING_CS.LOUPE_ALIGNMENT_READER
+2024-05-15 14:37:59 [runtime] (run:local)       ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_IMAGING_CS.LOUPE_ALIGNMENT_READER.fork0.join
+2024-05-15 14:38:00 [runtime] (join_complete)   ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_IMAGING_CS.LOUPE_ALIGNMENT_READER
+2024-05-15 14:38:00 [runtime] (ready)           ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_IMAGING_CS.GPR_READER
+2024-05-15 14:38:00 [runtime] (run:local)       ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_IMAGING_CS.GPR_READER.fork0.chnk0.main
+2024-05-15 14:38:00 [runtime] (ready)           ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_IMAGING_CS.HD_LAYOUT_READER
+2024-05-15 14:38:00 [runtime] (disabled)        ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_IMAGING_CS.HD_LAYOUT_READER
+2024-05-15 14:38:01 [runtime] (chunks_complete) ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_IMAGING_CS.GPR_READER
+2024-05-15 14:38:01 [runtime] (ready)           ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_IMAGING_CS.ALIGN_FIDUCIALS
+2024-05-15 14:38:01 [runtime] (run:local)       ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_IMAGING_CS.ALIGN_FIDUCIALS.fork0.split
+2024-05-15 14:38:03 [jobmngr] 131.3GB less memory than expected was free
+2024-05-15 14:38:03 [runtime] (split_complete)  ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_IMAGING_CS.ALIGN_FIDUCIALS
+2024-05-15 14:38:03 [runtime] (run:local)       ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_IMAGING_CS.ALIGN_FIDUCIALS.fork0.join
+2024-05-15 14:38:06 [jobmngr] 131.5GB less memory than expected was free
+2024-05-15 14:38:09 [runtime] (join_complete)   ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_IMAGING_CS.ALIGN_FIDUCIALS
+2024-05-15 14:38:09 [runtime] (ready)           ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_IMAGING_CS.DETECT_TISSUE
+2024-05-15 14:38:09 [runtime] (run:local)       ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_IMAGING_CS.DETECT_TISSUE.fork0.split
+2024-05-15 14:38:09 [runtime] (ready)           ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_IMAGING_CS.REGISTER_TISSUE
+2024-05-15 14:38:09 [runtime] (disabled)        ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_IMAGING_CS.REGISTER_TISSUE
+2024-05-15 14:38:12 [runtime] (split_complete)  ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_IMAGING_CS.DETECT_TISSUE
+2024-05-15 14:38:12 [runtime] (run:local)       ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_IMAGING_CS.DETECT_TISSUE.fork0.join
+2024-05-15 14:38:18 [runtime] (join_complete)   ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_IMAGING_CS.DETECT_TISSUE
+2024-05-15 14:38:18 [runtime] (ready)           ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_IMAGING_CS.OUTPUT_SPOTS_BARCODES
+2024-05-15 14:38:18 [runtime] (run:local)       ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_IMAGING_CS.OUTPUT_SPOTS_BARCODES.fork0.split
+2024-05-15 14:38:18 [jobmngr] 86.9GB less memory than expected was free
+2024-05-15 14:38:18 [runtime] (split_complete)  ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_IMAGING_CS.OUTPUT_SPOTS_BARCODES
+2024-05-15 14:38:19 [runtime] (run:local)       ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_IMAGING_CS.OUTPUT_SPOTS_BARCODES.fork0.join
+2024-05-15 14:38:20 [jobmngr] 104.3GB less memory than expected was free
+2024-05-15 14:38:20 [runtime] (join_complete)   ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_IMAGING_CS.OUTPUT_SPOTS_BARCODES
+2024-05-15 14:38:20 [jobmngr] 104.9GB less memory than expected was free
+2024-05-15 14:38:20 [jobmngr] 105.1GB less memory than expected was free
+2024-05-15 14:38:20 [runtime] (ready)           ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_IMAGING_CS.CALCULATE_FLUORESCENCE_INTENSITY
+2024-05-15 14:38:20 [runtime] (run:local)       ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_IMAGING_CS.CALCULATE_FLUORESCENCE_INTENSITY.fork0.split
+2024-05-15 14:38:20 [runtime] (ready)           ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER._BASIC_SPATIAL_RNA_COUNTER._MATRIX_COMPUTER.COMPUTE_CORRECTION_FACTOR
+2024-05-15 14:38:20 [runtime] (disabled)        ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER._BASIC_SPATIAL_RNA_COUNTER._MATRIX_COMPUTER.COMPUTE_CORRECTION_FACTOR
+2024-05-15 14:38:20 [jobmngr] 105.2GB less memory than expected was free
+2024-05-15 14:38:22 [jobmngr] 115.3GB less memory than expected was free
+2024-05-15 14:38:22 [runtime] (split_complete)  ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_IMAGING_CS.CALCULATE_FLUORESCENCE_INTENSITY
+2024-05-15 14:38:22 [runtime] (run:local)       ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_IMAGING_CS.CALCULATE_FLUORESCENCE_INTENSITY.fork0.join
+2024-05-15 14:38:23 [jobmngr] 123.9GB less memory than expected was free
+2024-05-15 14:38:23 [runtime] (join_complete)   ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_IMAGING_CS.CALCULATE_FLUORESCENCE_INTENSITY
+2024-05-15 14:38:23 [jobmngr] 124.0GB less memory than expected was free
+2024-05-15 14:38:26 [jobmngr] 128.5GB less memory than expected was free
+2024-05-15 14:38:29 [jobmngr] 129.6GB less memory than expected was free
+2024-05-15 14:38:35 [jobmngr] 120.8GB less memory than expected was free
+2024-05-15 14:38:41 [jobmngr] 126.4GB less memory than expected was free
+2024-05-15 14:38:44 [jobmngr] 128.9GB less memory than expected was free
+2024-05-15 14:38:53 [jobmngr] 128.1GB less memory than expected was free
+2024-05-15 14:38:56 [jobmngr] 133.3GB less memory than expected was free
+2024-05-15 14:38:59 [jobmngr] 135.5GB less memory than expected was free
+2024-05-15 14:39:02 [jobmngr] 137.0GB less memory than expected was free
+2024-05-15 14:39:05 [jobmngr] 138.3GB less memory than expected was free
+2024-05-15 14:39:12 [jobmngr] 128.0GB less memory than expected was free
+2024-05-15 14:39:15 [jobmngr] 134.9GB less memory than expected was free
+2024-05-15 14:39:18 [jobmngr] 140.9GB less memory than expected was free
+2024-05-15 14:39:21 [jobmngr] 142.4GB less memory than expected was free
+2024-05-15 14:39:24 [jobmngr] 143.3GB less memory than expected was free
+2024-05-15 14:39:27 [jobmngr] 144.4GB less memory than expected was free
+2024-05-15 14:39:30 [jobmngr] 144.5GB less memory than expected was free
+2024-05-15 14:39:33 [jobmngr] 145.3GB less memory than expected was free
+2024-05-15 14:39:40 [jobmngr] 145.3GB less memory than expected was free
+2024-05-15 14:39:43 [jobmngr] 145.6GB less memory than expected was free
+2024-05-15 14:39:49 [jobmngr] 146.2GB less memory than expected was free
+2024-05-15 14:39:52 [jobmngr] 146.7GB less memory than expected was free
+2024-05-15 14:39:55 [jobmngr] 147.4GB less memory than expected was free
+2024-05-15 14:39:58 [jobmngr] 148.2GB less memory than expected was free
+2024-05-15 14:40:01 [jobmngr] 148.6GB less memory than expected was free
+2024-05-15 14:40:04 [jobmngr] 149.6GB less memory than expected was free
+2024-05-15 14:40:07 [jobmngr] 149.7GB less memory than expected was free
+2024-05-15 14:40:10 [jobmngr] 150.5GB less memory than expected was free
+2024-05-15 14:40:16 [jobmngr] 150.8GB less memory than expected was free
+2024-05-15 14:40:31 [jobmngr] 150.3GB less memory than expected was free
+2024-05-15 14:40:35 [jobmngr] 150.7GB less memory than expected was free
+2024-05-15 14:40:38 [jobmngr] 151.7GB less memory than expected was free
+2024-05-15 14:40:41 [jobmngr] 152.0GB less memory than expected was free
+2024-05-15 14:40:44 [jobmngr] 152.2GB less memory than expected was free
+2024-05-15 14:40:50 [jobmngr] 152.6GB less memory than expected was free
+2024-05-15 14:40:53 [jobmngr] 152.8GB less memory than expected was free
+2024-05-15 14:40:57 [jobmngr] 153.0GB less memory than expected was free
+2024-05-15 14:41:09 [jobmngr] 152.9GB less memory than expected was free
+2024-05-15 14:41:18 [jobmngr] 153.1GB less memory than expected was free
+2024-05-15 14:41:21 [jobmngr] 153.4GB less memory than expected was free
+2024-05-15 14:41:24 [jobmngr] 153.9GB less memory than expected was free
+2024-05-15 14:41:33 [jobmngr] 153.2GB less memory than expected was free
+2024-05-15 14:41:36 [jobmngr] 153.3GB less memory than expected was free
+2024-05-15 14:41:39 [jobmngr] 153.9GB less memory than expected was free
+2024-05-15 14:41:42 [jobmngr] 154.0GB less memory than expected was free
+2024-05-15 14:41:45 [jobmngr] 154.2GB less memory than expected was free
+2024-05-15 14:41:52 [jobmngr] 153.5GB less memory than expected was free
+2024-05-15 14:41:58 [jobmngr] 153.5GB less memory than expected was free
+2024-05-15 14:42:01 [jobmngr] 154.6GB less memory than expected was free
+2024-05-15 14:42:04 [jobmngr] 155.3GB less memory than expected was free
+2024-05-15 14:42:10 [jobmngr] 156.0GB less memory than expected was free
+2024-05-15 14:42:16 [jobmngr] 155.5GB less memory than expected was free
+2024-05-15 14:42:24 [jobmngr] 143.3GB less memory than expected was free
+2024-05-15 14:42:24 [runtime] (join_complete)   ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.CLOUPE_TILE_IMAGES
+2024-05-15 14:42:25 [jobmngr] 143.7GB less memory than expected was free
+2024-05-15 14:42:28 [jobmngr] 144.5GB less memory than expected was free
+2024-05-15 14:42:31 [jobmngr] 145.0GB less memory than expected was free
+2024-05-15 14:42:35 [jobmngr] 146.4GB less memory than expected was free
+2024-05-15 14:42:41 [jobmngr] 147.3GB less memory than expected was free
+2024-05-15 14:42:44 [jobmngr] 147.9GB less memory than expected was free
+2024-05-15 14:42:47 [jobmngr] 149.2GB less memory than expected was free
+2024-05-15 14:42:50 [jobmngr] 152.1GB less memory than expected was free
+2024-05-15 14:42:53 [jobmngr] 159.1GB less memory than expected was free
+2024-05-15 14:43:03 [jobmngr] 157.1GB less memory than expected was free
+2024-05-15 14:43:15 [jobmngr] 149.4GB less memory than expected was free
+2024-05-15 14:43:19 [jobmngr] 153.0GB less memory than expected was free
+2024-05-15 14:43:22 [jobmngr] 153.8GB less memory than expected was free
+2024-05-15 14:43:31 [jobmngr] 154.3GB less memory than expected was free
+2024-05-15 14:43:33 [runtime] (update)          ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER._BASIC_SPATIAL_RNA_COUNTER._MATRIX_COMPUTER.MAKE_SHARD.fork0 chunks running (1/4 completed)
+2024-05-15 14:43:33 [jobmngr] 154.7GB less memory than expected was free
+2024-05-15 14:43:36 [jobmngr] 154.8GB less memory than expected was free
+2024-05-15 14:43:50 [jobmngr] 153.7GB less memory than expected was free
+2024-05-15 14:43:53 [jobmngr] 154.7GB less memory than expected was free
+2024-05-15 14:43:59 [jobmngr] 155.4GB less memory than expected was free
+2024-05-15 14:44:02 [jobmngr] 157.3GB less memory than expected was free
+2024-05-15 14:44:05 [jobmngr] 158.4GB less memory than expected was free
+2024-05-15 14:44:16 [jobmngr] 157.6GB less memory than expected was free
+2024-05-15 14:44:19 [jobmngr] 159.0GB less memory than expected was free
+2024-05-15 14:44:19 [runtime] (chunks_complete) ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER._BASIC_SPATIAL_RNA_COUNTER._MATRIX_COMPUTER.MAKE_SHARD
+2024-05-15 14:44:19 [runtime] (run:local)       ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER._BASIC_SPATIAL_RNA_COUNTER._MATRIX_COMPUTER.MAKE_SHARD.fork0.join
+2024-05-15 14:44:19 [runtime] (join_complete)   ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER._BASIC_SPATIAL_RNA_COUNTER._MATRIX_COMPUTER.MAKE_SHARD
+2024-05-15 14:44:20 [jobmngr] 159.2GB less memory than expected was free
+2024-05-15 14:44:20 [runtime] (ready)           ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER._BASIC_SPATIAL_RNA_COUNTER._MATRIX_COMPUTER.MAKE_CORRECTION_MAP
+2024-05-15 14:44:20 [runtime] (run:local)       ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER._BASIC_SPATIAL_RNA_COUNTER._MATRIX_COMPUTER.MAKE_CORRECTION_MAP.fork0.split
+2024-05-15 14:44:20 [runtime] (split_complete)  ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER._BASIC_SPATIAL_RNA_COUNTER._MATRIX_COMPUTER.MAKE_CORRECTION_MAP
+2024-05-15 14:44:20 [runtime] (run:local)       ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER._BASIC_SPATIAL_RNA_COUNTER._MATRIX_COMPUTER.MAKE_CORRECTION_MAP.fork0.join
+2024-05-15 14:44:22 [runtime] (join_complete)   ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER._BASIC_SPATIAL_RNA_COUNTER._MATRIX_COMPUTER.MAKE_CORRECTION_MAP
+2024-05-15 14:44:22 [runtime] (ready)           ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER._BASIC_SPATIAL_RNA_COUNTER._MATRIX_COMPUTER.BARCODE_CORRECTION
+2024-05-15 14:44:22 [runtime] (run:local)       ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER._BASIC_SPATIAL_RNA_COUNTER._MATRIX_COMPUTER.BARCODE_CORRECTION.fork0.split
+2024-05-15 14:44:23 [runtime] (split_complete)  ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER._BASIC_SPATIAL_RNA_COUNTER._MATRIX_COMPUTER.BARCODE_CORRECTION
+2024-05-15 14:44:23 [runtime] (run:local)       ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER._BASIC_SPATIAL_RNA_COUNTER._MATRIX_COMPUTER.BARCODE_CORRECTION.fork0.chnk00.main
+2024-05-15 14:44:23 [runtime] (run:local)       ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER._BASIC_SPATIAL_RNA_COUNTER._MATRIX_COMPUTER.BARCODE_CORRECTION.fork0.chnk01.main
+2024-05-15 14:44:23 [runtime] (run:local)       ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER._BASIC_SPATIAL_RNA_COUNTER._MATRIX_COMPUTER.BARCODE_CORRECTION.fork0.chnk02.main
+2024-05-15 14:44:23 [runtime] (run:local)       ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER._BASIC_SPATIAL_RNA_COUNTER._MATRIX_COMPUTER.BARCODE_CORRECTION.fork0.chnk03.main
+2024-05-15 14:44:23 [runtime] (run:local)       ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER._BASIC_SPATIAL_RNA_COUNTER._MATRIX_COMPUTER.BARCODE_CORRECTION.fork0.chnk04.main
+2024-05-15 14:44:23 [runtime] (run:local)       ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER._BASIC_SPATIAL_RNA_COUNTER._MATRIX_COMPUTER.BARCODE_CORRECTION.fork0.chnk05.main
+2024-05-15 14:44:23 [runtime] (run:local)       ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER._BASIC_SPATIAL_RNA_COUNTER._MATRIX_COMPUTER.BARCODE_CORRECTION.fork0.chnk06.main
+2024-05-15 14:44:23 [runtime] (run:local)       ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER._BASIC_SPATIAL_RNA_COUNTER._MATRIX_COMPUTER.BARCODE_CORRECTION.fork0.chnk07.main
+2024-05-15 14:44:23 [runtime] (run:local)       ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER._BASIC_SPATIAL_RNA_COUNTER._MATRIX_COMPUTER.BARCODE_CORRECTION.fork0.chnk08.main
+2024-05-15 14:44:23 [runtime] (run:local)       ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER._BASIC_SPATIAL_RNA_COUNTER._MATRIX_COMPUTER.BARCODE_CORRECTION.fork0.chnk09.main
+2024-05-15 14:44:23 [runtime] (run:local)       ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER._BASIC_SPATIAL_RNA_COUNTER._MATRIX_COMPUTER.BARCODE_CORRECTION.fork0.chnk10.main
+2024-05-15 14:44:23 [runtime] (run:local)       ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER._BASIC_SPATIAL_RNA_COUNTER._MATRIX_COMPUTER.BARCODE_CORRECTION.fork0.chnk11.main
+2024-05-15 14:44:23 [runtime] (run:local)       ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER._BASIC_SPATIAL_RNA_COUNTER._MATRIX_COMPUTER.BARCODE_CORRECTION.fork0.chnk12.main
+2024-05-15 14:44:23 [runtime] (run:local)       ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER._BASIC_SPATIAL_RNA_COUNTER._MATRIX_COMPUTER.BARCODE_CORRECTION.fork0.chnk13.main
+2024-05-15 14:44:23 [runtime] (run:local)       ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER._BASIC_SPATIAL_RNA_COUNTER._MATRIX_COMPUTER.BARCODE_CORRECTION.fork0.chnk14.main
+2024-05-15 14:44:23 [runtime] (run:local)       ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER._BASIC_SPATIAL_RNA_COUNTER._MATRIX_COMPUTER.BARCODE_CORRECTION.fork0.chnk15.main
+2024-05-15 14:44:29 [jobmngr] 156.9GB less memory than expected was free
+2024-05-15 14:44:33 [jobmngr] 157.7GB less memory than expected was free
+2024-05-15 14:44:33 [runtime] (chunks_complete) ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER._BASIC_SPATIAL_RNA_COUNTER._MATRIX_COMPUTER.BARCODE_CORRECTION
+2024-05-15 14:44:33 [runtime] (run:local)       ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER._BASIC_SPATIAL_RNA_COUNTER._MATRIX_COMPUTER.BARCODE_CORRECTION.fork0.join
+2024-05-15 14:44:33 [jobmngr] 157.8GB less memory than expected was free
+2024-05-15 14:44:33 [runtime] (join_complete)   ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER._BASIC_SPATIAL_RNA_COUNTER._MATRIX_COMPUTER.BARCODE_CORRECTION
+2024-05-15 14:44:33 [jobmngr] 158.0GB less memory than expected was free
+2024-05-15 14:44:33 [runtime] (ready)           ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER._BASIC_SPATIAL_RNA_COUNTER._MATRIX_COMPUTER.WRITE_BARCODE_INDEX
+2024-05-15 14:44:33 [runtime] (run:local)       ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER._BASIC_SPATIAL_RNA_COUNTER._MATRIX_COMPUTER.WRITE_BARCODE_INDEX.fork0.chnk0.main
+2024-05-15 14:44:33 [runtime] (ready)           ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER._BASIC_SPATIAL_RNA_COUNTER._MATRIX_COMPUTER._SLFE_PARTIAL_FIRST_PASS.SUBSAMPLE_BARCODES
+2024-05-15 14:44:33 [runtime] (disabled)        ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER._BASIC_SPATIAL_RNA_COUNTER._MATRIX_COMPUTER._SLFE_PARTIAL_FIRST_PASS.SUBSAMPLE_BARCODES
+2024-05-15 14:44:33 [jobmngr] 158.0GB less memory than expected was free
+2024-05-15 14:44:33 [runtime] (ready)           ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER._BASIC_SPATIAL_RNA_COUNTER._MATRIX_COMPUTER._SLFE_PARTIAL_FIRST_PASS.INITIAL_ALIGN_AND_COUNT
+2024-05-15 14:44:33 [runtime] (disabled)        ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER._BASIC_SPATIAL_RNA_COUNTER._MATRIX_COMPUTER._SLFE_PARTIAL_FIRST_PASS.INITIAL_ALIGN_AND_COUNT
+2024-05-15 14:44:33 [runtime] (chunks_complete) ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER._BASIC_SPATIAL_RNA_COUNTER._MATRIX_COMPUTER.WRITE_BARCODE_INDEX
+2024-05-15 14:44:34 [runtime] (ready)           ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER._BASIC_SPATIAL_RNA_COUNTER._MATRIX_COMPUTER._SLFE_PARTIAL_FIRST_PASS.SET_TARGETED_UMI_FILTER
+2024-05-15 14:44:34 [runtime] (disabled)        ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER._BASIC_SPATIAL_RNA_COUNTER._MATRIX_COMPUTER._SLFE_PARTIAL_FIRST_PASS.SET_TARGETED_UMI_FILTER
+2024-05-15 14:44:34 [runtime] (ready)           ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER._BASIC_SPATIAL_RNA_COUNTER._MATRIX_COMPUTER.ALIGN_AND_COUNT
+2024-05-15 14:44:34 [runtime] (run:local)       ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER._BASIC_SPATIAL_RNA_COUNTER._MATRIX_COMPUTER.ALIGN_AND_COUNT.fork0.split
+2024-05-15 14:44:34 [runtime] (disabled)        ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER._BASIC_SPATIAL_RNA_COUNTER._MATRIX_COMPUTER._SLFE_PARTIAL_FIRST_PASS
+2024-05-15 14:44:34 [runtime] (split_complete)  ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER._BASIC_SPATIAL_RNA_COUNTER._MATRIX_COMPUTER.ALIGN_AND_COUNT
+2024-05-15 14:44:34 [runtime] (run:local)       ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER._BASIC_SPATIAL_RNA_COUNTER._MATRIX_COMPUTER.ALIGN_AND_COUNT.fork0.chnk00.main
+2024-05-15 14:44:34 [runtime] (run:local)       ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER._BASIC_SPATIAL_RNA_COUNTER._MATRIX_COMPUTER.ALIGN_AND_COUNT.fork0.chnk01.main
+2024-05-15 14:44:34 [runtime] (run:local)       ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER._BASIC_SPATIAL_RNA_COUNTER._MATRIX_COMPUTER.ALIGN_AND_COUNT.fork0.chnk02.main
+2024-05-15 14:44:34 [runtime] (run:local)       ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER._BASIC_SPATIAL_RNA_COUNTER._MATRIX_COMPUTER.ALIGN_AND_COUNT.fork0.chnk03.main
+2024-05-15 14:44:34 [runtime] (run:local)       ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER._BASIC_SPATIAL_RNA_COUNTER._MATRIX_COMPUTER.ALIGN_AND_COUNT.fork0.chnk04.main
+2024-05-15 14:44:34 [runtime] (run:local)       ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER._BASIC_SPATIAL_RNA_COUNTER._MATRIX_COMPUTER.ALIGN_AND_COUNT.fork0.chnk05.main
+2024-05-15 14:44:34 [runtime] (run:local)       ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER._BASIC_SPATIAL_RNA_COUNTER._MATRIX_COMPUTER.ALIGN_AND_COUNT.fork0.chnk06.main
+2024-05-15 14:44:34 [runtime] (run:local)       ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER._BASIC_SPATIAL_RNA_COUNTER._MATRIX_COMPUTER.ALIGN_AND_COUNT.fork0.chnk07.main
+2024-05-15 14:44:34 [runtime] (run:local)       ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER._BASIC_SPATIAL_RNA_COUNTER._MATRIX_COMPUTER.ALIGN_AND_COUNT.fork0.chnk08.main
+2024-05-15 14:44:34 [runtime] (run:local)       ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER._BASIC_SPATIAL_RNA_COUNTER._MATRIX_COMPUTER.ALIGN_AND_COUNT.fork0.chnk09.main
+2024-05-15 14:44:34 [runtime] (run:local)       ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER._BASIC_SPATIAL_RNA_COUNTER._MATRIX_COMPUTER.ALIGN_AND_COUNT.fork0.chnk10.main
+2024-05-15 14:44:34 [runtime] (run:local)       ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER._BASIC_SPATIAL_RNA_COUNTER._MATRIX_COMPUTER.ALIGN_AND_COUNT.fork0.chnk11.main
+2024-05-15 14:44:34 [runtime] (run:local)       ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER._BASIC_SPATIAL_RNA_COUNTER._MATRIX_COMPUTER.ALIGN_AND_COUNT.fork0.chnk12.main
+2024-05-15 14:44:34 [runtime] (run:local)       ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER._BASIC_SPATIAL_RNA_COUNTER._MATRIX_COMPUTER.ALIGN_AND_COUNT.fork0.chnk13.main
+2024-05-15 14:44:37 [jobmngr] 160.3GB less memory than expected was free
+2024-05-15 14:44:43 [jobmngr] 160.6GB less memory than expected was free
+2024-05-15 14:44:55 [jobmngr] 156.3GB less memory than expected was free
+2024-05-15 14:45:11 [jobmngr] 159.8GB less memory than expected was free
+2024-05-15 14:45:14 [jobmngr] 160.3GB less memory than expected was free
+2024-05-15 14:45:33 [jobmngr] 157.0GB less memory than expected was free
+2024-05-15 14:45:39 [jobmngr] 157.9GB less memory than expected was free
+2024-05-15 14:45:42 [jobmngr] 159.3GB less memory than expected was free
+2024-05-15 14:45:49 [jobmngr] 160.6GB less memory than expected was free
+2024-05-15 14:45:53 [jobmngr] 160.8GB less memory than expected was free
+2024-05-15 14:46:02 [jobmngr] 157.4GB less memory than expected was free
+2024-05-15 14:46:08 [jobmngr] 159.2GB less memory than expected was free
+2024-05-15 14:46:11 [jobmngr] 160.2GB less memory than expected was free
+2024-05-15 14:46:14 [jobmngr] 161.2GB less memory than expected was free
+2024-05-15 14:46:24 [jobmngr] 160.6GB less memory than expected was free
+2024-05-15 14:46:25 [jobmngr] 160.8GB less memory than expected was free
+2024-05-15 14:46:36 [jobmngr] 161.0GB less memory than expected was free
+2024-05-15 14:46:38 [jobmngr] 162.3GB less memory than expected was free
+2024-05-15 14:46:53 [jobmngr] 160.4GB less memory than expected was free
+2024-05-15 14:46:56 [jobmngr] 161.1GB less memory than expected was free
+2024-05-15 14:46:59 [jobmngr] 161.6GB less memory than expected was free
+2024-05-15 14:47:08 [jobmngr] 160.0GB less memory than expected was free
+2024-05-15 14:47:14 [jobmngr] 158.1GB less memory than expected was free
+2024-05-15 14:47:17 [jobmngr] 158.5GB less memory than expected was free
+2024-05-15 14:47:23 [jobmngr] 158.6GB less memory than expected was free
+2024-05-15 14:47:26 [jobmngr] 160.4GB less memory than expected was free
+2024-05-15 14:47:29 [jobmngr] 160.8GB less memory than expected was free
+2024-05-15 14:47:32 [jobmngr] 162.4GB less memory than expected was free
+2024-05-15 14:47:35 [jobmngr] 163.2GB less memory than expected was free
+2024-05-15 14:47:53 [jobmngr] 157.5GB less memory than expected was free
+2024-05-15 14:47:56 [jobmngr] 159.2GB less memory than expected was free
+2024-05-15 14:48:05 [jobmngr] 150.3GB less memory than expected was free
+2024-05-15 14:48:08 [jobmngr] 151.7GB less memory than expected was free
+2024-05-15 14:48:12 [jobmngr] 154.6GB less memory than expected was free
+2024-05-15 14:48:18 [jobmngr] 154.7GB less memory than expected was free
+2024-05-15 14:48:21 [jobmngr] 154.9GB less memory than expected was free
+2024-05-15 14:48:27 [jobmngr] 155.4GB less memory than expected was free
+2024-05-15 14:48:33 [jobmngr] 156.1GB less memory than expected was free
+2024-05-15 14:48:39 [jobmngr] 156.6GB less memory than expected was free
+2024-05-15 14:48:42 [jobmngr] 157.2GB less memory than expected was free
+2024-05-15 14:48:45 [jobmngr] 157.7GB less memory than expected was free
+2024-05-15 14:48:51 [jobmngr] 155.6GB less memory than expected was free
+2024-05-15 14:48:54 [jobmngr] 156.6GB less memory than expected was free
+2024-05-15 14:48:57 [jobmngr] 158.2GB less memory than expected was free
+2024-05-15 14:49:01 [jobmngr] 158.8GB less memory than expected was free
+2024-05-15 14:49:07 [jobmngr] 155.8GB less memory than expected was free
+2024-05-15 14:49:10 [jobmngr] 157.8GB less memory than expected was free
+2024-05-15 14:49:16 [jobmngr] 154.5GB less memory than expected was free
+2024-05-15 14:49:19 [jobmngr] 157.9GB less memory than expected was free
+2024-05-15 14:49:25 [jobmngr] 153.5GB less memory than expected was free
+2024-05-15 14:49:28 [jobmngr] 155.4GB less memory than expected was free
+2024-05-15 14:49:49 [jobmngr] 145.4GB less memory than expected was free
+2024-05-15 14:49:52 [jobmngr] 151.5GB less memory than expected was free
+2024-05-15 14:49:58 [jobmngr] 149.9GB less memory than expected was free
+2024-05-15 14:50:05 [jobmngr] 148.3GB less memory than expected was free
+2024-05-15 14:50:08 [jobmngr] 149.2GB less memory than expected was free
+2024-05-15 14:50:14 [jobmngr] 150.4GB less memory than expected was free
+2024-05-15 14:50:17 [jobmngr] 152.5GB less memory than expected was free
+2024-05-15 14:50:22 [jobmngr] 156.2GB less memory than expected was free
+2024-05-15 14:50:33 [runtime] (update)          ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER._BASIC_SPATIAL_RNA_COUNTER._MATRIX_COMPUTER.ALIGN_AND_COUNT.fork0 chunks running (3/14 completed)
+2024-05-15 14:50:39 [jobmngr] 137.3GB less memory than expected was free
+2024-05-15 14:50:43 [jobmngr] 139.3GB less memory than expected was free
+2024-05-15 14:50:49 [jobmngr] 144.8GB less memory than expected was free
+2024-05-15 14:50:52 [jobmngr] 154.2GB less memory than expected was free
+2024-05-15 14:50:55 [jobmngr] 159.0GB less memory than expected was free
+2024-05-15 14:51:04 [jobmngr] 156.7GB less memory than expected was free
+2024-05-15 14:51:10 [jobmngr] 157.3GB less memory than expected was free
+2024-05-15 14:51:19 [jobmngr] 157.2GB less memory than expected was free
+2024-05-15 14:51:22 [jobmngr] 161.9GB less memory than expected was free
+2024-05-15 14:51:31 [jobmngr] 155.2GB less memory than expected was free
+2024-05-15 14:51:40 [jobmngr] 153.1GB less memory than expected was free
+2024-05-15 14:51:44 [jobmngr] 153.4GB less memory than expected was free
+2024-05-15 14:51:47 [jobmngr] 153.7GB less memory than expected was free
+2024-05-15 14:51:50 [jobmngr] 155.7GB less memory than expected was free
+2024-05-15 14:51:53 [jobmngr] 156.8GB less memory than expected was free
+2024-05-15 14:51:56 [jobmngr] 158.1GB less memory than expected was free
+2024-05-15 14:51:59 [jobmngr] 159.8GB less memory than expected was free
+2024-05-15 14:52:09 [jobmngr] 143.9GB less memory than expected was free
+2024-05-15 14:52:12 [jobmngr] 146.4GB less memory than expected was free
+2024-05-15 14:52:15 [jobmngr] 151.9GB less memory than expected was free
+2024-05-15 14:52:18 [jobmngr] 154.6GB less memory than expected was free
+2024-05-15 14:52:27 [jobmngr] 154.0GB less memory than expected was free
+2024-05-15 14:52:33 [jobmngr] 150.5GB less memory than expected was free
+2024-05-15 14:52:36 [jobmngr] 154.2GB less memory than expected was free
+2024-05-15 14:52:48 [jobmngr] 151.7GB less memory than expected was free
+2024-05-15 14:52:57 [jobmngr] 151.4GB less memory than expected was free
+2024-05-15 14:53:00 [jobmngr] 151.9GB less memory than expected was free
+2024-05-15 14:53:03 [jobmngr] 153.7GB less memory than expected was free
+2024-05-15 14:53:12 [jobmngr] 148.9GB less memory than expected was free
+2024-05-15 14:53:15 [jobmngr] 151.7GB less memory than expected was free
+2024-05-15 14:53:21 [jobmngr] 151.0GB less memory than expected was free
+2024-05-15 14:53:25 [jobmngr] 152.3GB less memory than expected was free
+2024-05-15 14:53:28 [jobmngr] 153.2GB less memory than expected was free
+2024-05-15 14:53:31 [jobmngr] 153.6GB less memory than expected was free
+2024-05-15 14:53:37 [jobmngr] 156.8GB less memory than expected was free
+2024-05-15 14:53:43 [jobmngr] 157.0GB less memory than expected was free
+2024-05-15 14:53:46 [jobmngr] 158.1GB less memory than expected was free
+2024-05-15 14:54:10 [jobmngr] 154.8GB less memory than expected was free
+2024-05-15 14:54:17 [jobmngr] 156.2GB less memory than expected was free
+2024-05-15 14:54:23 [jobmngr] 156.5GB less memory than expected was free
+2024-05-15 14:54:26 [jobmngr] 157.0GB less memory than expected was free
+2024-05-15 14:54:32 [jobmngr] 144.4GB less memory than expected was free
+2024-05-15 14:54:35 [jobmngr] 145.4GB less memory than expected was free
+2024-05-15 14:54:39 [jobmngr] 146.1GB less memory than expected was free
+2024-05-15 14:54:42 [jobmngr] 147.2GB less memory than expected was free
+2024-05-15 14:54:48 [jobmngr] 147.9GB less memory than expected was free
+2024-05-15 14:54:54 [jobmngr] 147.6GB less memory than expected was free
+2024-05-15 14:54:57 [jobmngr] 149.2GB less memory than expected was free
+2024-05-15 14:55:00 [jobmngr] 150.3GB less memory than expected was free
+2024-05-15 14:55:03 [jobmngr] 151.1GB less memory than expected was free
+2024-05-15 14:55:10 [jobmngr] 151.7GB less memory than expected was free
+2024-05-15 14:55:13 [jobmngr] 152.0GB less memory than expected was free
+2024-05-15 14:55:17 [jobmngr] 153.3GB less memory than expected was free
+2024-05-15 14:55:20 [jobmngr] 153.9GB less memory than expected was free
+2024-05-15 14:55:23 [jobmngr] 154.4GB less memory than expected was free
+2024-05-15 14:55:32 [jobmngr] 154.9GB less memory than expected was free
+2024-05-15 14:55:35 [jobmngr] 155.5GB less memory than expected was free
+2024-05-15 14:55:38 [jobmngr] 156.7GB less memory than expected was free
+2024-05-15 14:55:44 [jobmngr] 155.9GB less memory than expected was free
+2024-05-15 14:55:47 [jobmngr] 156.4GB less memory than expected was free
+2024-05-15 14:55:54 [jobmngr] 156.8GB less memory than expected was free
+2024-05-15 14:55:58 [runtime] (update)          ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER._BASIC_SPATIAL_RNA_COUNTER._MATRIX_COMPUTER.ALIGN_AND_COUNT.fork0 chunks running (5/14 completed)
+2024-05-15 14:56:10 [jobmngr] 154.1GB less memory than expected was free
+2024-05-15 14:56:15 [jobmngr] 154.1GB less memory than expected was free
+2024-05-15 14:56:18 [jobmngr] 154.9GB less memory than expected was free
+2024-05-15 14:56:21 [jobmngr] 155.4GB less memory than expected was free
+2024-05-15 14:56:24 [jobmngr] 156.2GB less memory than expected was free
+2024-05-15 14:56:27 [jobmngr] 156.5GB less memory than expected was free
+2024-05-15 14:56:33 [jobmngr] 156.2GB less memory than expected was free
+2024-05-15 14:56:37 [jobmngr] 156.4GB less memory than expected was free
+2024-05-15 14:56:40 [jobmngr] 156.8GB less memory than expected was free
+2024-05-15 14:56:46 [jobmngr] 156.8GB less memory than expected was free
+2024-05-15 14:56:49 [jobmngr] 157.0GB less memory than expected was free
+2024-05-15 14:56:52 [jobmngr] 157.9GB less memory than expected was free
+2024-05-15 14:56:58 [jobmngr] 159.7GB less memory than expected was free
+2024-05-15 14:57:04 [jobmngr] 158.3GB less memory than expected was free
+2024-05-15 14:57:14 [jobmngr] 158.5GB less memory than expected was free
+2024-05-15 14:57:30 [jobmngr] 139.4GB less memory than expected was free
+2024-05-15 14:57:33 [jobmngr] 142.9GB less memory than expected was free
+2024-05-15 14:57:36 [jobmngr] 151.4GB less memory than expected was free
+2024-05-15 14:57:39 [jobmngr] 152.4GB less memory than expected was free
+2024-05-15 14:57:46 [jobmngr] 152.6GB less memory than expected was free
+2024-05-15 14:57:58 [jobmngr] 151.4GB less memory than expected was free
+2024-05-15 14:58:05 [jobmngr] 151.8GB less memory than expected was free
+2024-05-15 14:58:08 [jobmngr] 151.9GB less memory than expected was free
+2024-05-15 14:58:17 [jobmngr] 151.5GB less memory than expected was free
+2024-05-15 14:58:20 [jobmngr] 152.5GB less memory than expected was free
+2024-05-15 14:58:24 [jobmngr] 153.2GB less memory than expected was free
+2024-05-15 14:58:28 [jobmngr] 154.7GB less memory than expected was free
+2024-05-15 14:58:34 [jobmngr] 154.6GB less memory than expected was free
+2024-05-15 14:58:37 [jobmngr] 155.6GB less memory than expected was free
+2024-05-15 14:58:40 [jobmngr] 156.0GB less memory than expected was free
+2024-05-15 14:58:43 [jobmngr] 156.5GB less memory than expected was free
+2024-05-15 14:58:46 [jobmngr] 156.9GB less memory than expected was free
+2024-05-15 14:58:58 [jobmngr] 156.2GB less memory than expected was free
+2024-05-15 14:59:05 [jobmngr] 157.0GB less memory than expected was free
+2024-05-15 14:59:20 [jobmngr] 145.5GB less memory than expected was free
+2024-05-15 14:59:23 [jobmngr] 151.4GB less memory than expected was free
+2024-05-15 14:59:26 [jobmngr] 154.2GB less memory than expected was free
+2024-05-15 14:59:29 [jobmngr] 154.8GB less memory than expected was free
+2024-05-15 14:59:36 [jobmngr] 154.9GB less memory than expected was free
+2024-05-15 14:59:45 [jobmngr] 147.0GB less memory than expected was free
+2024-05-15 14:59:49 [jobmngr] 152.2GB less memory than expected was free
+2024-05-15 14:59:52 [jobmngr] 153.0GB less memory than expected was free
+2024-05-15 15:00:01 [jobmngr] 152.8GB less memory than expected was free
+2024-05-15 15:00:07 [jobmngr] 153.0GB less memory than expected was free
+2024-05-15 15:00:20 [jobmngr] 153.6GB less memory than expected was free
+2024-05-15 15:00:23 [jobmngr] 154.4GB less memory than expected was free
+2024-05-15 15:00:26 [jobmngr] 154.5GB less memory than expected was free
+2024-05-15 15:00:38 [jobmngr] 153.9GB less memory than expected was free
+2024-05-15 15:00:41 [jobmngr] 154.8GB less memory than expected was free
+2024-05-15 15:00:44 [jobmngr] 155.1GB less memory than expected was free
+2024-05-15 15:00:47 [jobmngr] 156.1GB less memory than expected was free
+2024-05-15 15:00:59 [jobmngr] 136.9GB less memory than expected was free
+2024-05-15 15:01:02 [jobmngr] 147.4GB less memory than expected was free
+2024-05-15 15:01:06 [jobmngr] 151.3GB less memory than expected was free
+2024-05-15 15:01:09 [jobmngr] 151.8GB less memory than expected was free
+2024-05-15 15:01:12 [jobmngr] 152.6GB less memory than expected was free
+2024-05-15 15:01:15 [jobmngr] 152.8GB less memory than expected was free
+2024-05-15 15:01:18 [runtime] (update)          ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER._BASIC_SPATIAL_RNA_COUNTER._MATRIX_COMPUTER.ALIGN_AND_COUNT.fork0 chunks running (7/14 completed)
+2024-05-15 15:01:24 [jobmngr] 145.0GB less memory than expected was free
+2024-05-15 15:01:27 [jobmngr] 150.5GB less memory than expected was free
+2024-05-15 15:01:30 [jobmngr] 150.7GB less memory than expected was free
+2024-05-15 15:01:39 [jobmngr] 151.8GB less memory than expected was free
+2024-05-15 15:01:42 [jobmngr] 152.9GB less memory than expected was free
+2024-05-15 15:01:51 [jobmngr] 151.7GB less memory than expected was free
+2024-05-15 15:01:54 [jobmngr] 152.4GB less memory than expected was free
+2024-05-15 15:01:57 [jobmngr] 153.2GB less memory than expected was free
+2024-05-15 15:02:00 [jobmngr] 154.0GB less memory than expected was free
+2024-05-15 15:02:06 [jobmngr] 155.3GB less memory than expected was free
+2024-05-15 15:02:26 [jobmngr] 155.8GB less memory than expected was free
+2024-05-15 15:02:32 [jobmngr] 144.9GB less memory than expected was free
+2024-05-15 15:02:35 [jobmngr] 146.0GB less memory than expected was free
+2024-05-15 15:02:38 [jobmngr] 147.3GB less memory than expected was free
+2024-05-15 15:02:41 [jobmngr] 148.1GB less memory than expected was free
+2024-05-15 15:02:44 [jobmngr] 149.1GB less memory than expected was free
+2024-05-15 15:02:48 [jobmngr] 150.4GB less memory than expected was free
+2024-05-15 15:02:51 [jobmngr] 152.6GB less memory than expected was free
+2024-05-15 15:02:54 [jobmngr] 153.0GB less memory than expected was free
+2024-05-15 15:02:57 [jobmngr] 153.7GB less memory than expected was free
+2024-05-15 15:03:00 [jobmngr] 154.2GB less memory than expected was free
+2024-05-15 15:03:06 [jobmngr] 154.4GB less memory than expected was free
+2024-05-15 15:03:15 [jobmngr] 154.0GB less memory than expected was free
+2024-05-15 15:03:18 [jobmngr] 154.6GB less memory than expected was free
+2024-05-15 15:03:21 [jobmngr] 154.7GB less memory than expected was free
+2024-05-15 15:03:24 [jobmngr] 155.3GB less memory than expected was free
+2024-05-15 15:03:27 [jobmngr] 155.7GB less memory than expected was free
+2024-05-15 15:03:33 [jobmngr] 148.0GB less memory than expected was free
+2024-05-15 15:03:37 [jobmngr] 153.3GB less memory than expected was free
+2024-05-15 15:03:40 [jobmngr] 154.0GB less memory than expected was free
+2024-05-15 15:03:43 [jobmngr] 155.1GB less memory than expected was free
+2024-05-15 15:03:50 [jobmngr] 154.0GB less memory than expected was free
+2024-05-15 15:03:59 [jobmngr] 149.5GB less memory than expected was free
+2024-05-15 15:04:02 [jobmngr] 151.3GB less memory than expected was free
+2024-05-15 15:04:08 [jobmngr] 152.1GB less memory than expected was free
+2024-05-15 15:04:11 [jobmngr] 154.0GB less memory than expected was free
+2024-05-15 15:04:17 [jobmngr] 153.7GB less memory than expected was free
+2024-05-15 15:04:21 [jobmngr] 154.5GB less memory than expected was free
+2024-05-15 15:04:24 [jobmngr] 155.5GB less memory than expected was free
+2024-05-15 15:04:30 [jobmngr] 156.3GB less memory than expected was free
+2024-05-15 15:04:37 [jobmngr] 156.9GB less memory than expected was free
+2024-05-15 15:04:40 [jobmngr] 157.1GB less memory than expected was free
+2024-05-15 15:04:43 [jobmngr] 157.2GB less memory than expected was free
+2024-05-15 15:04:49 [jobmngr] 155.5GB less memory than expected was free
+2024-05-15 15:04:52 [jobmngr] 155.7GB less memory than expected was free
+2024-05-15 15:04:55 [jobmngr] 156.9GB less memory than expected was free
+2024-05-15 15:04:58 [jobmngr] 157.5GB less memory than expected was free
+2024-05-15 15:05:01 [jobmngr] 158.0GB less memory than expected was free
+2024-05-15 15:05:04 [jobmngr] 158.3GB less memory than expected was free
+2024-05-15 15:05:16 [jobmngr] 158.9GB less memory than expected was free
+2024-05-15 15:05:22 [jobmngr] 159.5GB less memory than expected was free
+2024-05-15 15:05:25 [jobmngr] 160.2GB less memory than expected was free
+2024-05-15 15:05:37 [jobmngr] 159.3GB less memory than expected was free
+2024-05-15 15:05:40 [jobmngr] 159.6GB less memory than expected was free
+2024-05-15 15:05:50 [jobmngr] 160.1GB less memory than expected was free
+2024-05-15 15:05:53 [jobmngr] 160.6GB less memory than expected was free
+2024-05-15 15:06:02 [jobmngr] 145.1GB less memory than expected was free
+2024-05-15 15:06:08 [jobmngr] 145.7GB less memory than expected was free
+2024-05-15 15:06:11 [jobmngr] 145.9GB less memory than expected was free
+2024-05-15 15:06:14 [jobmngr] 146.6GB less memory than expected was free
+2024-05-15 15:06:19 [runtime] (update)          ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER._BASIC_SPATIAL_RNA_COUNTER._MATRIX_COMPUTER.ALIGN_AND_COUNT.fork0 chunks running (9/14 completed)
+2024-05-15 15:06:22 [jobmngr] 137.7GB less memory than expected was free
+2024-05-15 15:06:25 [jobmngr] 139.9GB less memory than expected was free
+2024-05-15 15:06:28 [jobmngr] 141.4GB less memory than expected was free
+2024-05-15 15:06:35 [jobmngr] 142.0GB less memory than expected was free
+2024-05-15 15:06:39 [jobmngr] 142.6GB less memory than expected was free
+2024-05-15 15:06:42 [jobmngr] 143.7GB less memory than expected was free
+2024-05-15 15:06:48 [jobmngr] 129.6GB less memory than expected was free
+2024-05-15 15:06:51 [jobmngr] 130.3GB less memory than expected was free
+2024-05-15 15:06:54 [jobmngr] 130.9GB less memory than expected was free
+2024-05-15 15:07:00 [jobmngr] 131.2GB less memory than expected was free
+2024-05-15 15:07:09 [jobmngr] 131.2GB less memory than expected was free
+2024-05-15 15:07:21 [jobmngr] 131.1GB less memory than expected was free
+2024-05-15 15:07:27 [jobmngr] 130.9GB less memory than expected was free
+2024-05-15 15:07:30 [jobmngr] 131.8GB less memory than expected was free
+2024-05-15 15:07:35 [jobmngr] 132.0GB less memory than expected was free
+2024-05-15 15:07:38 [jobmngr] 132.2GB less memory than expected was free
+2024-05-15 15:07:47 [jobmngr] 132.2GB less memory than expected was free
+2024-05-15 15:07:50 [jobmngr] 132.6GB less memory than expected was free
+2024-05-15 15:07:53 [jobmngr] 132.8GB less memory than expected was free
+2024-05-15 15:08:03 [jobmngr] 132.5GB less memory than expected was free
+2024-05-15 15:08:06 [jobmngr] 133.8GB less memory than expected was free
+2024-05-15 15:08:15 [jobmngr] 132.8GB less memory than expected was free
+2024-05-15 15:08:21 [jobmngr] 133.6GB less memory than expected was free
+2024-05-15 15:08:36 [jobmngr] 131.5GB less memory than expected was free
+2024-05-15 15:08:48 [jobmngr] 116.9GB less memory than expected was free
+2024-05-15 15:08:54 [jobmngr] 117.3GB less memory than expected was free
+2024-05-15 15:09:03 [jobmngr] 117.0GB less memory than expected was free
+2024-05-15 15:09:12 [jobmngr] 101.3GB less memory than expected was free
+2024-05-15 15:09:15 [jobmngr] 102.6GB less memory than expected was free
+2024-05-15 15:09:20 [jobmngr] 104.0GB less memory than expected was free
+2024-05-15 15:09:23 [jobmngr] 105.9GB less memory than expected was free
+2024-05-15 15:09:26 [jobmngr] 107.6GB less memory than expected was free
+2024-05-15 15:09:29 [jobmngr] 108.9GB less memory than expected was free
+2024-05-15 15:09:33 [jobmngr] 110.2GB less memory than expected was free
+2024-05-15 15:09:39 [jobmngr] 97.1GB less memory than expected was free
+2024-05-15 15:09:43 [jobmngr] 98.2GB less memory than expected was free
+2024-05-15 15:09:47 [jobmngr] 98.3GB less memory than expected was free
+2024-05-15 15:09:54 [jobmngr] 98.2GB less memory than expected was free
+2024-05-15 15:09:57 [jobmngr] 98.6GB less memory than expected was free
+2024-05-15 15:10:00 [jobmngr] 99.0GB less memory than expected was free
+2024-05-15 15:10:09 [jobmngr] 97.8GB less memory than expected was free
+2024-05-15 15:10:15 [jobmngr] 97.8GB less memory than expected was free
+2024-05-15 15:10:18 [jobmngr] 98.0GB less memory than expected was free
+2024-05-15 15:10:24 [jobmngr] 97.7GB less memory than expected was free
+2024-05-15 15:10:34 [jobmngr] 83.9GB less memory than expected was free
+2024-05-15 15:10:37 [jobmngr] 84.8GB less memory than expected was free
+2024-05-15 15:10:40 [jobmngr] 85.1GB less memory than expected was free
+2024-05-15 15:10:46 [jobmngr] 71.1GB less memory than expected was free
+2024-05-15 15:10:49 [jobmngr] 71.7GB less memory than expected was free
+2024-05-15 15:11:08 [jobmngr] 70.4GB less memory than expected was free
+2024-05-15 15:11:11 [jobmngr] 71.0GB less memory than expected was free
+2024-05-15 15:11:17 [jobmngr] 71.3GB less memory than expected was free
+2024-05-15 15:11:20 [jobmngr] 72.2GB less memory than expected was free
+2024-05-15 15:11:32 [jobmngr] 71.3GB less memory than expected was free
+2024-05-15 15:11:38 [jobmngr] 71.2GB less memory than expected was free
+2024-05-15 15:11:44 [jobmngr] 71.0GB less memory than expected was free
+2024-05-15 15:11:52 [jobmngr] 71.3GB less memory than expected was free
+2024-05-15 15:12:01 [jobmngr] 70.9GB less memory than expected was free
+2024-05-15 15:12:05 [jobmngr] 71.2GB less memory than expected was free
+2024-05-15 15:12:14 [jobmngr] 59.2GB less memory than expected was free
+2024-05-15 15:12:17 [jobmngr] 66.0GB less memory than expected was free
+2024-05-15 15:12:20 [runtime] (update)          ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER._BASIC_SPATIAL_RNA_COUNTER._MATRIX_COMPUTER.ALIGN_AND_COUNT.fork0 chunks running (12/14 completed)
+2024-05-15 15:12:20 [jobmngr] 66.5GB less memory than expected was free
+2024-05-15 15:12:24 [jobmngr] 66.9GB less memory than expected was free
+2024-05-15 15:12:27 [jobmngr] 67.4GB less memory than expected was free
+2024-05-15 15:12:33 [jobmngr] 67.6GB less memory than expected was free
+2024-05-15 15:12:42 [jobmngr] 67.1GB less memory than expected was free
+2024-05-15 15:12:45 [jobmngr] 67.3GB less memory than expected was free
+2024-05-15 15:12:52 [jobmngr] 67.5GB less memory than expected was free
+2024-05-15 15:17:04 [runtime] (chunks_complete) ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER._BASIC_SPATIAL_RNA_COUNTER._MATRIX_COMPUTER.ALIGN_AND_COUNT
+2024-05-15 15:17:04 [runtime] (run:local)       ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER._BASIC_SPATIAL_RNA_COUNTER._MATRIX_COMPUTER.ALIGN_AND_COUNT.fork0.join
+2024-05-15 15:17:04 [runtime] (join_complete)   ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER._BASIC_SPATIAL_RNA_COUNTER._MATRIX_COMPUTER.ALIGN_AND_COUNT
+2024-05-15 15:17:07 [runtime] (ready)           ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER._BASIC_SPATIAL_RNA_COUNTER._MATRIX_COMPUTER.WRITE_BARCODE_SUMMARY
+2024-05-15 15:17:07 [runtime] (run:local)       ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER._BASIC_SPATIAL_RNA_COUNTER._MATRIX_COMPUTER.WRITE_BARCODE_SUMMARY.fork0.chnk0.main
+2024-05-15 15:17:07 [runtime] (ready)           ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER._BASIC_SPATIAL_RNA_COUNTER._MATRIX_COMPUTER.WRITE_H5_MATRIX
+2024-05-15 15:17:07 [runtime] (run:local)       ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER._BASIC_SPATIAL_RNA_COUNTER._MATRIX_COMPUTER.WRITE_H5_MATRIX.fork0.chnk0.main
+2024-05-15 15:17:07 [runtime] (ready)           ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER._BASIC_SPATIAL_RNA_COUNTER._MATRIX_COMPUTER.COLLATE_METRICS
+2024-05-15 15:17:07 [runtime] (run:local)       ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER._BASIC_SPATIAL_RNA_COUNTER._MATRIX_COMPUTER.COLLATE_METRICS.fork0.split
+2024-05-15 15:17:07 [runtime] (ready)           ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER._BASIC_SPATIAL_RNA_COUNTER._MATRIX_COMPUTER.WRITE_MATRIX_MARKET
+2024-05-15 15:17:07 [runtime] (run:local)       ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER._BASIC_SPATIAL_RNA_COUNTER._MATRIX_COMPUTER.WRITE_MATRIX_MARKET.fork0.chnk0.main
+2024-05-15 15:17:07 [runtime] (split_complete)  ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER._BASIC_SPATIAL_RNA_COUNTER._MATRIX_COMPUTER.COLLATE_METRICS
+2024-05-15 15:17:07 [runtime] (run:local)       ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER._BASIC_SPATIAL_RNA_COUNTER._MATRIX_COMPUTER.COLLATE_METRICS.fork0.chnk0.main
+2024-05-15 15:17:08 [runtime] (chunks_complete) ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER._BASIC_SPATIAL_RNA_COUNTER._MATRIX_COMPUTER.WRITE_BARCODE_SUMMARY
+2024-05-15 15:17:08 [runtime] (chunks_complete) ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER._BASIC_SPATIAL_RNA_COUNTER._MATRIX_COMPUTER.COLLATE_METRICS
+2024-05-15 15:17:09 [runtime] (run:local)       ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER._BASIC_SPATIAL_RNA_COUNTER._MATRIX_COMPUTER.COLLATE_METRICS.fork0.join
+2024-05-15 15:17:09 [runtime] (join_complete)   ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER._BASIC_SPATIAL_RNA_COUNTER._MATRIX_COMPUTER.COLLATE_METRICS
+2024-05-15 15:17:09 [runtime] (ready)           ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER._BASIC_SPATIAL_RNA_COUNTER._MATRIX_COMPUTER.MERGE_METRICS
+2024-05-15 15:17:09 [runtime] (run:local)       ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER._BASIC_SPATIAL_RNA_COUNTER._MATRIX_COMPUTER.MERGE_METRICS.fork0.chnk0.main
+2024-05-15 15:17:09 [runtime] (chunks_complete) ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER._BASIC_SPATIAL_RNA_COUNTER._MATRIX_COMPUTER.MERGE_METRICS
+2024-05-15 15:17:10 [runtime] (chunks_complete) ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER._BASIC_SPATIAL_RNA_COUNTER._MATRIX_COMPUTER.WRITE_H5_MATRIX
+2024-05-15 15:17:10 [runtime] (ready)           ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER._BASIC_SPATIAL_RNA_COUNTER.DISABLE_STAGES
+2024-05-15 15:17:10 [runtime] (run:local)       ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER._BASIC_SPATIAL_RNA_COUNTER.DISABLE_STAGES.fork0.chnk0.main
+2024-05-15 15:17:10 [runtime] (ready)           ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER.BIN_HD_DATA._BIN_HD_DATA.CREATE_HD_FEATURE_SLICE
+2024-05-15 15:17:10 [runtime] (disabled)        ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER.BIN_HD_DATA._BIN_HD_DATA.CREATE_HD_FEATURE_SLICE
+2024-05-15 15:17:10 [runtime] (chunks_complete) ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER._BASIC_SPATIAL_RNA_COUNTER._MATRIX_COMPUTER.WRITE_MATRIX_MARKET
+2024-05-15 15:17:10 [runtime] (ready)           ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER._BASIC_SPATIAL_RNA_COUNTER.FILTER_BARCODES
+2024-05-15 15:17:10 [runtime] (run:local)       ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER._BASIC_SPATIAL_RNA_COUNTER.FILTER_BARCODES.fork0.split
+2024-05-15 15:17:10 [runtime] (ready)           ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER.BIN_HD_DATA._BIN_HD_DATA.PROCESS_HD_ALIGNMENT
+2024-05-15 15:17:10 [runtime] (disabled)        ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER.BIN_HD_DATA._BIN_HD_DATA.PROCESS_HD_ALIGNMENT
+2024-05-15 15:17:10 [runtime] (disabled)        ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER.BIN_HD_DATA._BIN_HD_DATA._COMPUTE_BINNED_OUTPUTS.CREATE_TOTAL_UMI_IMAGE
+2024-05-15 15:17:10 [runtime] (disabled)        ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER.BIN_HD_DATA._BIN_HD_DATA._COMPUTE_BINNED_OUTPUTS.BIN_COUNT_MATRIX
+2024-05-15 15:17:10 [runtime] (disabled)        ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER.BIN_HD_DATA._BIN_HD_DATA._COMPUTE_BINNED_OUTPUTS.WRITE_BINNED_H5_MATRIX
+2024-05-15 15:17:10 [runtime] (disabled)        ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER.BIN_HD_DATA._BIN_HD_DATA._COMPUTE_BINNED_OUTPUTS.WRITE_BINNED_MATRICES
+2024-05-15 15:17:10 [runtime] (disabled)        ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER.BIN_HD_DATA._BIN_HD_DATA._COMPUTE_BINNED_OUTPUTS.DISABLE_SECONDARY_ANALYSIS
+2024-05-15 15:17:10 [runtime] (disabled)        ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER.BIN_HD_DATA._BIN_HD_DATA._COMPUTE_BINNED_OUTPUTS.SPATIAL_BINNED_RNA_ANALYZER.ANALYZER_PREFLIGHT
+2024-05-15 15:17:11 [runtime] (disabled)        ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER.BIN_HD_DATA._BIN_HD_DATA._COMPUTE_BINNED_OUTPUTS.SPATIAL_BINNED_RNA_ANALYZER.PREPROCESS_MATRIX
+2024-05-15 15:17:11 [runtime] (disabled)        ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER.BIN_HD_DATA._BIN_HD_DATA._COMPUTE_BINNED_OUTPUTS.SPATIAL_BINNED_RNA_ANALYZER._ANTIGEN_ANALYZER.CALL_ANTIBODIES
+2024-05-15 15:17:11 [runtime] (disabled)        ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER.BIN_HD_DATA._BIN_HD_DATA._COMPUTE_BINNED_OUTPUTS.SPATIAL_BINNED_RNA_ANALYZER._ANTIBODY_ANALYZER.SUMMARIZE_ANTIBODY_ANALYSIS
+2024-05-15 15:17:11 [runtime] (disabled)        ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER.BIN_HD_DATA._BIN_HD_DATA._COMPUTE_BINNED_OUTPUTS.SPATIAL_BINNED_RNA_ANALYZER.RUN_BATCH_CORRECTION_PCA.PCA_PREP
+2024-05-15 15:17:11 [runtime] (disabled)        ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER.BIN_HD_DATA._BIN_HD_DATA._COMPUTE_BINNED_OUTPUTS.SPATIAL_BINNED_RNA_ANALYZER._ANTIGEN_ANALYZER.SUMMARIZE_ANTIBODY_ANALYSIS
+2024-05-15 15:17:11 [runtime] (disabled)        ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER.BIN_HD_DATA._BIN_HD_DATA._COMPUTE_BINNED_OUTPUTS.SPATIAL_BINNED_RNA_ANALYZER.RUN_MULTIGENOME_ANALYSIS
+2024-05-15 15:17:11 [runtime] (disabled)        ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER.BIN_HD_DATA._BIN_HD_DATA._COMPUTE_BINNED_OUTPUTS.SPATIAL_BINNED_RNA_ANALYZER._ANTIBODY_ANALYZER.CALL_ANTIBODIES
+2024-05-15 15:17:11 [runtime] (disabled)        ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER.BIN_HD_DATA._BIN_HD_DATA._COMPUTE_BINNED_OUTPUTS.SPATIAL_BINNED_RNA_ANALYZER._ANTIGEN_ANALYZER
+2024-05-15 15:17:11 [runtime] (disabled)        ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER.BIN_HD_DATA._BIN_HD_DATA._COMPUTE_BINNED_OUTPUTS.SPATIAL_BINNED_RNA_ANALYZER._ANTIBODY_ANALYZER
+2024-05-15 15:17:11 [runtime] (disabled)        ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER.BIN_HD_DATA._BIN_HD_DATA._COMPUTE_BINNED_OUTPUTS.SPATIAL_BINNED_RNA_ANALYZER.RUN_BATCH_CORRECTION_PCA.RUN_PCA2
+2024-05-15 15:17:11 [runtime] (disabled)        ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER.BIN_HD_DATA._BIN_HD_DATA._COMPUTE_BINNED_OUTPUTS.SPATIAL_BINNED_RNA_ANALYZER._ANTIGEN_ANALYZER
+2024-05-15 15:17:11 [runtime] (disabled)        ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER.BIN_HD_DATA._BIN_HD_DATA._COMPUTE_BINNED_OUTPUTS.SPATIAL_BINNED_RNA_ANALYZER._ANTIBODY_ANALYZER
+2024-05-15 15:17:11 [runtime] (disabled)        ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER.BIN_HD_DATA._BIN_HD_DATA._COMPUTE_BINNED_OUTPUTS.SPATIAL_BINNED_RNA_ANALYZER.RUN_BATCH_CORRECTION_PCA.POST_PCA
+2024-05-15 15:17:11 [runtime] (disabled)        ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER.BIN_HD_DATA._BIN_HD_DATA._COMPUTE_BINNED_OUTPUTS.SPATIAL_BINNED_RNA_ANALYZER.RUN_BATCH_CORRECTION_PCA
+2024-05-15 15:17:11 [runtime] (disabled)        ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER.BIN_HD_DATA._BIN_HD_DATA._COMPUTE_BINNED_OUTPUTS.SPATIAL_BINNED_RNA_ANALYZER.CORRECT_CHEMISTRY_BATCH
+2024-05-15 15:17:11 [runtime] (disabled)        ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER.BIN_HD_DATA._BIN_HD_DATA._COMPUTE_BINNED_OUTPUTS.SPATIAL_BINNED_RNA_ANALYZER.RUN_BATCH_CORRECTION_PCA
+2024-05-15 15:17:11 [runtime] (disabled)        ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER.BIN_HD_DATA._BIN_HD_DATA._COMPUTE_BINNED_OUTPUTS.SPATIAL_BINNED_RNA_ANALYZER.RUN_PCA
+2024-05-15 15:17:11 [runtime] (disabled)        ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER.BIN_HD_DATA._BIN_HD_DATA._COMPUTE_BINNED_OUTPUTS.SPATIAL_BINNED_RNA_ANALYZER.RUN_TSNE
+2024-05-15 15:17:11 [runtime] (disabled)        ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER.BIN_HD_DATA._BIN_HD_DATA._COMPUTE_BINNED_OUTPUTS.SPATIAL_BINNED_RNA_ANALYZER.RUN_GRAPH_CLUSTERING
+2024-05-15 15:17:11 [runtime] (disabled)        ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER.BIN_HD_DATA._BIN_HD_DATA._COMPUTE_BINNED_OUTPUTS.SPATIAL_BINNED_RNA_ANALYZER.RUN_UMAP
+2024-05-15 15:17:11 [runtime] (disabled)        ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER.BIN_HD_DATA._BIN_HD_DATA._COMPUTE_BINNED_OUTPUTS.SPATIAL_BINNED_RNA_ANALYZER.RUN_KMEANS
+2024-05-15 15:17:11 [runtime] (disabled)        ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER.BIN_HD_DATA._BIN_HD_DATA._COMPUTE_BINNED_OUTPUTS.SPATIAL_BINNED_RNA_ANALYZER.RUN_HIERARCHICAL_CLUSTERING
+2024-05-15 15:17:11 [runtime] (disabled)        ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER.BIN_HD_DATA._BIN_HD_DATA._COMPUTE_BINNED_OUTPUTS.SPATIAL_BINNED_RNA_ANALYZER.COMBINE_CLUSTERING
+2024-05-15 15:17:11 [runtime] (disabled)        ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER.BIN_HD_DATA._BIN_HD_DATA._COMPUTE_BINNED_OUTPUTS.SPATIAL_BINNED_RNA_ANALYZER.RUN_DIFFERENTIAL_EXPRESSION
+2024-05-15 15:17:11 [runtime] (disabled)        ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER.BIN_HD_DATA._BIN_HD_DATA._COMPUTE_BINNED_OUTPUTS.SPATIAL_BINNED_RNA_ANALYZER.SUMMARIZE_ANALYSIS
+2024-05-15 15:17:11 [runtime] (disabled)        ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER.BIN_HD_DATA._BIN_HD_DATA._COMPUTE_BINNED_OUTPUTS.CLOUPE_PREPROCESS
+2024-05-15 15:17:11 [runtime] (disabled)        ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER.BIN_HD_DATA._BIN_HD_DATA._COMPUTE_BINNED_OUTPUTS.SPATIAL_BINNED_RNA_ANALYZER
+2024-05-15 15:17:11 [runtime] (disabled)        ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER.BIN_HD_DATA._BIN_HD_DATA._COMPUTE_BINNED_OUTPUTS.SPATIAL_BINNED_RNA_ANALYZER
+2024-05-15 15:17:12 [runtime] (split_complete)  ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER._BASIC_SPATIAL_RNA_COUNTER.FILTER_BARCODES
+2024-05-15 15:17:12 [runtime] (run:local)       ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER._BASIC_SPATIAL_RNA_COUNTER.FILTER_BARCODES.fork0.chnk0.main
+2024-05-15 15:17:12 [runtime] (chunks_complete) ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER._BASIC_SPATIAL_RNA_COUNTER.DISABLE_STAGES
+2024-05-15 15:17:12 [runtime] (ready)           ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER._BASIC_SPATIAL_RNA_COUNTER._ASSIGN_TAGS.MULTIPLEXING_METHOD
+2024-05-15 15:17:12 [runtime] (disabled)        ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER._BASIC_SPATIAL_RNA_COUNTER._ASSIGN_TAGS.MULTIPLEXING_METHOD
+2024-05-15 15:17:12 [runtime] (ready)           ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER._BASIC_SPATIAL_RNA_COUNTER.WRITE_POS_BAM
+2024-05-15 15:17:12 [runtime] (run:local)       ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER._BASIC_SPATIAL_RNA_COUNTER.WRITE_POS_BAM.fork0.split
+2024-05-15 15:17:12 [runtime] (ready)           ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER._BASIC_SPATIAL_RNA_COUNTER._ASSIGN_TAGS.CALL_TAGS_OH
+2024-05-15 15:17:12 [runtime] (disabled)        ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER._BASIC_SPATIAL_RNA_COUNTER._ASSIGN_TAGS.CALL_TAGS_OH
+2024-05-15 15:17:13 [runtime] (split_complete)  ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER._BASIC_SPATIAL_RNA_COUNTER.WRITE_POS_BAM
+2024-05-15 15:17:13 [runtime] (run:local)       ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER._BASIC_SPATIAL_RNA_COUNTER.WRITE_POS_BAM.fork0.chnk00.main
+2024-05-15 15:17:13 [runtime] (run:local)       ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER._BASIC_SPATIAL_RNA_COUNTER.WRITE_POS_BAM.fork0.chnk01.main
+2024-05-15 15:17:13 [runtime] (run:local)       ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER._BASIC_SPATIAL_RNA_COUNTER.WRITE_POS_BAM.fork0.chnk02.main
+2024-05-15 15:17:13 [runtime] (run:local)       ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER._BASIC_SPATIAL_RNA_COUNTER.WRITE_POS_BAM.fork0.chnk03.main
+2024-05-15 15:17:13 [runtime] (run:local)       ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER._BASIC_SPATIAL_RNA_COUNTER.WRITE_POS_BAM.fork0.chnk04.main
+2024-05-15 15:17:13 [runtime] (run:local)       ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER._BASIC_SPATIAL_RNA_COUNTER.WRITE_POS_BAM.fork0.chnk05.main
+2024-05-15 15:17:13 [runtime] (run:local)       ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER._BASIC_SPATIAL_RNA_COUNTER.WRITE_POS_BAM.fork0.chnk06.main
+2024-05-15 15:17:13 [runtime] (run:local)       ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER._BASIC_SPATIAL_RNA_COUNTER.WRITE_POS_BAM.fork0.chnk07.main
+2024-05-15 15:17:13 [jobmngr] Need 2 threads to start the next job (1 threads available).  Waiting for jobs to complete.
+2024-05-15 15:17:13 [runtime] (run:local)       ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER._BASIC_SPATIAL_RNA_COUNTER.WRITE_POS_BAM.fork0.chnk08.main
+2024-05-15 15:17:13 [runtime] (run:local)       ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER._BASIC_SPATIAL_RNA_COUNTER.WRITE_POS_BAM.fork0.chnk09.main
+2024-05-15 15:17:13 [runtime] (run:local)       ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER._BASIC_SPATIAL_RNA_COUNTER.WRITE_POS_BAM.fork0.chnk10.main
+2024-05-15 15:17:13 [runtime] (run:local)       ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER._BASIC_SPATIAL_RNA_COUNTER.WRITE_POS_BAM.fork0.chnk11.main
+2024-05-15 15:17:13 [runtime] (run:local)       ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER._BASIC_SPATIAL_RNA_COUNTER.WRITE_POS_BAM.fork0.chnk12.main
+2024-05-15 15:17:13 [runtime] (run:local)       ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER._BASIC_SPATIAL_RNA_COUNTER.WRITE_POS_BAM.fork0.chnk13.main
+2024-05-15 15:17:15 [runtime] (chunks_complete) ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER._BASIC_SPATIAL_RNA_COUNTER.FILTER_BARCODES
+2024-05-15 15:17:15 [runtime] (run:local)       ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER._BASIC_SPATIAL_RNA_COUNTER.FILTER_BARCODES.fork0.join
+2024-05-15 15:20:27 [runtime] (join_complete)   ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER._BASIC_SPATIAL_RNA_COUNTER.FILTER_BARCODES
+2024-05-15 15:20:29 [runtime] (ready)           ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER.DISABLE_SECONDARY_ANALYSIS
+2024-05-15 15:20:29 [runtime] (run:local)       ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER.DISABLE_SECONDARY_ANALYSIS.fork0.chnk0.main
+2024-05-15 15:20:29 [runtime] (ready)           ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER._BASIC_SPATIAL_RNA_COUNTER.CHECK_CORRECTION_FACTOR
+2024-05-15 15:20:29 [runtime] (run:local)       ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER._BASIC_SPATIAL_RNA_COUNTER.CHECK_CORRECTION_FACTOR.fork0.chnk0.main
+2024-05-15 15:20:29 [runtime] (ready)           ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER.RUN_SPATIAL_ENRICHMENT
+2024-05-15 15:20:29 [runtime] (run:local)       ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER.RUN_SPATIAL_ENRICHMENT.fork0.split
+2024-05-15 15:20:29 [runtime] (ready)           ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER.BIN_HD_DATA._BIN_HD_DATA.UPDATE_HD_FEATURE_SLICE_H5
+2024-05-15 15:20:29 [runtime] (disabled)        ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER.BIN_HD_DATA._BIN_HD_DATA.UPDATE_HD_FEATURE_SLICE_H5
+2024-05-15 15:20:29 [runtime] (ready)           ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER._BASIC_SPATIAL_RNA_COUNTER._ASSIGN_TAGS.CALL_TAGS_RTL
+2024-05-15 15:20:29 [runtime] (disabled)        ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER._BASIC_SPATIAL_RNA_COUNTER._ASSIGN_TAGS.CALL_TAGS_RTL
+2024-05-15 15:20:29 [runtime] (ready)           ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER._BASIC_SPATIAL_RNA_COUNTER._ASSIGN_TAGS.CALL_TAGS_MARGINAL
+2024-05-15 15:20:29 [runtime] (disabled)        ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER._BASIC_SPATIAL_RNA_COUNTER._ASSIGN_TAGS.CALL_TAGS_MARGINAL
+2024-05-15 15:20:29 [runtime] (ready)           ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER._BASIC_SPATIAL_RNA_COUNTER.INFER_GEM_WELL_THROUGHPUT
+2024-05-15 15:20:29 [runtime] (disabled)        ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER._BASIC_SPATIAL_RNA_COUNTER.INFER_GEM_WELL_THROUGHPUT
+2024-05-15 15:20:29 [runtime] (ready)           ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER.ANTIBODY_QC_PLOTS
+2024-05-15 15:20:29 [runtime] (disabled)        ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER.ANTIBODY_QC_PLOTS
+2024-05-15 15:20:29 [runtime] (ready)           ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER._BASIC_SPATIAL_RNA_COUNTER.COLLATE_PROBE_METRICS
+2024-05-15 15:20:29 [runtime] (disabled)        ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER._BASIC_SPATIAL_RNA_COUNTER.COLLATE_PROBE_METRICS
+2024-05-15 15:20:30 [runtime] (ready)           ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER._BASIC_SPATIAL_RNA_COUNTER._CELLS_REPORTER.WRITE_MOLECULE_INFO
+2024-05-15 15:20:30 [runtime] (run:local)       ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER._BASIC_SPATIAL_RNA_COUNTER._CELLS_REPORTER.WRITE_MOLECULE_INFO.fork0.split
+2024-05-15 15:20:32 [runtime] (disabled)        ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER.BIN_HD_DATA._BIN_HD_DATA._COMPUTE_BINNED_OUTPUTS.PICK_PROBE_BC_MATRIX
+2024-05-15 15:20:32 [runtime] (chunks_complete) ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER.DISABLE_SECONDARY_ANALYSIS
+2024-05-15 15:20:32 [runtime] (chunks_complete) ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER._BASIC_SPATIAL_RNA_COUNTER.CHECK_CORRECTION_FACTOR
+2024-05-15 15:20:33 [runtime] (split_complete)  ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER._BASIC_SPATIAL_RNA_COUNTER._CELLS_REPORTER.WRITE_MOLECULE_INFO
+2024-05-15 15:20:33 [runtime] (run:local)       ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER._BASIC_SPATIAL_RNA_COUNTER._CELLS_REPORTER.WRITE_MOLECULE_INFO.fork0.join
+2024-05-15 15:20:33 [runtime] (ready)           ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER.SPATIAL_RNA_ANALYZER.ANALYZER_PREFLIGHT
+2024-05-15 15:20:33 [runtime] (run:local)       ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER.SPATIAL_RNA_ANALYZER.ANALYZER_PREFLIGHT.fork0.chnk0.main
+2024-05-15 15:20:35 [runtime] (chunks_complete) ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER.SPATIAL_RNA_ANALYZER.ANALYZER_PREFLIGHT
+2024-05-15 15:20:36 [runtime] (ready)           ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER.SPATIAL_RNA_ANALYZER.PREPROCESS_MATRIX
+2024-05-15 15:20:36 [runtime] (run:local)       ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER.SPATIAL_RNA_ANALYZER.PREPROCESS_MATRIX.fork0.split
+2024-05-15 15:20:38 [runtime] (split_complete)  ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER.SPATIAL_RNA_ANALYZER.PREPROCESS_MATRIX
+2024-05-15 15:20:38 [runtime] (run:local)       ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER.SPATIAL_RNA_ANALYZER.PREPROCESS_MATRIX.fork0.join
+2024-05-15 15:20:39 [runtime] (join_complete)   ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER._BASIC_SPATIAL_RNA_COUNTER._CELLS_REPORTER.WRITE_MOLECULE_INFO
+2024-05-15 15:20:40 [runtime] (disabled)        ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER.BIN_HD_DATA._BIN_HD_DATA._COMPUTE_BINNED_OUTPUTS.COMPUTE_SUBSAMPLED_BIN_METRICS
+2024-05-15 15:20:40 [runtime] (ready)           ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER._TARGETED_ANALYZER._RUN_GDNA_ANALYSIS.GET_GDNA_METRICS
+2024-05-15 15:20:41 [runtime] (disabled)        ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER._TARGETED_ANALYZER._RUN_GDNA_ANALYSIS.GET_GDNA_METRICS
+2024-05-15 15:20:41 [runtime] (ready)           ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER._TARGETED_ANALYZER.SUBSAMPLE_OFF_TARGET_READS
+2024-05-15 15:20:41 [runtime] (disabled)        ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER._TARGETED_ANALYZER.SUBSAMPLE_OFF_TARGET_READS
+2024-05-15 15:20:41 [runtime] (disabled)        ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER.BIN_HD_DATA._BIN_HD_DATA._COMPUTE_BINNED_OUTPUTS.RECEIVE_SUBSAMPLED_METRICS
+2024-05-15 15:20:41 [runtime] (ready)           ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER._BASIC_SPATIAL_RNA_COUNTER._CELLS_REPORTER.SUBSAMPLE_READS
+2024-05-15 15:20:41 [runtime] (run:local)       ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER._BASIC_SPATIAL_RNA_COUNTER._CELLS_REPORTER.SUBSAMPLE_READS.fork0.split
+2024-05-15 15:20:41 [runtime] (ready)           ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER._TARGETED_ANALYZER.SUBSAMPLE_ON_TARGET_READS
+2024-05-15 15:20:41 [runtime] (disabled)        ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER._TARGETED_ANALYZER.SUBSAMPLE_ON_TARGET_READS
+2024-05-15 15:20:41 [runtime] (ready)           ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER._BASIC_SPATIAL_RNA_COUNTER._ASSIGN_TAGS.CALL_TAGS_JIBES
+2024-05-15 15:20:41 [runtime] (disabled)        ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER._BASIC_SPATIAL_RNA_COUNTER._ASSIGN_TAGS.CALL_TAGS_JIBES
+2024-05-15 15:20:41 [runtime] (ready)           ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER._TARGETED_ANALYZER._RUN_GDNA_ANALYSIS.GET_GDNA_PLOT
+2024-05-15 15:20:41 [runtime] (disabled)        ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER._TARGETED_ANALYZER._RUN_GDNA_ANALYSIS.GET_GDNA_PLOT
+2024-05-15 15:20:42 [runtime] (split_complete)  ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER.RUN_SPATIAL_ENRICHMENT
+2024-05-15 15:20:43 [runtime] (run:local)       ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER.RUN_SPATIAL_ENRICHMENT.fork0.chnk00.main
+2024-05-15 15:20:43 [runtime] (run:local)       ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER.RUN_SPATIAL_ENRICHMENT.fork0.chnk01.main
+2024-05-15 15:20:43 [runtime] (run:local)       ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER.RUN_SPATIAL_ENRICHMENT.fork0.chnk02.main
+2024-05-15 15:20:43 [runtime] (run:local)       ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER.RUN_SPATIAL_ENRICHMENT.fork0.chnk03.main
+2024-05-15 15:20:43 [runtime] (run:local)       ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER.RUN_SPATIAL_ENRICHMENT.fork0.chnk04.main
+2024-05-15 15:20:43 [runtime] (run:local)       ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER.RUN_SPATIAL_ENRICHMENT.fork0.chnk05.main
+2024-05-15 15:20:43 [runtime] (run:local)       ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER.RUN_SPATIAL_ENRICHMENT.fork0.chnk06.main
+2024-05-15 15:20:43 [runtime] (run:local)       ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER.RUN_SPATIAL_ENRICHMENT.fork0.chnk07.main
+2024-05-15 15:20:43 [runtime] (run:local)       ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER.RUN_SPATIAL_ENRICHMENT.fork0.chnk08.main
+2024-05-15 15:20:43 [runtime] (run:local)       ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER.RUN_SPATIAL_ENRICHMENT.fork0.chnk09.main
+2024-05-15 15:20:43 [runtime] (run:local)       ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER.RUN_SPATIAL_ENRICHMENT.fork0.chnk10.main
+2024-05-15 15:20:43 [runtime] (run:local)       ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER.RUN_SPATIAL_ENRICHMENT.fork0.chnk11.main
+2024-05-15 15:20:43 [runtime] (run:local)       ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER.RUN_SPATIAL_ENRICHMENT.fork0.chnk12.main
+2024-05-15 15:20:43 [runtime] (run:local)       ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER.RUN_SPATIAL_ENRICHMENT.fork0.chnk13.main
+2024-05-15 15:20:44 [runtime] (run:local)       ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER.RUN_SPATIAL_ENRICHMENT.fork0.chnk14.main
+2024-05-15 15:20:44 [runtime] (run:local)       ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER.RUN_SPATIAL_ENRICHMENT.fork0.chnk15.main
+2024-05-15 15:20:44 [runtime] (run:local)       ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER.RUN_SPATIAL_ENRICHMENT.fork0.chnk16.main
+2024-05-15 15:20:44 [runtime] (run:local)       ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER.RUN_SPATIAL_ENRICHMENT.fork0.chnk17.main
+2024-05-15 15:20:44 [runtime] (run:local)       ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER.RUN_SPATIAL_ENRICHMENT.fork0.chnk18.main
+2024-05-15 15:20:44 [runtime] (ready)           ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER.HD_WEBSUMMARY_BUILDER.PICK_SATURATION_PLOT
+2024-05-15 15:20:44 [runtime] (disabled)        ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER.HD_WEBSUMMARY_BUILDER.PICK_SATURATION_PLOT
+2024-05-15 15:20:44 [runtime] (ready)           ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER._BASIC_SPATIAL_RNA_COUNTER._ASSIGN_TAGS.DETERMINE_SAMPLE_ASSIGNMENTS
+2024-05-15 15:20:44 [runtime] (disabled)        ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER._BASIC_SPATIAL_RNA_COUNTER._ASSIGN_TAGS.DETERMINE_SAMPLE_ASSIGNMENTS
+2024-05-15 15:20:44 [runtime] (ready)           ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER._BASIC_SPATIAL_RNA_COUNTER._ASSIGN_TAGS.COMPUTE_EXTRA_MULTIPLEXING_METRICS
+2024-05-15 15:20:44 [runtime] (disabled)        ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER._BASIC_SPATIAL_RNA_COUNTER._ASSIGN_TAGS.COMPUTE_EXTRA_MULTIPLEXING_METRICS
+2024-05-15 15:20:44 [runtime] (ready)           ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER._TARGETED_ANALYZER._RUN_GDNA_ANALYSIS.MERGE_METRICS
+2024-05-15 15:20:44 [runtime] (disabled)        ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER._TARGETED_ANALYZER._RUN_GDNA_ANALYSIS.MERGE_METRICS
+2024-05-15 15:20:44 [runtime] (join_complete)   ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER.SPATIAL_RNA_ANALYZER.PREPROCESS_MATRIX
+2024-05-15 15:20:45 [runtime] (split_complete)  ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER._BASIC_SPATIAL_RNA_COUNTER._CELLS_REPORTER.SUBSAMPLE_READS
+2024-05-15 15:20:45 [runtime] (run:local)       ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER._BASIC_SPATIAL_RNA_COUNTER._CELLS_REPORTER.SUBSAMPLE_READS.fork0.chnk0.main
+2024-05-15 15:20:47 [runtime] (ready)           ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER.SPATIAL_RNA_ANALYZER._ANTIBODY_ANALYZER.SUMMARIZE_ANTIBODY_ANALYSIS
+2024-05-15 15:20:47 [runtime] (disabled)        ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER.SPATIAL_RNA_ANALYZER._ANTIBODY_ANALYZER.SUMMARIZE_ANTIBODY_ANALYSIS
+2024-05-15 15:20:47 [runtime] (ready)           ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER._BASIC_SPATIAL_RNA_COUNTER.DEMUX_PROBE_BC_MATRIX
+2024-05-15 15:20:47 [runtime] (disabled)        ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER._BASIC_SPATIAL_RNA_COUNTER.DEMUX_PROBE_BC_MATRIX
+2024-05-15 15:20:47 [runtime] (ready)           ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER._BASIC_SPATIAL_RNA_COUNTER.MULTI_WRITE_PER_SAMPLE_MOLECULE_INFO
+2024-05-15 15:20:47 [runtime] (disabled)        ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER._BASIC_SPATIAL_RNA_COUNTER.MULTI_WRITE_PER_SAMPLE_MOLECULE_INFO
+2024-05-15 15:20:47 [runtime] (ready)           ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER.SPATIAL_RNA_ANALYZER.RUN_BATCH_CORRECTION_PCA.PCA_PREP
+2024-05-15 15:20:48 [runtime] (disabled)        ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER.SPATIAL_RNA_ANALYZER.RUN_BATCH_CORRECTION_PCA.PCA_PREP
+2024-05-15 15:20:48 [runtime] (disabled)        ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER._TARGETED_ANALYZER._RUN_GDNA_ANALYSIS
+2024-05-15 15:20:48 [runtime] (ready)           ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER._BASIC_SPATIAL_RNA_COUNTER.MULTI_COLLATE_PER_SAMPLE_METRICS
+2024-05-15 15:20:48 [runtime] (disabled)        ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER._BASIC_SPATIAL_RNA_COUNTER.MULTI_COLLATE_PER_SAMPLE_METRICS
+2024-05-15 15:20:48 [runtime] (ready)           ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER.SPATIAL_RNA_ANALYZER._ANTIBODY_ANALYZER.CALL_ANTIBODIES
+2024-05-15 15:20:48 [runtime] (disabled)        ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER.SPATIAL_RNA_ANALYZER._ANTIBODY_ANALYZER.CALL_ANTIBODIES
+2024-05-15 15:20:48 [runtime] (ready)           ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER.SPATIAL_RNA_ANALYZER._ANTIGEN_ANALYZER.CALL_ANTIBODIES
+2024-05-15 15:20:48 [runtime] (disabled)        ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER.SPATIAL_RNA_ANALYZER._ANTIGEN_ANALYZER.CALL_ANTIBODIES
+2024-05-15 15:20:48 [runtime] (ready)           ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER._BASIC_SPATIAL_RNA_COUNTER._ASSIGN_TAGS.MERGE_METRICS
+2024-05-15 15:20:48 [runtime] (disabled)        ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER._BASIC_SPATIAL_RNA_COUNTER._ASSIGN_TAGS.MERGE_METRICS
+2024-05-15 15:20:48 [runtime] (ready)           ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER.SPATIAL_RNA_ANALYZER._ANTIGEN_ANALYZER.SUMMARIZE_ANTIBODY_ANALYSIS
+2024-05-15 15:20:48 [runtime] (disabled)        ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER.SPATIAL_RNA_ANALYZER._ANTIGEN_ANALYZER.SUMMARIZE_ANTIBODY_ANALYSIS
+2024-05-15 15:20:48 [runtime] (ready)           ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER._BASIC_SPATIAL_RNA_COUNTER.MULTI_WRITE_PER_SAMPLE_BAM
+2024-05-15 15:20:48 [runtime] (disabled)        ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER._BASIC_SPATIAL_RNA_COUNTER.MULTI_WRITE_PER_SAMPLE_BAM
+2024-05-15 15:20:48 [runtime] (ready)           ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER.SPATIAL_RNA_ANALYZER.RUN_BATCH_CORRECTION_PCA.RUN_PCA2
+2024-05-15 15:20:48 [runtime] (disabled)        ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER.SPATIAL_RNA_ANALYZER.RUN_BATCH_CORRECTION_PCA.RUN_PCA2
+2024-05-15 15:20:48 [runtime] (ready)           ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER._BASIC_SPATIAL_RNA_COUNTER.MULTI_WRITE_PER_SAMPLE_MATRICES
+2024-05-15 15:20:48 [runtime] (disabled)        ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER._BASIC_SPATIAL_RNA_COUNTER.MULTI_WRITE_PER_SAMPLE_MATRICES
+2024-05-15 15:20:48 [runtime] (ready)           ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER.SPATIAL_RNA_ANALYZER.RUN_MULTIGENOME_ANALYSIS
+2024-05-15 15:20:48 [runtime] (disabled)        ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER.SPATIAL_RNA_ANALYZER.RUN_MULTIGENOME_ANALYSIS
+2024-05-15 15:20:49 [runtime] (disabled)        ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER.SPATIAL_RNA_ANALYZER._ANTIBODY_ANALYZER
+2024-05-15 15:20:49 [runtime] (disabled)        ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER._BASIC_SPATIAL_RNA_COUNTER._ASSIGN_TAGS
+2024-05-15 15:20:49 [runtime] (disabled)        ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER.SPATIAL_RNA_ANALYZER._ANTIGEN_ANALYZER
+2024-05-15 15:20:49 [runtime] (ready)           ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER.SPATIAL_RNA_ANALYZER.RUN_BATCH_CORRECTION_PCA.POST_PCA
+2024-05-15 15:20:49 [runtime] (disabled)        ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER.SPATIAL_RNA_ANALYZER.RUN_BATCH_CORRECTION_PCA.POST_PCA
+2024-05-15 15:20:49 [runtime] (ready)           ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER.SPATIAL_RNA_ANALYZER.CORRECT_CHEMISTRY_BATCH
+2024-05-15 15:20:49 [runtime] (disabled)        ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER.SPATIAL_RNA_ANALYZER.CORRECT_CHEMISTRY_BATCH
+2024-05-15 15:20:49 [runtime] (disabled)        ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER.SPATIAL_RNA_ANALYZER.RUN_BATCH_CORRECTION_PCA
+2024-05-15 15:20:49 [runtime] (ready)           ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER.SPATIAL_RNA_ANALYZER.RUN_PCA
+2024-05-15 15:20:49 [runtime] (run:local)       ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER.SPATIAL_RNA_ANALYZER.RUN_PCA.fork0.split
+2024-05-15 15:21:36 [runtime] (split_complete)  ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER.SPATIAL_RNA_ANALYZER.RUN_PCA
+2024-05-15 15:21:36 [runtime] (run:local)       ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER.SPATIAL_RNA_ANALYZER.RUN_PCA.fork0.chnk0.main
+2024-05-15 15:21:38 [jobmngr] Need 4 threads to start the next job (1 threads available).  Waiting for jobs to complete.
+2024-05-15 15:21:39 [jobmngr] Need 4 threads to start the next job (2 threads available). Waiting for jobs to complete.
+2024-05-15 15:21:39 [jobmngr] Need 4 threads to start the next job (3 threads available). Waiting for jobs to complete.
+2024-05-15 15:21:40 [runtime] (chunks_complete) ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER.RUN_SPATIAL_ENRICHMENT
+2024-05-15 15:21:44 [runtime] (run:local)       ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER.RUN_SPATIAL_ENRICHMENT.fork0.join
+2024-05-15 15:21:50 [runtime] (join_complete)   ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER.RUN_SPATIAL_ENRICHMENT
+2024-05-15 15:21:54 [runtime] (chunks_complete) ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER.SPATIAL_RNA_ANALYZER.RUN_PCA
+2024-05-15 15:21:54 [runtime] (run:local)       ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER.SPATIAL_RNA_ANALYZER.RUN_PCA.fork0.join
+2024-05-15 15:21:54 [runtime] (ready)           ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER.SPATIAL_FOLDER_COLLECTOR
+2024-05-15 15:21:55 [runtime] (run:local)       ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER.SPATIAL_FOLDER_COLLECTOR.fork0.chnk0.main
+2024-05-15 15:21:55 [runtime] (join_complete)   ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER.SPATIAL_RNA_ANALYZER.RUN_PCA
+2024-05-15 15:21:56 [runtime] (ready)           ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER.SPATIAL_RNA_ANALYZER.RUN_UMAP
+2024-05-15 15:21:56 [runtime] (run:local)       ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER.SPATIAL_RNA_ANALYZER.RUN_UMAP.fork0.split
+2024-05-15 15:21:56 [runtime] (chunks_complete) ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER.SPATIAL_FOLDER_COLLECTOR
+2024-05-15 15:21:56 [runtime] (ready)           ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER.SPATIAL_RNA_ANALYZER.RUN_GRAPH_CLUSTERING
+2024-05-15 15:21:56 [runtime] (run:local)       ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER.SPATIAL_RNA_ANALYZER.RUN_GRAPH_CLUSTERING.fork0.split
+2024-05-15 15:21:56 [runtime] (ready)           ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER.SPATIAL_RNA_ANALYZER.RUN_TSNE
+2024-05-15 15:21:56 [runtime] (run:local)       ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER.SPATIAL_RNA_ANALYZER.RUN_TSNE.fork0.split
+2024-05-15 15:21:56 [runtime] (ready)           ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER.SPATIAL_RNA_ANALYZER.RUN_KMEANS
+2024-05-15 15:21:56 [runtime] (run:local)       ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER.SPATIAL_RNA_ANALYZER.RUN_KMEANS.fork0.split
+2024-05-15 15:21:56 [runtime] (split_complete)  ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER.SPATIAL_RNA_ANALYZER.RUN_UMAP
+2024-05-15 15:21:56 [runtime] (run:local)       ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER.SPATIAL_RNA_ANALYZER.RUN_UMAP.fork0.chnk0.main
+2024-05-15 15:21:56 [jobmngr] Need 5 threads to start the next job (2 threads available).  Waiting for jobs to complete.
+2024-05-15 15:21:56 [runtime] (ready)           ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER.HD_WEBSUMMARY_BUILDER.CREATE_HD_WEBSUMMARY_IMAGE
+2024-05-15 15:21:56 [runtime] (disabled)        ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER.HD_WEBSUMMARY_BUILDER.CREATE_HD_WEBSUMMARY_IMAGE
+2024-05-15 15:21:56 [jobmngr] Need 5 threads to start the next job (3 threads available). Waiting for jobs to complete.
+2024-05-15 15:21:56 [runtime] (ready)           ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER.HD_WEBSUMMARY_BUILDER.BUILD_HD_END_TO_END_ALIGNMENT
+2024-05-15 15:21:56 [runtime] (disabled)        ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER.HD_WEBSUMMARY_BUILDER.BUILD_HD_END_TO_END_ALIGNMENT
+2024-05-15 15:21:56 [runtime] (ready)           ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER.HD_WEBSUMMARY_BUILDER.BUILD_HD_CLUSTERING_PLOT
+2024-05-15 15:21:56 [runtime] (disabled)        ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER.HD_WEBSUMMARY_BUILDER.BUILD_HD_CLUSTERING_PLOT
+2024-05-15 15:21:56 [jobmngr] Need 5 threads to start the next job (4 threads available). Waiting for jobs to complete.
+2024-05-15 15:21:56 [runtime] (split_complete)  ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER.SPATIAL_RNA_ANALYZER.RUN_TSNE
+2024-05-15 15:21:56 [runtime] (run:local)       ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER.SPATIAL_RNA_ANALYZER.RUN_TSNE.fork0.chnk0.main
+2024-05-15 15:21:56 [runtime] (split_complete)  ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER.SPATIAL_RNA_ANALYZER.RUN_GRAPH_CLUSTERING
+2024-05-15 15:21:56 [runtime] (run:local)       ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER.SPATIAL_RNA_ANALYZER.RUN_GRAPH_CLUSTERING.fork0.chnk0.main
+2024-05-15 15:21:57 [runtime] (split_complete)  ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER.SPATIAL_RNA_ANALYZER.RUN_KMEANS
+2024-05-15 15:21:57 [runtime] (run:local)       ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER.SPATIAL_RNA_ANALYZER.RUN_KMEANS.fork0.chnk0.main
+2024-05-15 15:21:57 [runtime] (run:local)       ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER.SPATIAL_RNA_ANALYZER.RUN_KMEANS.fork0.chnk1.main
+2024-05-15 15:21:57 [runtime] (run:local)       ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER.SPATIAL_RNA_ANALYZER.RUN_KMEANS.fork0.chnk2.main
+2024-05-15 15:21:57 [runtime] (run:local)       ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER.SPATIAL_RNA_ANALYZER.RUN_KMEANS.fork0.chnk3.main
+2024-05-15 15:21:57 [runtime] (run:local)       ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER.SPATIAL_RNA_ANALYZER.RUN_KMEANS.fork0.chnk4.main
+2024-05-15 15:21:57 [runtime] (run:local)       ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER.SPATIAL_RNA_ANALYZER.RUN_KMEANS.fork0.chnk5.main
+2024-05-15 15:21:57 [runtime] (run:local)       ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER.SPATIAL_RNA_ANALYZER.RUN_KMEANS.fork0.chnk6.main
+2024-05-15 15:21:57 [runtime] (run:local)       ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER.SPATIAL_RNA_ANALYZER.RUN_KMEANS.fork0.chnk7.main
+2024-05-15 15:21:57 [runtime] (run:local)       ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER.SPATIAL_RNA_ANALYZER.RUN_KMEANS.fork0.chnk8.main
+2024-05-15 15:22:08 [runtime] (chunks_complete) ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER.SPATIAL_RNA_ANALYZER.RUN_UMAP
+2024-05-15 15:22:08 [runtime] (run:local)       ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER.SPATIAL_RNA_ANALYZER.RUN_UMAP.fork0.join
+2024-05-15 15:22:10 [runtime] (chunks_complete) ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER.SPATIAL_RNA_ANALYZER.RUN_GRAPH_CLUSTERING
+2024-05-15 15:22:10 [runtime] (run:local)       ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER.SPATIAL_RNA_ANALYZER.RUN_GRAPH_CLUSTERING.fork0.join
+2024-05-15 15:22:14 [runtime] (chunks_complete) ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER.SPATIAL_RNA_ANALYZER.RUN_TSNE
+2024-05-15 15:22:14 [runtime] (run:local)       ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER.SPATIAL_RNA_ANALYZER.RUN_TSNE.fork0.join
+2024-05-15 15:22:14 [runtime] (join_complete)   ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER.SPATIAL_RNA_ANALYZER.RUN_GRAPH_CLUSTERING
+2024-05-15 15:22:14 [runtime] (join_complete)   ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER.SPATIAL_RNA_ANALYZER.RUN_UMAP
+2024-05-15 15:22:14 [runtime] (join_complete)   ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER.SPATIAL_RNA_ANALYZER.RUN_TSNE
+2024-05-15 15:22:14 [runtime] (ready)           ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER.SPATIAL_RNA_ANALYZER.RUN_HIERARCHICAL_CLUSTERING
+2024-05-15 15:22:14 [runtime] (disabled)        ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER.SPATIAL_RNA_ANALYZER.RUN_HIERARCHICAL_CLUSTERING
+2024-05-15 15:22:16 [runtime] (chunks_complete) ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER.SPATIAL_RNA_ANALYZER.RUN_KMEANS
+2024-05-15 15:22:16 [runtime] (run:local)       ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER.SPATIAL_RNA_ANALYZER.RUN_KMEANS.fork0.join
+2024-05-15 15:22:18 [runtime] (join_complete)   ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER.SPATIAL_RNA_ANALYZER.RUN_KMEANS
+2024-05-15 15:22:18 [runtime] (ready)           ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER.SPATIAL_RNA_ANALYZER.COMBINE_CLUSTERING
+2024-05-15 15:22:18 [runtime] (run:local)       ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER.SPATIAL_RNA_ANALYZER.COMBINE_CLUSTERING.fork0.chnk0.main
+2024-05-15 15:22:19 [runtime] (chunks_complete) ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER.SPATIAL_RNA_ANALYZER.COMBINE_CLUSTERING
+2024-05-15 15:22:19 [runtime] (ready)           ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER.SPATIAL_RNA_ANALYZER.RUN_DIFFERENTIAL_EXPRESSION
+2024-05-15 15:22:19 [runtime] (run:local)       ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER.SPATIAL_RNA_ANALYZER.RUN_DIFFERENTIAL_EXPRESSION.fork0.split
+2024-05-15 15:22:19 [runtime] (split_complete)  ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER.SPATIAL_RNA_ANALYZER.RUN_DIFFERENTIAL_EXPRESSION
+2024-05-15 15:22:19 [runtime] (run:local)       ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER.SPATIAL_RNA_ANALYZER.RUN_DIFFERENTIAL_EXPRESSION.fork0.chnk0.main
+2024-05-15 15:22:19 [runtime] (run:local)       ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER.SPATIAL_RNA_ANALYZER.RUN_DIFFERENTIAL_EXPRESSION.fork0.chnk1.main
+2024-05-15 15:22:19 [runtime] (run:local)       ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER.SPATIAL_RNA_ANALYZER.RUN_DIFFERENTIAL_EXPRESSION.fork0.chnk2.main
+2024-05-15 15:22:19 [runtime] (run:local)       ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER.SPATIAL_RNA_ANALYZER.RUN_DIFFERENTIAL_EXPRESSION.fork0.chnk3.main
+2024-05-15 15:22:19 [runtime] (run:local)       ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER.SPATIAL_RNA_ANALYZER.RUN_DIFFERENTIAL_EXPRESSION.fork0.chnk4.main
+2024-05-15 15:22:19 [runtime] (run:local)       ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER.SPATIAL_RNA_ANALYZER.RUN_DIFFERENTIAL_EXPRESSION.fork0.chnk5.main
+2024-05-15 15:22:19 [runtime] (run:local)       ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER.SPATIAL_RNA_ANALYZER.RUN_DIFFERENTIAL_EXPRESSION.fork0.chnk6.main
+2024-05-15 15:22:19 [runtime] (run:local)       ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER.SPATIAL_RNA_ANALYZER.RUN_DIFFERENTIAL_EXPRESSION.fork0.chnk7.main
+2024-05-15 15:22:24 [runtime] (update)          ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER._BASIC_SPATIAL_RNA_COUNTER.WRITE_POS_BAM.fork0 chunks running (9/14 completed)
+2024-05-15 15:22:24 [runtime] (chunks_complete) ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER._BASIC_SPATIAL_RNA_COUNTER._CELLS_REPORTER.SUBSAMPLE_READS
+2024-05-15 15:22:24 [runtime] (run:local)       ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER._BASIC_SPATIAL_RNA_COUNTER._CELLS_REPORTER.SUBSAMPLE_READS.fork0.join
+2024-05-15 15:22:28 [runtime] (join_complete)   ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER._BASIC_SPATIAL_RNA_COUNTER._CELLS_REPORTER.SUBSAMPLE_READS
+2024-05-15 15:22:28 [runtime] (ready)           ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER._BASIC_SPATIAL_RNA_COUNTER._CELLS_REPORTER.SUMMARIZE_BASIC_REPORTS
+2024-05-15 15:22:28 [runtime] (run:local)       ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER._BASIC_SPATIAL_RNA_COUNTER._CELLS_REPORTER.SUMMARIZE_BASIC_REPORTS.fork0.split
+2024-05-15 15:22:30 [runtime] (split_complete)  ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER._BASIC_SPATIAL_RNA_COUNTER._CELLS_REPORTER.SUMMARIZE_BASIC_REPORTS
+2024-05-15 15:22:30 [runtime] (run:local)       ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER._BASIC_SPATIAL_RNA_COUNTER._CELLS_REPORTER.SUMMARIZE_BASIC_REPORTS.fork0.join
+2024-05-15 15:22:32 [runtime] (chunks_complete) ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER.SPATIAL_RNA_ANALYZER.RUN_DIFFERENTIAL_EXPRESSION
+2024-05-15 15:22:32 [runtime] (run:local)       ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER.SPATIAL_RNA_ANALYZER.RUN_DIFFERENTIAL_EXPRESSION.fork0.join
+2024-05-15 15:22:33 [runtime] (join_complete)   ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER.SPATIAL_RNA_ANALYZER.RUN_DIFFERENTIAL_EXPRESSION
+2024-05-15 15:22:33 [runtime] (ready)           ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER.SPATIAL_RNA_ANALYZER.SUMMARIZE_ANALYSIS
+2024-05-15 15:22:33 [runtime] (run:local)       ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER.SPATIAL_RNA_ANALYZER.SUMMARIZE_ANALYSIS.fork0.split
+2024-05-15 15:22:33 [runtime] (split_complete)  ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER.SPATIAL_RNA_ANALYZER.SUMMARIZE_ANALYSIS
+2024-05-15 15:22:33 [runtime] (run:local)       ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER.SPATIAL_RNA_ANALYZER.SUMMARIZE_ANALYSIS.fork0.chnk0.main
+2024-05-15 15:22:34 [runtime] (join_complete)   ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER._BASIC_SPATIAL_RNA_COUNTER._CELLS_REPORTER.SUMMARIZE_BASIC_REPORTS
+2024-05-15 15:22:35 [runtime] (ready)           ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER._BASIC_SPATIAL_RNA_COUNTER.MERGE_METRICS
+2024-05-15 15:22:35 [runtime] (run:local)       ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER._BASIC_SPATIAL_RNA_COUNTER.MERGE_METRICS.fork0.chnk0.main
+2024-05-15 15:22:35 [runtime] (chunks_complete) ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER.SPATIAL_RNA_ANALYZER.SUMMARIZE_ANALYSIS
+2024-05-15 15:22:35 [runtime] (run:local)       ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER.SPATIAL_RNA_ANALYZER.SUMMARIZE_ANALYSIS.fork0.join
+2024-05-15 15:22:35 [runtime] (chunks_complete) ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER._BASIC_SPATIAL_RNA_COUNTER.MERGE_METRICS
+2024-05-15 15:22:35 [runtime] (disabled)        ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER.BIN_HD_DATA._BIN_HD_DATA._COMPUTE_BINNED_OUTPUTS.COMPUTE_BIN_METRICS
+2024-05-15 15:22:35 [runtime] (disabled)        ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER.BIN_HD_DATA._BIN_HD_DATA._COMPUTE_BINNED_OUTPUTS
+2024-05-15 15:22:35 [runtime] (ready)           ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER.BIN_HD_DATA._BIN_HD_DATA.MERGE_BIN_METRICS
+2024-05-15 15:22:35 [runtime] (disabled)        ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER.BIN_HD_DATA._BIN_HD_DATA.MERGE_BIN_METRICS
+2024-05-15 15:22:35 [runtime] (ready)           ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER._TARGETED_ANALYZER.CALCULATE_TARGETED_METRICS
+2024-05-15 15:22:35 [runtime] (disabled)        ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER._TARGETED_ANALYZER.CALCULATE_TARGETED_METRICS
+2024-05-15 15:22:35 [runtime] (disabled)        ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER.BIN_HD_DATA._BIN_HD_DATA._COMPUTE_BINNED_OUTPUTS
+2024-05-15 15:22:35 [runtime] (disabled)        ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER.BIN_HD_DATA._BIN_HD_DATA
+2024-05-15 15:22:36 [runtime] (ready)           ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER._TARGETED_ANALYZER.MERGE_METRICS
+2024-05-15 15:22:36 [runtime] (disabled)        ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER._TARGETED_ANALYZER.MERGE_METRICS
+2024-05-15 15:22:36 [runtime] (join_complete)   ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER.SPATIAL_RNA_ANALYZER.SUMMARIZE_ANALYSIS
+2024-05-15 15:22:37 [runtime] (disabled)        ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER._TARGETED_ANALYZER
+2024-05-15 15:22:37 [runtime] (ready)           ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER.DECONVOLVE_SPOTS
+2024-05-15 15:22:37 [runtime] (run:local)       ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER.DECONVOLVE_SPOTS.fork0.split
+2024-05-15 15:22:37 [runtime] (ready)           ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER.SPATIAL_REPORTER
+2024-05-15 15:22:37 [runtime] (run:local)       ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER.SPATIAL_REPORTER.fork0.split
+2024-05-15 15:22:40 [runtime] (split_complete)  ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER.SPATIAL_REPORTER
+2024-05-15 15:22:40 [runtime] (run:local)       ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER.SPATIAL_REPORTER.fork0.join
+2024-05-15 15:22:40 [runtime] (split_complete)  ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER.DECONVOLVE_SPOTS
+2024-05-15 15:22:40 [runtime] (run:local)       ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER.DECONVOLVE_SPOTS.fork0.join
+2024-05-15 15:22:50 [runtime] (join_complete)   ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER.SPATIAL_REPORTER
+2024-05-15 15:22:50 [runtime] (ready)           ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER.HD_WEBSUMMARY_BUILDER.GENERATE_HD_WEBSUMMARY_CS
+2024-05-15 15:22:50 [runtime] (disabled)        ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER.HD_WEBSUMMARY_BUILDER.GENERATE_HD_WEBSUMMARY_CS
+2024-05-15 15:22:50 [runtime] (ready)           ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.PICK_SPATIAL_COUNTER_OUTS
+2024-05-15 15:22:50 [runtime] (run:local)       ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.PICK_SPATIAL_COUNTER_OUTS.fork0.chnk0.main
+2024-05-15 15:22:50 [runtime] (disabled)        ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER.HD_WEBSUMMARY_BUILDER
+2024-05-15 15:22:50 [runtime] (chunks_complete) ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.PICK_SPATIAL_COUNTER_OUTS
+2024-05-15 15:23:23 [runtime] (chunks_complete) ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER._BASIC_SPATIAL_RNA_COUNTER.WRITE_POS_BAM
+2024-05-15 15:23:23 [runtime] (run:local)       ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER._BASIC_SPATIAL_RNA_COUNTER.WRITE_POS_BAM.fork0.join
+2024-05-15 15:23:28 [runtime] (join_complete)   ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER.DECONVOLVE_SPOTS
+2024-05-15 15:23:28 [runtime] (ready)           ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.CLOUPE_PREPROCESS
+2024-05-15 15:23:28 [runtime] (run:local)       ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.CLOUPE_PREPROCESS.fork0.split
+2024-05-15 15:23:29 [runtime] (split_complete)  ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.CLOUPE_PREPROCESS
+2024-05-15 15:23:29 [runtime] (run:local)       ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.CLOUPE_PREPROCESS.fork0.chnk0.main
+2024-05-15 15:25:31 [runtime] (join_complete)   ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.SPATIAL_RNA_COUNTER._BASIC_SPATIAL_RNA_COUNTER.WRITE_POS_BAM
+2024-05-15 15:29:32 [runtime] (update)          ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.CLOUPE_PREPROCESS.fork0 chunks_running
+2024-05-15 15:29:59 [runtime] (chunks_complete) ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.CLOUPE_PREPROCESS
+2024-05-15 15:29:59 [runtime] (run:local)       ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.CLOUPE_PREPROCESS.fork0.join
+2024-05-15 15:30:05 [runtime] (join_complete)   ID.V13M06-402_C1.SPATIAL_RNA_COUNTER_CS.CLOUPE_PREPROCESS
+2024-05-15 15:31:13 [runtime] VDR killed 4038 files, 59 GB.
+
+Outputs:
+- Run summary HTML:                                  /dcs05/lieber/marmaypag/LFF_spatialLC_LIBD4140/LFF_spatial_LC/code/01_spaceranger/V13M06-402_C1/outs/web_summary.html
+- Outputs of spatial pipeline:
+    Slide image annotated with fiducial alignment:                             /dcs05/lieber/marmaypag/LFF_spatialLC_LIBD4140/LFF_spatial_LC/code/01_spaceranger/V13M06-402_C1/outs/spatial/aligned_fiducials.jpg
+    Slide image annotated with detected tissue:                                /dcs05/lieber/marmaypag/LFF_spatialLC_LIBD4140/LFF_spatial_LC/code/01_spaceranger/V13M06-402_C1/outs/spatial/detected_tissue_image.jpg
+    Scale factors for hires and lowres images and fiducial and spot diameters: /dcs05/lieber/marmaypag/LFF_spatialLC_LIBD4140/LFF_spatial_LC/code/01_spaceranger/V13M06-402_C1/outs/spatial/scalefactors_json.json
+    Transform learned in tissue registration:                                  null
+    Slide image scaled to 2000px in the largest dimension:                     /dcs05/lieber/marmaypag/LFF_spatialLC_LIBD4140/LFF_spatial_LC/code/01_spaceranger/V13M06-402_C1/outs/spatial/tissue_hires_image.png
+    Slide image scaled to 600px in the largest dimension:                      /dcs05/lieber/marmaypag/LFF_spatialLC_LIBD4140/LFF_spatial_LC/code/01_spaceranger/V13M06-402_C1/outs/spatial/tissue_lowres_image.png
+    RGB brightfield image generated by CytAssist instrument:                   null
+    Registration image between CytAssist image and microscope image:           null
+    Slide position and tissue status of barcodes CSV:                          /dcs05/lieber/marmaypag/LFF_spatialLC_LIBD4140/LFF_spatial_LC/code/01_spaceranger/V13M06-402_C1/outs/spatial/tissue_positions.csv
+    Slide position and tissue status of barcodes PARQUET:                      null
+    Per feature Moran's I CSV:                                                 /dcs05/lieber/marmaypag/LFF_spatialLC_LIBD4140/LFF_spatial_LC/code/01_spaceranger/V13M06-402_C1/outs/spatial/spatial_enrichment.csv
+    Fluorescence intensity at spot CSV:                                        null
+- Run summary CSV:                                   /dcs05/lieber/marmaypag/LFF_spatialLC_LIBD4140/LFF_spatial_LC/code/01_spaceranger/V13M06-402_C1/outs/metrics_summary.csv
+- BAM:                                               /dcs05/lieber/marmaypag/LFF_spatialLC_LIBD4140/LFF_spatial_LC/code/01_spaceranger/V13M06-402_C1/outs/possorted_genome_bam.bam
+- BAM BAI index:                                     /dcs05/lieber/marmaypag/LFF_spatialLC_LIBD4140/LFF_spatial_LC/code/01_spaceranger/V13M06-402_C1/outs/possorted_genome_bam.bam.bai
+- BAM CSI index:                                     null
+- Filtered feature-barcode matrices MEX:             /dcs05/lieber/marmaypag/LFF_spatialLC_LIBD4140/LFF_spatial_LC/code/01_spaceranger/V13M06-402_C1/outs/filtered_feature_bc_matrix
+- Filtered feature-barcode matrices HDF5:            /dcs05/lieber/marmaypag/LFF_spatialLC_LIBD4140/LFF_spatial_LC/code/01_spaceranger/V13M06-402_C1/outs/filtered_feature_bc_matrix.h5
+- Unfiltered feature-barcode matrices MEX:           /dcs05/lieber/marmaypag/LFF_spatialLC_LIBD4140/LFF_spatial_LC/code/01_spaceranger/V13M06-402_C1/outs/raw_feature_bc_matrix
+- Unfiltered feature-barcode matrices HDF5:          /dcs05/lieber/marmaypag/LFF_spatialLC_LIBD4140/LFF_spatial_LC/code/01_spaceranger/V13M06-402_C1/outs/raw_feature_bc_matrix.h5
+- Secondary analysis output CSV:                     /dcs05/lieber/marmaypag/LFF_spatialLC_LIBD4140/LFF_spatial_LC/code/01_spaceranger/V13M06-402_C1/outs/analysis
+- Per-molecule read information:                     /dcs05/lieber/marmaypag/LFF_spatialLC_LIBD4140/LFF_spatial_LC/code/01_spaceranger/V13M06-402_C1/outs/molecule_info.h5
+- Loupe Browser file:                                /dcs05/lieber/marmaypag/LFF_spatialLC_LIBD4140/LFF_spatial_LC/code/01_spaceranger/V13M06-402_C1/outs/cloupe.cloupe
+- Feature Reference:                                 null
+- Target Panel file:                                 null
+- Probe Set file:                                    null
+- Normalization factors used to normalize AB counts: null
+- Deconvolution directory:                           /dcs05/lieber/marmaypag/LFF_spatialLC_LIBD4140/LFF_spatial_LC/code/01_spaceranger/V13M06-402_C1/outs/deconvolution
+- Raw probe barcode matrix:                          null
+- Feature Slice matrix:                              null
+- Outputs at each bin level:                         null
+- Loupe Browser file (8um bin size):                 null
+- Loupe Browser file (custom bin size):              null
+
+2024-05-15 15:31:13 [perform] Serializing pipestance performance data.
+Waiting 6 seconds for UI to do final refresh.
+Pipestance completed successfully!
+
+2024-05-15 15:31:19 Shutting down.
+2024-05-15 15:31:19 [jobmngr] Highest memory usage observed: {
+  "rss": 67466760192,
+  "shared": 2066714624,
+  "vmem": 77168623616,
+  "text": 250478592,
+  "stack": 69846364160,
+  "proc_count": 143
+}
