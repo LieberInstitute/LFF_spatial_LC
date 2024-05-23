@@ -3,7 +3,7 @@
 #SBATCH -n 8
 #SBATCH -o /dcs05/lieber/marmaypag/LFF_spatialLC_LIBD4140/LFF_spatial_LC/code/01_spaceranger/logs/spaceranger_re_1v-6v_%a.txt
 #SBATCH -e /dcs05/lieber/marmaypag/LFF_spatialLC_LIBD4140/LFF_spatial_LC/code/01_spaceranger/logs/spaceranger_re_1v-6v_%a.txt
-#SBATCH --array=1-6
+#SBATCH --array=5-6
 #SBATCH --mail-user=heenadivecha@gmail.com
  
 echo "**** Job starts ****"
