@@ -3,7 +3,7 @@
 #SBATCH -n 8
 #SBATCH -o /dcs05/lieber/marmaypag/LFF_spatialLC_LIBD4140/LFF_spatial_LC/code/01_spaceranger/logs/spaceranger_33v_trimmed.txt
 #SBATCH -e /dcs05/lieber/marmaypag/LFF_spatialLC_LIBD4140/LFF_spatial_LC/code/01_spaceranger/logs/spaceranger_33v_trimmed.txt
-#SBATCH --array=33
+#SBATCH --array=1
 #SBATCH --mail-user=heenadivecha@gmail.com
  
 echo "**** Job starts ****"
@@ -43,7 +43,7 @@ ls -lh ${LOUPEPATH}
 export NUMBA_NUM_THREADS=1
 
 ## Adding an argument "--create-bam=true" as this seems to be a requirement for latest spaceranger version (3.0.0)
-##Adding an argument "--R1-length=26" to resolve the issue of inconsistent read lengths(Trimmed reads during sequencing)
+##Adding an argument "--r1-length=26" to resolve the issue of inconsistent read lengths(Trimmed reads during sequencing)
 
 ## Run SpaceRanger
 spaceranger count \
@@ -54,11 +54,12 @@ spaceranger count \
     --slide=${SLIDE} \
     --area=${CAPTUREAREA} \
     --loupe-alignment=${LOUPEPATH} \
-    --create-bam=true
+    --create-bam=true \
+    --r1-length=26 \
     --jobmode=local \
     --localcores=8 \
     --localmem=64 \
-    --R1-length=26 \
+    
 
 ## Move output
 echo "Moving results to new location"
