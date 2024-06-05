@@ -18,9 +18,11 @@ if(!dir.exists(dir_rdata)) dir.create(dir_rdata, showWarnings = FALSE, recursive
 
 #### Read in Sample Info ####
 message(Sys.time(), "- Read in Sample Info")
+# 2024-06-05 13:30:45.111173- Read in Sample Info
+
 ## check datatype, use factors when possible
-sample_info <- read.csv(here("processed-data", "00_project_prep", "02_get_online_metadata", "metadata_visium_plan.csv")) |>
-  filter(is.na(lc_note)) |>
+sample_info <- read.csv(here("processed-data", "00_project_prep", "01_get_online_metadata", "metadata_visium_plan.csv")) |>
+  #filter(is.na(lc_note)) |>
   mutate(Visium_slide = paste0(`Visium.Slide..`, "_" ,`Visium_subslide`),
          APOE = gsub(", ", "/", APOE,),
          sample_path = here("processed-data", "01_spaceranger", paste0(Visium_slide,"_untrimmed"), ## if untrimmed file exist, select it
@@ -28,7 +30,7 @@ sample_info <- read.csv(here("processed-data", "00_project_prep", "02_get_online
          Ancestry = gsub("CAUC", "EA", Ancestry)) |>
   select(sample_id = BrNum, Visium_slide, APOE, Ancestry, Sex, Age, Diagnosis, Rin, sample_path) |>
   mutate(sample_path = ifelse(file.exists(sample_path),
-                              sample_path, 
+                              sample_path,
                               gsub("_untrimmed", "", sample_path)),
          base_path = gsub("^.*?/(V.*?)/outs","\\1", sample_path),
          BrNum = sample_id)
@@ -57,7 +59,7 @@ write.csv(sample_info, here(dir_rdata, "sample_info.csv"), row.names = FALSE)
 #   rin = c(8.5, 8.6, 9.3, 7.4, 7.3, 8.7, 7.2, 8.5, 7.1, 9.2, 8.2, 8.5, 9.4, 8, 6.8, 6.6, 9, 8.5, 8.4, 8.6, 9.3, 5.2, 9, 8.7, 7.1, 8.3, 8.5, 5.2, 7.7, 7.4, 7), # fix rin information for V13B23-363_C1 sample
 #   apoe = c("E2/E3", "E4/E4", "E2/E2", "E3/E4", "E2/E2", "E2/E3","E3/E4","E4/E4", "E3/E4", "E2/E3", "E4/E4", "E3/E4", "E3/E4", "E4/E4", "E2/E2", "E2/E3", "E4/E4", "E3/E4", "E2/E2", "E2/E3", "E3/E4", "E2/E2", "E2/E3", "E4/E4", "E2/E3", "E3/E4", "E4/E4", "E2/E2", "E3/E4", "E2/E3", "E3/E4")
 # )
-# 
+#
 # identical(donor_info$sample_id, sample_info$sample_id)
 # identical(donor_info$age, sample_info$Age)
 # identical(donor_info$sex, sample_info$Sex)
@@ -110,11 +112,11 @@ spe$overlaps_tissue <-
 
 #### Read in cell counts and segmentation results ####
 message(Sys.time(), " - Add cell segmentation")
-sample_info |> 
+sample_info |>
   mutate(spot_count = file.exists(here(sample_path, "spatial","tissue_spot_counts.csv"))) |>
   select(sample_id, base_path, spot_count)
 
-message("Existing spot count files: ", 
+message("Existing spot count files: ",
         sum(file.exists(here(sample_info$sample_path, "spatial","tissue_spot_counts.csv"))),
         "/",
         nrow(sample_info))
@@ -142,7 +144,7 @@ segmentations_list <-
 #     }, segmentations_list[lengths(segmentations_list) > 0])
 
 segmentations <- do.call("rbind", segmentations_list)
-dim(segmentations) 
+dim(segmentations)
 # [1] 154752     11
 
 # ## Add the information
@@ -152,7 +154,7 @@ segmentation_info <-
     colnames(segmentations) %in% c("barcode", "tissue", "row", "col", "imagerow", "imagecol", "key", "Visium_slide")
   )]
 
-head(segmentation_info) 
+head(segmentation_info)
 colData(spe) <- cbind(colData(spe), segmentation_info)
 
 #### QC ####
