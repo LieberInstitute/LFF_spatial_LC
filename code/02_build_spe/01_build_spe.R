@@ -18,12 +18,11 @@ if(!dir.exists(dir_rdata)) dir.create(dir_rdata, showWarnings = FALSE, recursive
 
 #### Read in Sample Info ####
 message(Sys.time(), "- Read in Sample Info")
-# 2024-06-05 13:30:45.111173- Read in Sample Info
+# 2024-06-06 09:24:11.494511- Read in Sample Info
 
 ## check datatype, use factors when possible
 sample_info <- read.csv(here("processed-data", "00_project_prep", "01_get_online_metadata", "metadata_visium_plan.csv")) |>
-  #filter(is.na(lc_note)) |>
-  mutate(Visium_slide = paste0(`Visium.Slide..`, "_" ,`Visium_subslide`),
+  mutate(Visium_slide = paste0(Visium_Slide, "_" ,Visium_subslide),
          APOE = gsub(", ", "/", APOE,),
          sample_path = here("processed-data", "01_spaceranger", paste0(Visium_slide,"_untrimmed"), ## if untrimmed file exist, select it
                             "outs"),
