@@ -27,12 +27,12 @@ sample_info <- read.csv(here("processed-data", "00_project_prep", "01_get_online
          sample_path = here("processed-data", "01_spaceranger", paste0(Visium_slide,"_untrimmed"), ## if untrimmed file exist, select it
                             "outs"),
          Ancestry = gsub("CAUC", "EA", Ancestry)) |>
-  select(sample_id = BrNum, Visium_slide, APOE, Ancestry, Sex, Age, Diagnosis, Rin, sample_path) |>
+  select(sample_id = Visium_slide,  APOE, Ancestry, Sex, Age, Diagnosis, Rin, sample_path) |>
   mutate(sample_path = ifelse(file.exists(sample_path),
                               sample_path,
                               gsub("_untrimmed", "", sample_path)),
          base_path = gsub("^.*?/(V.*?)/outs","\\1", sample_path),
-         BrNum = sample_id)
+         Visium_slide = sample_id)
 
 ## all files exist
 stopifnot(all(file.exists(sample_info$sample_path)))
@@ -75,7 +75,8 @@ spe <- read10xVisiumWrapper(
   type = "sparse",
   data = "raw",
   images = c("lowres", "hires", "detected", "aligned"),
-  load = TRUE
+  load = TRUE,
+  reference_gtf = "/dcs04/lieber/lcolladotor/annotationFiles_LIBD001/10x/refdata-gex-GRCh38-2020-A/genes/genes.gtf"
 )
 message(Sys.time(), "- Done read10xVisiumWrapper")
 

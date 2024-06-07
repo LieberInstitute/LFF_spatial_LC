@@ -1,11 +1,10 @@
-
 #!/bin/bash
 #SBATCH -p shared
 #SBATCH --mem=25G
 #SBATCH --job-name=01_build_spe
 #SBATCH -c 1
-#SBATCH -o logs/01_build_spe.txt
-#SBATCH -e logs/01_build_spe.txt
+#SBATCH -o /dcs05/lieber/marmaypag/LFF_spatialLC_LIBD4140/LFF_spatial_LC/code/02_build_spe/logs/01_build_spe.txt
+#SBATCH -e /dcs05/lieber/marmaypag/LFF_spatialLC_LIBD4140/LFF_spatial_LC/code/02_build_spe/logs/01_build_spe.txt
 #SBATCH --mail-type=ALL
 
 set -e
