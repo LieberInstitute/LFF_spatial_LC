@@ -18,7 +18,7 @@ if(!dir.exists(dir_rdata)) dir.create(dir_rdata, showWarnings = FALSE, recursive
 
 #### Read in Sample Info ####
 message(Sys.time(), "- Read in Sample Info")
-# 2024-06-06 09:24:11.494511- Read in Sample Info
+# 2024-06-07 06:39:23.862041- Read in Sample Info
 
 ## check datatype, use factors when possible
 sample_info <- read.csv(here("processed-data", "00_project_prep", "01_get_online_metadata", "metadata_visium_plan.csv")) |>
