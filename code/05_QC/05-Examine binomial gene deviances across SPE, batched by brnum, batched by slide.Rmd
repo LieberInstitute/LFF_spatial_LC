@@ -46,7 +46,6 @@ gc()
 
 ### run full-SPE binomial deviance calcs, templating from Jacqui Thomson code @ https://github.com/LieberInstitute/spatialDLPFC_mdd_bpd/blob/devel/code/04_preprocessing/02_calculate_binomial_deviance_batch-slide.r
 ```{r}
-set.seed(42)
 ## this returns an SPE with a binomial deviance column added to rowdata
 devspe <- devianceFeatureSelection(lc,fam="binomial",batch=NULL)
 
@@ -71,51 +70,54 @@ devstab <- merge.data.table(devspe,devbr[,.(gene_id,dev_brnum,rank_devbr)],by="g
 rm(devbr,devspe)
 ```
 
-### batch by slide
-```{r}
-lc$slide <- as.factor(lc$slide)
-devsld <- as.data.table(rowData(devianceFeatureSelection(lc,fam="binomial",batch=lc$slide)),keep.rownames=T)
-
-setnames(devsld,"binomial_deviance","dev_slide")
-devsld[,rank_devslide:=rank(dev_slide)]
-devsld[,rank_devslide:=1+nrow(devsld)-rank_devslide]
-
-devstab <- merge.data.table(devstab,devsld[,.(gene_id,dev_slide,rank_devslide)],by="gene_id")
-
-rm(devsld)
-```
-
-### finally, get this per sample and per donor
+### get the same two things PER slide
 ```{r}
 # remove image data for smoother sailing
 imgData(lc) <- NULL
 
-sampspes <- lapply(unique(lc$sample_id),FUN=function(s){lc[,lc$sample_id==s]})
-names(sampspes) <- unique(lc$sample_id)
+slidespes <- lapply(unique(lc$slide),FUN=function(s){lc[,lc$slide==s]})
+names(slidespes) <- unique(lc$slide)
 
-sampsperes <- mcmapply(X=sampspes,Y=names(sampspes),mc.cores = 6,SIMPLIFY = F,FUN=function(X,Y){
-   devsamp <- as.data.table(rowData(devianceFeatureSelection(X,fam="binomial")),keep.rownames=T)
+slidesperes <- mcmapply(X=slidespes,Y=names(slidespes),mc.cores = 6,SIMPLIFY = F,FUN=function(X,Y){
+   devslide <- as.data.table(rowData(devianceFeatureSelection(X,fam="binomial")),keep.rownames=T)
    
-   sampcolname <- paste0(gsub(Y,pattern="-",replacement="_"))
-   setnames(devsamp,"binomial_deviance",paste0("dev_",sampcolname))
-   sampdevcol <- paste0("dev_",sampcolname)
+   slidecolname <- paste0(gsub(Y,pattern="-",replacement="_"))
+   setnames(devslide,"binomial_deviance",paste0("dev_",slidecolname))
+   slidedevcol <- paste0("dev_",slidecolname)
    
-   devsamp[,rank_samp:=rank(get(sampdevcol))]
-   devsamp[,rank_samp:=1+nrow(devsamp)-rank_samp]
+   devslide[,rank_slide:=rank(get(slidedevcol))]
+   devslide[,rank_slide:=1+nrow(devslide)-rank_slide]
    
-   setnames(devsamp,"rank_samp",paste0("rank_",sampcolname))
+   setnames(devslide,"rank_slide",paste0("rank_",slidecolname))
    
-   retnames <- c("gene_id",grep(names(devsamp),pattern=sampcolname,value=T))
-   return(devsamp[,..retnames])
+   retnames <- c("gene_id",grep(names(devslide),pattern=slidecolname,value=T))
+   devslide <- devslide[,..retnames]
+   
+   ### and again with donor batching
+   devslidebr <- as.data.table(rowData(devianceFeatureSelection(X,fam="binomial",batch=X$brnum)),keep.rownames=T)
+   
+   setnames(devslidebr,"binomial_deviance",paste0("dev_",slidecolname,"_brnum"))
+   slidedevcolbr <- paste0("dev_",slidecolname,"_brnum")
+   
+   devslidebr[,rank_slidebr:=rank(get(slidedevcolbr))]
+   devslidebr[,rank_slidebr:=1+nrow(devslidebr)-rank_slidebr]
+   
+   setnames(devslidebr,"rank_slidebr",paste0("rank_",slidecolname,"_brnum"))
+   
+   retnamesbr <- c("gene_id",grep(names(devslidebr),pattern=slidecolname,value=T))
+   devslidebr <- devslidebr[,..retnamesbr]
+   
+   ret <- merge.data.table(devslide,devslidebr,by="gene_id")
+   return(ret)
 })
 
 ## concat
 i<-1
-for (i in c(1:length(sampsperes))){
+for (i in c(1:length(slidesperes))){
    if(i==1){
-      sampwiseres <- sampsperes[[i]]
+      sampwiseres <- slidesperes[[i]]
    }
-   else{sampwiseres <- merge.data.table(sampwiseres,sampsperes[[i]],by="gene_id")}
+   else{sampwiseres <- merge.data.table(sampwiseres,slidesperes[[i]],by="gene_id")}
 }
 rm(i)
 
@@ -123,19 +125,60 @@ rm(i)
 devstab <- merge.data.table(devstab,sampwiseres,by="gene_id")
 
 ## tidy up
-rm(sampsperes,sampspes,sampwiseres)
+rm(slidesperes,slidespes,sampwiseres)
 gc()
 ```
 
 
 ### save
 ```{r}
-saveRDS(devstab,"processed-data/05_QC/05-deviance_binomial_gene_deviances_panSPE_brnumAsBatch_or_slideAsBatch_andWithinSampleRanks.RDS")
+saveRDS(devstab,"processed-data/05_QC/05-binomial_gene_deviances_panSPE_nobatch-brnumAsBatch_andWithinSlide_nobatch-brnumbatch.RDS")
 ```
 
 ### examine teh table (visually) to scroll through top genes for the no-batch, donor-blocked, sample-blocked
 
-### in all cases, the top genes here are genes of biological interest / biologically sensible (MT genes, canonical marker genes for astrocytes (GFAP, AQP4), neurons (SNAP25), LC (TH), blood (HBA, HBB genes), etc.) To my eye as a brain transcriptomics analyst, there isn't a preponderance of unfamiliar-looking genes here (i.e., the high-variance genes are genes routinely encountered in this biological context, which is a good thing).  
+```{r}
+devstab <- readRDS("processed-data/05_QC/05-binomial_gene_deviances_panSPE_nobatch-brnumAsBatch_andWithinSlide_nobatch-brnumbatch.RDS")
+### get unique slide numbers as they appear in the colnames of devstab
+slns <- unique(gsub(grep(names(devstab),pattern="_(V.{9})",value=T),pattern="^.*_(V.{9}).*$",replacement="\\1"))
+
+## concatenate within-slide nobatch vs. donor-blocked deviances
+rdiffs <- rbindlist(lapply(slns,FUN=function(x){
+   nobatchcol <- paste0("rank_",x)
+   brnumbatch <- paste0(nobatchcol,"_brnum")
+   
+   ## calculate in the main devstab, but also break out the result to rbind together across slides
+   devstab[,newcol:=get(brnumbatch)-get(nobatchcol)]
+   retdf <- devstab[,.(newcol,gene_id)]
+   setnames(retdf,"newcol","rdiff")
+   retdf[,slide:=x]
+   
+   setnames(devstab,"newcol",paste0("rdiff_",x))
+   return(retdf)
+}))
+
+### limit to top 10k genes from null model (SPE-wide no batch)
+rdiffs2 <- rdiffs[gene_id %in% devstab[rank_nobatch<=10000,gene_id]]
+
+# global outliers
+mean1 <- mean(rdiffs2$rdiff)
+sd1 <- sd(rdiffs2$rdiff)
+rdiffs2[,nSD:=(rdiff-mean1)/sd1]
+## view how many genes are ≥5 SDs out per slide
+rdiffs2[nSD>5,.N,by="slide"]
+
+# slidewise outliers
+rdiffs2[,slide.meanrdiff:=mean(rdiff),by="slide"]
+rdiffs2[,slide.SD:=sd(rdiff),by="slide"]
+rdiffs2[,nSD.slide:=(rdiff-slide.meanrdiff)/slide.SD]
+
+# attach gene symbols for more interpretability
+tmprd <- as.data.table(rowData(lc))[,.(gene_id,gene_name)]
+rdiffs2 <- merge.data.table(rdiffs2,tmprd,by="gene_id",all.x=T)
+fwrite(rdiffs2,"processed-data/05_QC/05-SPEwide_and_slidewise_gene-binDevs_inSDs.txt",sep='\t',quote=F)
+```
+
+### in all cases, the top genes here are genes of biological interest / biologically sensible (MT genes, canonical marker genes for astrocytes (GFAP, AQP4), neurons (SNAP25, FEV (5HT)), LC (TH,PHOX2A,PHOX2B), blood (HBA, HBB genes), etc.) or genes that clearly delineate a demographic feature imbalance within the slide (e.g., sex chromosomal genes, namely XIST and many many Y genes). To my eye as a brain transcriptomics analyst, there isn't a preponderance of unfamiliar-looking genes here (i.e., the high-variance genes are genes routinely encountered in this biological context, which is a good thing).  
 
 
 reprod info
