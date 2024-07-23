@@ -1,5 +1,5 @@
 ---
-title: "02-Spotsweeper"
+title: "05-Examine binomial gene deviances across SPE, batched by brnum, batched by slide"
 output: html_document
 date: "2024-07-22"
 ---
@@ -14,9 +14,7 @@ library(Biostrings)
 library(ggplot2)
 library(gridExtra)
 library(SpatialExperiment)
-library(spatialLIBD)
-library(SpotSweeper)
-library(ggtext)
+library(scry)
 
 ## rstudio GUI tweaks
 require(colorout)
@@ -24,101 +22,128 @@ ColorOut()
 options("styler.addins_style_transformer" = "biocthis::bioc_style()")
 ##
 
-## enable forked parallel processing with BiocParallel::multicoreParam, future::, etc. seemed to need this a couple times, but otherwise havent so its here as a preventative measure.
-library(parallelly)
-options(parallelly.supportsMulticore.disableOn="")
-options(parallelly.fork.enable=TRUE)
-library(BiocParallel)
-options(bphost="localhost")
-
-## ggplot defaults
-theme_set(theme_bw()+theme(axis.text.x = element_text(size = 14), axis.title.x = element_text(size = 16), axis.text.y = element_text(size = 14), axis.title.y = element_text(size =16), plot.title = element_text(size = 20,hjust=0.5), strip.text = element_text(size=18), legend.text = element_text(size=10), legend.title = element_text(size=11,hjust=0.5)))
+library(parallel)
 ```
 
-# load in raw SPE, subset to tissue spots not at tissue edges as ID'ed in prev. script
+### load filtered SPE, append donor ids (not in the SPE somehow)
 ```{r}
-lc <- readRDS("processed-data/02_build_spe/spe_raw.rds")
+lc <- readRDS("processed-data/05_QC/04-lffLC_noEdges_noLocOutliers_remainder1pctileUMIorGene-removed.RDS")
 
-## make colnames unique
-colnames(lc) <- lc$key
+demos <- fread("raw-data/demos.txt")
+demos[,sample_id:=paste0(slide,"_",array)]
+setnames(demos,"Donors","brnum")
 
-## read in tissue edge spot assignments and append
-edgespots <- fread("processed-data/05_QC/01-tissue margin spots.txt")
-edgespots <- DataFrame(edgespots,row.names=edgespots$rn)
-edgespots <- edgespots[colnames(lc),]
-lc$spot_type <- edgespots$spot_type
-rm(edgespots)
-## 
-
-## subset to non-tissue edge spots (image perimeter spots are those in the outermost row/column of spots in the frame, but not necessarily at the tissue edge)
-lc <- lc[,lc$in_tissue==TRUE & lc$spot_type %in% c("keep","image perimeter")]
-## ncol(lc) : 134613
-
-## drop zero count spots, zero count genes
-lc <- lc[,colSums(counts(lc))!=0]
-lc <- lc[rowSums(counts(lc))!=0,]
-## dim(lc): 29878, 134593
-
-## get colnames for sum genes, sum umis, % mito to use for local outlier detection w spotsweeper
-# colnames(colData(lc))
-```
-
-```{r}
-### ID lower-bound outliers for UMIs
-lc <- SpotSweeper::localOutliers(spe=lc,metric = "sum_umi",direction = "lower",log=TRUE)
-
-## change the resulting colnames to indicate low
-sscolinds <- c((ncol(colData(lc))-2):ncol(colData(lc)))
-colnames(colData(lc))[sscolinds] <- paste0(colnames(colData(lc))[sscolinds],"_low")
-
-### same for unique genes
-lc <- SpotSweeper::localOutliers(spe=lc,metric = "sum_gene",direction = "lower",log=TRUE)
-
-## change the resulting colnames to indicate low
-sscolinds <- c((ncol(colData(lc))-2):ncol(colData(lc)))
-colnames(colData(lc))[sscolinds] <- paste0(colnames(colData(lc))[sscolinds],"_low")
-
-## % mito outliers (higher only)--don't log norm these values per spotsweeper vignette
-lc <- SpotSweeper::localOutliers(spe=lc,metric = "expr_chrM_ratio",direction = "higher",log=FALSE)
-
-## edit to indicate hi-end outlier
-sscolinds <- c((ncol(colData(lc))-2):ncol(colData(lc)))
-colnames(colData(lc))[sscolinds] <- paste0(colnames(colData(lc))[sscolinds],"_hi")
-```
-
-## plot em
-```{r}
-# SpotSweeper::plotQCpdf(spe=lc,metric = "sum_umi_log_high",outliers = "sum_umi_outliers_high",point_size = 2,height = 6,width=7,fname="plots/05_QC/02a-Spotsweeper_sumUMI-high_outliers_post-edge-rm.pdf")
-#
-
-SpotSweeper::plotQCpdf(spe=lc,metric = "sum_umi_log_low",outliers = "sum_umi_outliers_low",point_size = 2,height = 6,width=7,fname="plots/05_QC/02b-Spotsweeper_sumUMI-low_outliers_post-edge-rm.pdf")
-#
-
-# SpotSweeper::plotQCpdf(spe=lc,metric = "sum_gene_log_high",outliers = "sum_gene_outliers_high",point_size = 2,height = 6,width=7,fname="plots/05_QC/02c-Spotsweeper_sumGene-high_outliers_post-edge-rm.pdf")
-
-#
-
-SpotSweeper::plotQCpdf(spe=lc,metric = "sum_gene_log_low",outliers = "sum_gene_outliers_low",point_size = 2,height = 6,width=7,fname="plots/05_QC/02d-Spotsweeper_sumGene-low_outliers_post-edge-rm.pdf")
-# 
-
-SpotSweeper::plotQCpdf(spe=lc,metric = "expr_chrM_ratio",outliers = "expr_chrM_ratio_outliers_hi",point_size = 2,height = 6,width=7,fname="plots/05_QC/02e-Spotsweeper_pctMito-high_outliers_post-edge-rm.pdf")
-
-```
-
-## save colData with rownames and the spotsweeper output columns for quick reattachment to the SPE during final filtering
-```{r}
 tmpcd <- as.data.table(colData(lc),keep.rownames=T)
-spotswnames <- c("rn",colnames(tmpcd)[c((ncol(tmpcd)-7):ncol(tmpcd))])
-tmpcd <- tmpcd[,..spotswnames]
+tmpcd <- merge.data.table(tmpcd,demos[,.(sample_id,slide,brnum)],by="sample_id",all.x=T)
+tmpcd <- DataFrame(tmpcd,row.names=tmpcd$rn)[colnames(lc),]
+tmpcd$rn <- NULL
+colData(lc) <- tmpcd
 
-fwrite(tmpcd,"processed-data/05_QC/02-Spotsweeper_outliers_post-edge-rm.txt",quote=FALSE,sep="\t")
+rm(tmpcd,demos)
+gc()
 ```
 
-## reproducibility info
+
+### run full-SPE binomial deviance calcs, templating from Jacqui Thomson code @ https://github.com/LieberInstitute/spatialDLPFC_mdd_bpd/blob/devel/code/04_preprocessing/02_calculate_binomial_deviance_batch-slide.r
+```{r}
+set.seed(42)
+## this returns an SPE with a binomial deviance column added to rowdata
+devspe <- devianceFeatureSelection(lc,fam="binomial",batch=NULL)
+
+devspe <- as.data.table(rowData(devspe))
+setnames(devspe,"binomial_deviance","dev_nobatch")
+## get ranks for the deviance value (then reverse order so greatest deviance --> highest rank)
+devspe[,rank_nobatch:=rank(dev_nobatch)]
+devspe[,rank_nobatch:=1+nrow(devspe)-rank_nobatch]
+```
+
+### per the same script, get these values with batch as brnum
+```{r}
+lc$brnum <- as.factor(lc$brnum)
+devbr <- as.data.table(rowData(devianceFeatureSelection(lc,fam="binomial",batch=lc$brnum)),keep.rownames=T)
+
+setnames(devbr,"binomial_deviance","dev_brnum")
+devbr[,rank_devbr:=rank(dev_brnum)]
+devbr[,rank_devbr:=1+nrow(devbr)-rank_devbr]
+
+devstab <- merge.data.table(devspe,devbr[,.(gene_id,dev_brnum,rank_devbr)],by="gene_id")
+
+rm(devbr,devspe)
+```
+
+### batch by slide
+```{r}
+lc$slide <- as.factor(lc$slide)
+devsld <- as.data.table(rowData(devianceFeatureSelection(lc,fam="binomial",batch=lc$slide)),keep.rownames=T)
+
+setnames(devsld,"binomial_deviance","dev_slide")
+devsld[,rank_devslide:=rank(dev_slide)]
+devsld[,rank_devslide:=1+nrow(devsld)-rank_devslide]
+
+devstab <- merge.data.table(devstab,devsld[,.(gene_id,dev_slide,rank_devslide)],by="gene_id")
+
+rm(devsld)
+```
+
+### finally, get this per sample and per donor
+```{r}
+# remove image data for smoother sailing
+imgData(lc) <- NULL
+
+sampspes <- lapply(unique(lc$sample_id),FUN=function(s){lc[,lc$sample_id==s]})
+names(sampspes) <- unique(lc$sample_id)
+
+sampsperes <- mcmapply(X=sampspes,Y=names(sampspes),mc.cores = 6,SIMPLIFY = F,FUN=function(X,Y){
+   devsamp <- as.data.table(rowData(devianceFeatureSelection(X,fam="binomial")),keep.rownames=T)
+   
+   sampcolname <- paste0(gsub(Y,pattern="-",replacement="_"))
+   setnames(devsamp,"binomial_deviance",paste0("dev_",sampcolname))
+   sampdevcol <- paste0("dev_",sampcolname)
+   
+   devsamp[,rank_samp:=rank(get(sampdevcol))]
+   devsamp[,rank_samp:=1+nrow(devsamp)-rank_samp]
+   
+   setnames(devsamp,"rank_samp",paste0("rank_",sampcolname))
+   
+   retnames <- c("gene_id",grep(names(devsamp),pattern=sampcolname,value=T))
+   return(devsamp[,..retnames])
+})
+
+## concat
+i<-1
+for (i in c(1:length(sampsperes))){
+   if(i==1){
+      sampwiseres <- sampsperes[[i]]
+   }
+   else{sampwiseres <- merge.data.table(sampwiseres,sampsperes[[i]],by="gene_id")}
+}
+rm(i)
+
+### append to other results
+devstab <- merge.data.table(devstab,sampwiseres,by="gene_id")
+
+## tidy up
+rm(sampsperes,sampspes,sampwiseres)
+gc()
+```
+
+
+### save
+```{r}
+saveRDS(devstab,"processed-data/05_QC/05-deviance_binomial_gene_deviances_panSPE_brnumAsBatch_or_slideAsBatch_andWithinSampleRanks.RDS")
+```
+
+### examine teh table (visually) to scroll through top genes for the no-batch, donor-blocked, sample-blocked
+
+### in all cases, the top genes here are genes of biological interest / biologically sensible (MT genes, canonical marker genes for astrocytes (GFAP, AQP4), neurons (SNAP25), LC (TH), blood (HBA, HBB genes), etc.) To my eye as a brain transcriptomics analyst, there isn't a preponderance of unfamiliar-looking genes here (i.e., the high-variance genes are genes routinely encountered in this biological context, which is a good thing).  
+
+
+reprod info
 ```{r}
 sessionInfo()
 sessioninfo::session_info()
 ```
+
 R version 4.4.1 RC (2024-06-06 r86719)
 Platform: aarch64-apple-darwin20
 Running under: macOS Sonoma 14.5
@@ -134,74 +159,66 @@ time zone: America/Chicago
 tzcode source: internal
 
 attached base packages:
-[1] stats4    stats     graphics  grDevices utils     datasets  methods   base     
+[1] parallel  stats4    stats     graphics  grDevices utils     datasets  methods  
+[9] base     
 
 other attached packages:
- [1] dplyr_1.1.4                 scater_1.32.0              
- [3] scuttle_1.14.0              spdep_1.3-5                
- [5] sf_1.0-16                   spData_2.3.1               
- [7] BiocParallel_1.38.0         parallelly_1.37.1          
- [9] colorout_1.3-0.2            spatialLIBD_1.16.2         
-[11] SpatialExperiment_1.14.0    SingleCellExperiment_1.26.0
-[13] SummarizedExperiment_1.34.0 Biobase_2.64.0             
-[15] GenomicRanges_1.56.1        MatrixGenerics_1.16.0      
-[17] matrixStats_1.3.0           gridExtra_2.3              
-[19] ggplot2_3.5.1               Biostrings_2.72.1          
-[21] GenomeInfoDb_1.40.1         XVector_0.44.0             
-[23] IRanges_2.38.1              S4Vectors_0.42.1           
-[25] BiocGenerics_0.50.0         data.table_1.15.4          
-[27] rlang_1.1.4                
+ [1] scry_1.16.0                 BiocParallel_1.38.0        
+ [3] parallelly_1.37.1           colorout_1.3-0.2           
+ [5] spatialLIBD_1.16.2          SpatialExperiment_1.14.0   
+ [7] SingleCellExperiment_1.26.0 SummarizedExperiment_1.34.0
+ [9] Biobase_2.64.0              GenomicRanges_1.56.1       
+[11] MatrixGenerics_1.16.0       matrixStats_1.3.0          
+[13] gridExtra_2.3               ggplot2_3.5.1              
+[15] Biostrings_2.72.1           GenomeInfoDb_1.40.1        
+[17] XVector_0.44.0              IRanges_2.38.1             
+[19] S4Vectors_0.42.1            BiocGenerics_0.50.0        
+[21] data.table_1.15.4           rlang_1.1.4                
 
 loaded via a namespace (and not attached):
-  [1] later_1.3.2               BiocIO_1.14.0             bitops_1.0-7             
-  [4] filelock_1.0.3            fields_16.2               tibble_3.2.1             
-  [7] XML_3.99-0.17             lifecycle_1.0.4           edgeR_4.2.0              
- [10] doParallel_1.0.17         rprojroot_2.0.4           MASS_7.3-61              
- [13] lattice_0.22-6            magrittr_2.0.3            limma_3.60.3             
- [16] plotly_4.10.4             sass_0.4.9                rmarkdown_2.27           
- [19] jquerylib_0.1.4           yaml_2.3.9                httpuv_1.6.15            
- [22] spam_2.10-0               sp_2.1-4                  sessioninfo_1.2.2        
- [25] cowplot_1.1.3             DBI_1.2.3                 RColorBrewer_1.1-3       
- [28] golem_0.4.1               maps_3.4.2                abind_1.4-5              
- [31] zlibbioc_1.50.0           purrr_1.0.2               RCurl_1.98-1.14          
- [34] rappdirs_0.3.3            GenomeInfoDbData_1.2.12   ggrepel_0.9.5            
- [37] irlba_2.3.5.1             terra_1.7-78              units_0.8-5              
- [40] DelayedMatrixStats_1.26.0 codetools_0.2-20          DelayedArray_0.30.1      
- [43] DT_0.33                   tidyselect_1.2.1          farver_2.1.2             
- [46] UCSC.utils_1.0.0          ScaledMatrix_1.12.0       viridis_0.6.5            
- [49] shinyWidgets_0.8.6        BiocFileCache_2.12.0      GenomicAlignments_1.40.0 
- [52] jsonlite_1.8.8            escheR_1.4.0              BiocNeighbors_1.22.0     
- [55] e1071_1.7-14              iterators_1.0.14          dbscan_1.2-0             
- [58] foreach_1.5.2             tools_4.4.1               Rcpp_1.0.13              
- [61] glue_1.7.0                SparseArray_1.4.8         xfun_0.45                
- [64] here_1.0.1                withr_3.0.0               BiocManager_1.30.23      
- [67] fastmap_1.2.0             boot_1.3-30               fansi_1.0.6              
- [70] digest_0.6.36             rsvd_1.0.5                R6_2.5.1                 
- [73] mime_0.12                 wk_0.9.2                  colorspace_2.1-0         
- [76] RSQLite_2.3.7             config_0.3.2              utf8_1.2.4               
- [79] tidyr_1.3.1               generics_0.1.3            class_7.3-22             
- [82] rtracklayer_1.64.0        httr_1.4.7                htmlwidgets_1.6.4        
- [85] S4Arrays_1.4.1            pkgconfig_2.0.3           gtable_0.3.5             
- [88] blob_1.2.4                htmltools_0.5.8.1         dotCall64_1.1-1          
- [91] scales_1.3.0              png_0.1-8                 attempt_0.3.1            
- [94] SpotSweeper_1.0.2         knitr_1.48                rstudioapi_0.16.0        
- [97] rjson_0.2.21              curl_5.2.1                proxy_0.4-27             
-[100] cachem_1.1.0              KernSmooth_2.23-24        BiocVersion_3.19.1       
-[103] parallel_4.4.1            vipor_0.4.7               AnnotationDbi_1.66.0     
-[106] s2_1.1.6                  restfulr_0.0.15           pillar_1.9.0             
-[109] grid_4.4.1                vctrs_0.6.5               promises_1.3.0           
-[112] BiocSingular_1.20.0       dbplyr_2.5.0              beachmat_2.20.0          
-[115] xtable_1.8-4              beeswarm_0.4.0            paletteer_1.6.0          
-[118] evaluate_0.24.0           magick_2.8.3              cli_3.6.3                
-[121] locfit_1.5-9.10           compiler_4.4.1            Rsamtools_2.20.0         
-[124] crayon_1.5.3              labeling_0.4.3            classInt_0.4-10          
-[127] rematch2_2.1.2            spatialEco_2.0-2          ggbeeswarm_0.7.2         
-[130] deldir_2.0-4              viridisLite_0.4.2         munsell_0.5.1            
-[133] lazyeval_0.2.2            Matrix_1.7-0              ExperimentHub_2.12.0     
-[136] benchmarkme_1.0.8         sparseMatrixStats_1.16.0  bit64_4.0.5              
-[139] KEGGREST_1.44.1           statmod_1.5.0             shiny_1.8.1.1            
-[142] AnnotationHub_3.12.0      memoise_2.0.1             bslib_0.7.0              
-[145] benchmarkmeData_1.0.4     bit_4.0.5                
+  [1] RColorBrewer_1.1-3        rstudioapi_0.16.0         jsonlite_1.8.8           
+  [4] magrittr_2.0.3            ggbeeswarm_0.7.2          magick_2.8.3             
+  [7] rmarkdown_2.27            BiocIO_1.14.0             fields_16.2              
+ [10] zlibbioc_1.50.0           vctrs_0.6.5               DelayedMatrixStats_1.26.0
+ [13] memoise_2.0.1             config_0.3.2              Rsamtools_2.20.0         
+ [16] paletteer_1.6.0           RCurl_1.98-1.14           benchmarkme_1.0.8        
+ [19] htmltools_0.5.8.1         S4Arrays_1.4.1            AnnotationHub_3.12.0     
+ [22] curl_5.2.1                BiocNeighbors_1.22.0      SparseArray_1.4.8        
+ [25] sass_0.4.9                bslib_0.7.0               htmlwidgets_1.6.4        
+ [28] plotly_4.10.4             cachem_1.1.0              GenomicAlignments_1.40.0 
+ [31] mime_0.12                 lifecycle_1.0.4           iterators_1.0.14         
+ [34] pkgconfig_2.0.3           rsvd_1.0.5                Matrix_1.7-0             
+ [37] R6_2.5.1                  fastmap_1.2.0             GenomeInfoDbData_1.2.12  
+ [40] shiny_1.8.1.1             digest_0.6.36             colorspace_2.1-0         
+ [43] rematch2_2.1.2            AnnotationDbi_1.66.0      scater_1.32.0            
+ [46] rprojroot_2.0.4           irlba_2.3.5.1             ExperimentHub_2.12.0     
+ [49] RSQLite_2.3.7             beachmat_2.20.0           filelock_1.0.3           
+ [52] fansi_1.0.6               httr_1.4.7                abind_1.4-5              
+ [55] compiler_4.4.1            here_1.0.1                bit64_4.0.5              
+ [58] withr_3.0.0               doParallel_1.0.17         attempt_0.3.1            
+ [61] viridis_0.6.5             DBI_1.2.3                 maps_3.4.2               
+ [64] sessioninfo_1.2.2         rappdirs_0.3.3            DelayedArray_0.30.1      
+ [67] rjson_0.2.21              tools_4.4.1               vipor_0.4.7              
+ [70] beeswarm_0.4.0            httpuv_1.6.15             glue_1.7.0               
+ [73] restfulr_0.0.15           promises_1.3.0            grid_4.4.1               
+ [76] generics_0.1.3            gtable_0.3.5              tidyr_1.3.1              
+ [79] ScaledMatrix_1.12.0       BiocSingular_1.20.0       utf8_1.2.4               
+ [82] ggrepel_0.9.5             BiocVersion_3.19.1        foreach_1.5.2            
+ [85] pillar_1.9.0              spam_2.10-0               limma_3.60.3             
+ [88] later_1.3.2               benchmarkmeData_1.0.4     dplyr_1.1.4              
+ [91] BiocFileCache_2.12.0      lattice_0.22-6            rtracklayer_1.64.0       
+ [94] bit_4.0.5                 tidyselect_1.2.1          locfit_1.5-9.10          
+ [97] scuttle_1.14.0            knitr_1.48                edgeR_4.2.0              
+[100] xfun_0.45                 statmod_1.5.0             DT_0.33                  
+[103] UCSC.utils_1.0.0          lazyeval_0.2.2            yaml_2.3.9               
+[106] shinyWidgets_0.8.6        evaluate_0.24.0           codetools_0.2-20         
+[109] tibble_3.2.1              BiocManager_1.30.23       cli_3.6.3                
+[112] xtable_1.8-4              jquerylib_0.1.4           munsell_0.5.1            
+[115] golem_0.4.1               Rcpp_1.0.13               dbplyr_2.5.0             
+[118] png_0.1-8                 XML_3.99-0.17             blob_1.2.4               
+[121] dotCall64_1.1-1           sparseMatrixStats_1.16.0  bitops_1.0-7             
+[124] viridisLite_0.4.2         scales_1.3.0              purrr_1.0.2              
+[127] crayon_1.5.3              cowplot_1.1.3             KEGGREST_1.44.1          
 > sessioninfo::session_info()
 ─ Session info ──────────────────────────────────────────────────────────────────
  setting  value
@@ -241,11 +258,8 @@ loaded via a namespace (and not attached):
    bit64                  4.0.5     2020-08-30 [1] CRAN (R 4.4.0)
    bitops                 1.0-7     2021-04-24 [1] CRAN (R 4.4.0)
    blob                   1.2.4     2023-03-17 [1] CRAN (R 4.4.0)
-   boot                   1.3-30    2024-02-26 [1] CRAN (R 4.4.1)
    bslib                  0.7.0     2024-03-29 [1] CRAN (R 4.4.0)
    cachem                 1.1.0     2024-05-16 [1] CRAN (R 4.4.0)
-   class                  7.3-22    2023-05-03 [1] CRAN (R 4.4.1)
-   classInt               0.4-10    2023-09-05 [1] CRAN (R 4.4.0)
  P cli                    3.6.3     2024-06-21 [2] CRAN (R 4.4.0)
    codetools              0.2-20    2024-03-31 [1] CRAN (R 4.4.1)
    colorout             * 1.3-0.2   2024-05-01 [1] Github (jalvesaq/colorout@c6113a2)
@@ -257,22 +271,17 @@ loaded via a namespace (and not attached):
    data.table           * 1.15.4    2024-03-30 [2] CRAN (R 4.4.0)
    DBI                    1.2.3     2024-06-02 [1] CRAN (R 4.4.0)
    dbplyr                 2.5.0     2024-03-19 [1] CRAN (R 4.4.0)
-   dbscan                 1.2-0     2024-06-28 [1] CRAN (R 4.4.1)
    DelayedArray           0.30.1    2024-05-07 [1] Bioconductor 3.19 (R 4.4.0)
    DelayedMatrixStats     1.26.0    2024-04-30 [1] Bioconductor 3.19 (R 4.4.0)
-   deldir                 2.0-4     2024-02-28 [1] CRAN (R 4.4.0)
    digest                 0.6.36    2024-06-23 [1] CRAN (R 4.4.0)
    doParallel             1.0.17    2022-02-07 [1] CRAN (R 4.4.0)
    dotCall64              1.1-1     2023-11-28 [1] CRAN (R 4.4.0)
-   dplyr                * 1.1.4     2023-11-17 [1] CRAN (R 4.4.0)
+   dplyr                  1.1.4     2023-11-17 [1] CRAN (R 4.4.0)
    DT                     0.33      2024-04-04 [1] CRAN (R 4.4.0)
-   e1071                  1.7-14    2023-12-06 [1] CRAN (R 4.4.0)
    edgeR                  4.2.0     2024-04-30 [1] Bioconductor 3.19 (R 4.4.0)
-   escheR                 1.4.0     2024-05-16 [1] Bioconductor 3.19 (R 4.4.0)
    evaluate               0.24.0    2024-06-10 [1] CRAN (R 4.4.0)
    ExperimentHub          2.12.0    2024-04-30 [1] Bioconductor 3.19 (R 4.4.0)
    fansi                  1.0.6     2023-12-08 [1] CRAN (R 4.4.0)
-   farver                 2.1.2     2024-05-13 [1] CRAN (R 4.4.0)
    fastmap                1.2.0     2024-05-15 [1] CRAN (R 4.4.0)
    fields                 16.2      2024-06-27 [1] CRAN (R 4.4.0)
    filelock               1.0.3     2023-12-11 [1] CRAN (R 4.4.0)
@@ -300,9 +309,7 @@ loaded via a namespace (and not attached):
    jquerylib              0.1.4     2021-04-26 [1] CRAN (R 4.4.0)
    jsonlite               1.8.8     2023-12-04 [1] CRAN (R 4.4.0)
    KEGGREST               1.44.1    2024-06-19 [1] Bioconductor 3.19 (R 4.4.0)
-   KernSmooth             2.23-24   2024-05-17 [1] CRAN (R 4.4.1)
    knitr                  1.48      2024-07-07 [1] CRAN (R 4.4.1)
-   labeling               0.4.3     2023-08-29 [1] CRAN (R 4.4.0)
    later                  1.3.2     2023-12-06 [1] CRAN (R 4.4.0)
    lattice                0.22-6    2024-03-20 [1] CRAN (R 4.4.1)
    lazyeval               0.2.2     2019-03-15 [1] CRAN (R 4.4.0)
@@ -312,7 +319,6 @@ loaded via a namespace (and not attached):
    magick                 2.8.3     2024-02-18 [1] CRAN (R 4.4.0)
    magrittr               2.0.3     2022-03-30 [1] CRAN (R 4.4.0)
    maps                   3.4.2     2023-12-15 [1] CRAN (R 4.4.0)
-   MASS                   7.3-61    2024-06-13 [1] CRAN (R 4.4.0)
    Matrix                 1.7-0     2024-04-26 [1] CRAN (R 4.4.1)
    MatrixGenerics       * 1.16.0    2024-04-30 [1] Bioconductor 3.19 (R 4.4.0)
    matrixStats          * 1.3.0     2024-04-11 [1] CRAN (R 4.4.0)
@@ -326,7 +332,6 @@ loaded via a namespace (and not attached):
    plotly                 4.10.4    2024-01-13 [1] CRAN (R 4.4.0)
    png                    0.1-8     2022-11-29 [1] CRAN (R 4.4.0)
    promises               1.3.0     2024-04-05 [1] CRAN (R 4.4.0)
-   proxy                  0.4-27    2022-06-09 [1] CRAN (R 4.4.0)
    purrr                  1.0.2     2023-08-10 [1] CRAN (R 4.4.0)
    R6                     2.5.1     2021-08-19 [1] CRAN (R 4.4.0)
    rappdirs               0.3.3     2021-01-31 [1] CRAN (R 4.4.0)
@@ -344,44 +349,35 @@ loaded via a namespace (and not attached):
    rstudioapi             0.16.0    2024-03-24 [1] CRAN (R 4.4.0)
    rsvd                   1.0.5     2021-04-16 [1] CRAN (R 4.4.0)
    rtracklayer            1.64.0    2024-05-06 [1] Bioconductor 3.19 (R 4.4.0)
-   s2                     1.1.6     2023-12-19 [1] CRAN (R 4.4.0)
    S4Arrays               1.4.1     2024-05-20 [1] Bioconductor 3.19 (R 4.4.0)
    S4Vectors            * 0.42.1    2024-07-03 [1] Bioconductor 3.19 (R 4.4.1)
    sass                   0.4.9     2024-03-15 [1] CRAN (R 4.4.0)
    ScaledMatrix           1.12.0    2024-04-30 [1] Bioconductor 3.19 (R 4.4.0)
    scales                 1.3.0     2023-11-28 [1] CRAN (R 4.4.0)
-   scater               * 1.32.0    2024-04-30 [1] Bioconductor 3.19 (R 4.4.0)
-   scuttle              * 1.14.0    2024-04-30 [1] Bioconductor 3.19 (R 4.4.0)
+   scater                 1.32.0    2024-04-30 [1] Bioconductor 3.19 (R 4.4.0)
+   scry                 * 1.16.0    2024-04-30 [1] Bioconductor 3.19 (R 4.4.0)
+   scuttle                1.14.0    2024-04-30 [1] Bioconductor 3.19 (R 4.4.0)
    sessioninfo            1.2.2     2021-12-06 [1] CRAN (R 4.4.0)
-   sf                   * 1.0-16    2024-03-24 [1] CRAN (R 4.4.0)
    shiny                  1.8.1.1   2024-04-02 [1] CRAN (R 4.4.0)
    shinyWidgets           0.8.6     2024-04-24 [1] CRAN (R 4.4.0)
    SingleCellExperiment * 1.26.0    2024-04-30 [1] Bioconductor 3.19 (R 4.4.0)
-   sp                     2.1-4     2024-04-30 [1] CRAN (R 4.4.0)
    spam                   2.10-0    2023-10-23 [1] CRAN (R 4.4.0)
    SparseArray            1.4.8     2024-05-30 [1] Bioconductor 3.19 (R 4.4.0)
    sparseMatrixStats      1.16.0    2024-04-30 [1] Bioconductor 3.19 (R 4.4.0)
-   spatialEco             2.0-2     2023-11-17 [1] CRAN (R 4.4.0)
    SpatialExperiment    * 1.14.0    2024-04-30 [1] Bioconductor 3.19 (R 4.4.0)
    spatialLIBD          * 1.16.2    2024-05-28 [1] Bioconductor 3.19 (R 4.4.0)
-   spData               * 2.3.1     2024-05-31 [1] CRAN (R 4.4.0)
-   spdep                * 1.3-5     2024-06-10 [1] CRAN (R 4.4.0)
-   SpotSweeper            1.0.2     2024-07-14 [1] Bioconductor 3.19 (R 4.4.1)
    statmod                1.5.0     2023-01-06 [1] CRAN (R 4.4.0)
    SummarizedExperiment * 1.34.0    2024-04-30 [1] Bioconductor 3.19 (R 4.4.0)
-   terra                  1.7-78    2024-05-22 [1] CRAN (R 4.4.0)
    tibble                 3.2.1     2023-03-20 [1] CRAN (R 4.4.0)
    tidyr                  1.3.1     2024-01-24 [1] CRAN (R 4.4.0)
    tidyselect             1.2.1     2024-03-11 [1] CRAN (R 4.4.0)
    UCSC.utils             1.0.0     2024-05-06 [1] Bioconductor 3.19 (R 4.4.0)
-   units                  0.8-5     2023-11-28 [1] CRAN (R 4.4.0)
    utf8                   1.2.4     2023-10-22 [1] CRAN (R 4.4.0)
    vctrs                  0.6.5     2023-12-01 [1] CRAN (R 4.4.0)
    vipor                  0.4.7     2023-12-18 [1] CRAN (R 4.4.0)
    viridis                0.6.5     2024-01-29 [1] CRAN (R 4.4.0)
    viridisLite            0.4.2     2023-05-02 [1] CRAN (R 4.4.0)
    withr                  3.0.0     2024-01-16 [1] CRAN (R 4.4.0)
-   wk                     0.9.2     2024-07-09 [1] CRAN (R 4.4.0)
    xfun                   0.45      2024-06-16 [1] CRAN (R 4.4.0)
    XML                    3.99-0.17 2024-06-25 [1] CRAN (R 4.3.3)
    xtable                 1.8-4     2019-04-21 [1] CRAN (R 4.4.0)
