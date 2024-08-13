@@ -1,0 +1,68 @@
+---
+title: "03-scry-glmPCA_sctransform_dimreduction"
+output: html_document
+date: "2024-08-13"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(fig.height = 10,fig.width = 7,include = FALSE)
+#### sets tab autocompletion for directories to begin from the directory containing the .Rproj session, instead of the script's directory if different
+knitr::opts_knit$set(root.dir = here::here())
+
+library(data.table)
+library(SpatialExperiment)
+library(scry)
+library(glmpca)
+library(Seurat)
+
+## rstudio GUI tweaks
+require(colorout)
+ColorOut()
+options("styler.addins_style_transformer" = "biocthis::bioc_style()")
+##
+
+## enable forked parallel processing with BiocParallel::multicoreParam, future::, etc. seemed to need this a couple times, but otherwise havent so its here as a preventative measure. part of this is adding the line 
+# OBJC_DISABLE_INITIALIZE_FORK_SAFETY=YES
+# to Renviron.site. see e.g. top response on https://stackoverflow.com/questions/73638290/python-on-mac-is-it-safe-to-set-objc-disable-initialize-fork-safety-yes-globall 
+options(parallelly.supportsMulticore.disableOn="")
+options(parallelly.fork.enable=TRUE)
+library(parallelly)
+options(bphost="localhost")
+library(BiocParallel)
+library(future) # for seurat parallelization
+
+## last of all, unload the base package datasets, whose data keep getting in the way of autocompletions (e.g., Theoph is priortized over TRUE)
+unloadNamespace("datasets")
+```
+
+```{r}
+lc <- readRDS("processed-data/05_QC/04-lffLC_noEdges_noLocOutliers_remainder1pctileUMIorGene-removed.RDS")
+
+### dump logcounts and imagedata, which are unnecessary blubber for normalization-free approaches like this
+imgData(lc) <- NULL
+assays(lc) <- list(counts=counts(lc))
+reducedDims(lc) <- list()
+gc(full=T)
+```
+
+### using the guide from https://www.stephaniehicks.com/biocdemo/articles/Demo.html to start
+### first we'll try the scry package's nullresiduals function for fast approximation of GLMPCA
+```{r}
+lc <- nullResiduals(lc,type="deviance")
+
+# clean up before glmpca
+gc(full=T)
+
+## use the top 4000 features to try and incorporate as much variable gene space as possible
+lc <- scater::runPCA(lc, ncomponents = 50,
+                      ntop = 4000,
+                      scale = TRUE,
+                      exprs_values = "binomial_deviance_residuals",
+                      name = "glmPCA",
+                      BSPARAM = BiocSingular::RandomParam(),
+                      BPPARAM=MulticoreParam(6))
+
+
+
+
+```

@@ -1,0 +1,97 @@
+---
+title: "01-Walktrap Clusters"
+output: html_document
+date: "2024-07-24"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(fig.height = 10,fig.width = 7,include = FALSE)
+#### sets tab autocompletion for directories to begin from the directory containing the .Rproj session, instead of the script's directory if different
+knitr::opts_knit$set(root.dir = here::here())
+
+library(data.table)
+library(bluster)
+library(scater)
+library(scran)
+
+## rstudio GUI tweaks
+require(colorout)
+ColorOut()
+options("styler.addins_style_transformer" = "biocthis::bioc_style()")
+##
+
+## enable forked parallel processing with BiocParallel::multicoreParam, future::, etc. seemed to need this a couple times, but otherwise havent so its here as a preventative measure.
+library(parallel)
+options(parallelly.supportsMulticore.disableOn="")
+options(parallelly.fork.enable=TRUE)
+library(parallelly)
+options(bphost="localhost")
+library(BiocParallel)
+
+```
+
+### load reducedDims slot, subset to Harmoniez
+```{r}
+dimredlist <- readRDS("processed-data/06_FeatSelection_Dimred_Harmony/02-LCfiltered_2HVGsets_dimredslot.RDS")
+# names(dimredlist)
+dimrs <- c("PCA_","HARMONYdflt_","HARMONYlmbna_","mnn30_")
+feats <- c("hvg10","hvg20")
+for (i in c(1:length(dimrs))){
+    if(i==1){dimrsout <- paste0(dimrs[i],feats[1])
+    } else {dimrsout <- c(dimrsout,paste0(dimrs[i],feats[1]))}
+    dimrsout <- c(dimrsout,paste0(dimrs[i],feats[2]))
+    
+}
+
+dimredlist <- dimredlist[dimrsout]
+
+
+rm(dimrsout,dimrs,feats,i)
+```
+
+# walktrap (using PCA space): spatially UNAWARE clustering for all 8 sets across 5 initial values of k
+# in the walktrap algorithm, k does NOT specify a number of resultant or expected clusters; rather, k is just number of nearest neighbors utilized for calculating the relatedness SNNgraph in the first step (which is then used to generate any number of clusters via igraph::cluster_walktrap processing of the SNNgraph)
+```{r}
+sbp <- MulticoreParam(workers=3)
+register(sbp)
+ks <- seq(25,60,by=5)
+glists <- list()
+for (i in c(1:length(ks))){
+    curk <- ks[i]
+    # for (j in c(1:length(dimredlist))){
+        set.seed(42)
+        ## extract from SimpleList -> single slot list -> matrix to avoid errors
+        # curdim <- as.list(dimredlist[[j]])
+        # curdim <- curdim[[1]]
+        ## louvain clustering
+        curlist <- clusterRows(dimredlist,BLUSPARAM=NNGraphParam(shared=T,k=curk,BPPARAM=sbp,cluster.fun="louvain"))
+        glists[[1+length(glists)]] <- curlist
+        names(glists)[length(glists)] <- paste0(names(dimredlist)[j],paste0("k",curk,"_louvain"))
+        rm(curlist)
+        gc(full=T)
+    #}
+    rm(curk)
+    gc(full=T)
+}
+rm(ks,i,j)
+```
+
+### assemble into a simpler table-style format
+```{r}
+clusresout <- as.data.table(glists[[1]],keep.rownames=T)
+setnames(clusresout,2,names(glists)[1])
+i<-2
+for (i in c(2:length(glists))){
+    tmp <- as.data.table(glists[[i]],keep.rownames=T)
+    setnames(tmp,2,names(glists)[i])
+    ## merge with all.x all.y in case rows are dropped by clustering (don't know that it happens but just to be prepared):
+    clusresout <- merge.data.table(clusresout,tmp,by="rn",all.x=T,all.y=T)
+}
+
+fwrite(clusresout, "local_ref/HARMOlmbNA-hvg20_SNNlouvain10-60_k10-15-20.txt",sep='\t',quote=F)
+
+
+
+
+```
+

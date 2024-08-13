@@ -1,0 +1,147 @@
+---
+title: "02-PCA, Harmony, MNN"
+output: html_document
+date: "2024-07-24"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(fig.height = 10,fig.width = 7,include = FALSE)
+knitr::opts_chunk$set(fig.width=7,fig.height=10)
+#### sets tab autocompletion for directories to begin from the directory containing the .Rproj session, instead of the script's directory if different
+knitr::opts_knit$set(root.dir = here::here())
+
+library(data.table)
+library(Biostrings)
+library(ggplot2)
+library(gridExtra)
+library(SpatialExperiment)
+library(spatialLIBD)
+require(colorout)
+library(batchelor)
+library(harmony)
+
+ColorOut()
+options("styler.addins_style_transformer" = "biocthis::bioc_style()")
+
+## change write.table to output a TSV without quotes or rownames by default
+library(default)
+default(write.table) <- list(row.names=F,col.names=T,sep='\t',quote=F)
+
+
+## enable forked parallel processing with BiocParallel::multicoreParam, future::, etc. seemed to need this a couple times, but otherwise havent so its here as a preventative measure.
+library(parallelly)
+options(parallelly.supportsMulticore.disableOn="")
+options(parallelly.fork.enable=TRUE)
+library(BiocParallel)
+options(bphost="localhost")
+
+## ggplot defaults
+theme_set(theme_bw()+theme(axis.text.x = element_text(size = 14), axis.title.x = element_text(size = 16), axis.text.y = element_text(size = 14), axis.title.y = element_text(size =16), plot.title = element_text(size = 20,hjust=0.5), strip.text = element_text(size=18), legend.text = element_text(size=10), legend.title = element_text(size=11,hjust=0.5)))
+```
+
+to keep these steps speedier, do not load image data
+```{r}
+
+spesessionloader <- function(){
+  lc <- readRDS("processed-data/05_QC/04-lffLC_noEdges_noLocOutliers_remainder1pctileUMIorGene-removed.RDS")
+  
+  # make sure colnames of the spe are unique (i.e., colData(hyp2)$key)
+  colnames(hyp2) <- hyp2$key
+  
+  ## for efficiency during these steps, drop the imgData slot
+  lc@int_metadata$imgData <- DataFrame()
+  gc(full=T)
+  
+  return(lc)
+}
+
+lc <- spesessionloader()
+
+## append metadata, which includes brnum (for MNN)
+demos <- fread("raw-data/demos.txt")
+demos[,sample_id:=paste0(slide,"_",array)]
+
+tmpcd <- as.data.table(colData(lc),keep.rownames=T)
+tmpcd <- merge.data.table(tmpcd,demos,by="sample_id",all.x=T)
+tmpcd <- DataFrame(tmpcd,row.names=tmpcd$rn)[colnames(lc),]
+tmpcd$rn <- NULL
+colData(lc) <- tmpcd
+```
+
+### load feature sets (sample-blocked 10%ile HVGs, 20%ile HVGs)
+```{r}
+feats <- readRDS("processed-data/06_FeatSelection_Dimred_Harmony/01a-samplewiseblocking_HVGs_10-20pctiles.RDS")
+```
+
+### Dimensionality reductions with each feature set: standard PCA, standard UMAP; PCA/UMAP with harmony (defaults); PCA/UMAP with harmony (lambda=NULL); PCA/UMAP with MNN
+
+### for harmony set the initial lambda to NULL such that harmony estimates the input value to prevent overcorrection.
+```{r}
+# set up BiocParallel for mnn
+sbp <- MulticoreParam(8)
+
+i<-1
+for (i in c(1:length(feats))){
+    # standard PCAs
+    set.seed(42)
+    lc <- scater::runPCA(lc,subset_row=feats[[i]],name=paste0("PCA_",names(feats)[i]))
+
+    # standard UMAPs (which require PCA first)
+    set.seed(42)
+    lc <- scater::runUMAP(lc,dimred=paste0("PCA_",names(feats)[i]),name=paste0("UMAP_",names(feats)[i]))
+    
+    # harmony runs -- we need to temporarily rename the PCA for the feature set to "PCA" for runharmony to accept it
+    reducedDimNames(lc)[which(reducedDimNames(lc)==paste0("PCA_",names(feats)[i]))] <- "PCA"
+    
+    # vanilla harmony (lambda not specified --> default value of 1)
+    set.seed(42)
+    lc <- RunHarmony(lc,group.by.vars = "sample_id",reduction.save=paste0("HARMONYdflt_",names(feats)[i]),plot_convergence=T,kmeans_init_iter_max=100)
+    
+    # data-based initialization of lambda (development ver of Harmony; requires explicit lambda=NULL)
+    set.seed(42)
+    lc <- RunHarmony(lc,lambda=NULL,group.by.vars="sample_id",reduction.save=paste0("HARMONYlmbna_",names(feats)[i]),plot_convergence=T,kmeans_init_iter_max=100)
+    
+    # restore the feature-set-specific name for the uncorrected PCA
+    reducedDimNames(lc)[which(reducedDimNames(lc)=="PCA")] <- paste0("PCA_",names(feats)[i])
+    
+    # MNN by donor with k=30
+    set.seed(42)
+    mnnout <- reducedMNN(reducedDim(lc,paste0("PCA_",names(feats)[i])),batch = lc$Donors,k=30,BPPARAM=sbp)
+    
+    # extract reduced dimension table and append to SPE
+    reducedDim(lc,paste0("mnn30_",names(feats)[i])) <- mnnout$corrected
+    # remove intermediate object
+    rm(mnnout)
+    
+    # UMAP of vanilla harmony
+    set.seed(42)
+    lc <- scater::runUMAP(lc,dimred=paste0("HARMONYdflt_",names(feats)[i]),name=paste0("HARMONYdflt_",names(feats)[i],"_UMAP"))
+    
+    # UMAP of data-based initialization of lambda
+    set.seed(42)
+    lc <- scater::runUMAP(lc,dimred=paste0("HARMONYlmbna_",names(feats)[i]),name=paste0("HARMONYlmbna_",names(feats)[i],"_UMAP"))
+    
+    # UMAP of MNN
+    set.seed(42)
+    lc <- scater::runUMAP(lc,dimred=paste0("mnn30_",names(feats)[i]),name=paste0("mnn30_",names(feats)[i],"_UMAP"))
+    
+}
+dev.off()
+
+## check that we have 8*length(feats) reduced dims on the object
+stopifnot(length(reducedDimNames(lc))==8*length(feats))
+
+```
+
+### save RDS of all the dimreds ####
+```{r}
+dimredout <- reducedDims(lc)
+
+saveRDS(dimredout,"processed-data/06_FeatSelection_Dimred_Harmony/02-LCfiltered_2HVGsets_dimredslot.RDS")
+```
+
+repro info
+```{r}
+sessionInfo()
+sessioninfo::session_info()
+```

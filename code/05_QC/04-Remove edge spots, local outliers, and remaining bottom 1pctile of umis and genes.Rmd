@@ -127,8 +127,6 @@ tmpstat.botptile[,filtstep:="BotPtile_UMIorGene_removal"]
 filtstats <- rbind(tmpstat.max,tmpstat.noedge,tmpstat.nooutlie,tmpstat.botptile)
 
 ### save
-saveRDS(lc,"processed-data/05_QC/04-lffLC_noEdges_noLocOutliers_remainder1pctileUMIorGene-removed.RDS")
-
 fwrite(filtstats,"processed-data/05_QC/04-Samplewise UMI and gene stats per filt step.txt",sep='\t',quote=F)
 ```
 
@@ -151,6 +149,30 @@ plt <- ggplot(filtstats,aes(x=filtstep,y=value,col=variable))+
    theme(axis.text.x=element_text(angle=90,hjust=1,size=7))
 plt
 
+
+```
+
+## finally, the colData seems to be missing the donor BrNums for each sample, which we need since there are some duplicates in here. the demos table also has 10x reagent kit ID for each slide, which we'll want for exploration as a potential technical variable (since some kits were used across multiple slides eg). also, there's a bunch of 10x columns we can toss.
+```{r}
+tmpcd <- as.data.table(colData(lc),keep.rownames=TRUE)
+
+demos <- fread("raw-data/demos.txt")
+demos[,sample_id:=paste0(slide,"_",array)]
+setnames(demos,"Donors","brnum")
+tmpcd <- merge.data.table(tmpcd,demos[,.(sample_id,brnum,Kit)],by="sample_id",all.x=T)
+
+keepnames <- grep(names(tmpcd),pattern="X10",value=T,invert=T)
+tmpcd <- DataFrame(tmpcd[,..keepnames],row.names=tmpcd$rn)
+tmpcd$rn <- NULL
+colData(lc) <- tmpcd[colnames(lc),]
+```
+
+calculate log normed counts and save SPE
+```{r}
+lc <- computeLibraryFactors(lc)
+lc <- logNormCounts(lc)
+
+saveRDS(lc,"processed-data/05_QC/04-lffLC_noEdges_noLocOutliers_remainder1pctileUMIorGene-removed.RDS")
 
 ```
 
