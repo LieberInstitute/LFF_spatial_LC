@@ -1,0 +1,194 @@
+**** Job starts ****
+Thu Aug 15 12:08:10 PM EDT 2024
+**** JHPCE info ****
+User: bmulvey
+Job id: 9349426
+Job name: glmpca_hdf5array
+Node name: compute-158
+Task id: 
+<132484 x 50> HDF5Matrix object of type "double":
+                                         PC1         PC2         PC3 ...
+AAACAAGTATCTCCCA-1_V13M06-331_A1  35.1418052   9.8888976   0.7171951   .
+AAACAATCTACTAGCA-1_V13M06-331_A1  25.1535648   3.9588414  -0.9170732   .
+AAACACCAATAACTGC-1_V13M06-331_A1  33.3608226   8.6822540   0.3065372   .
+AAACAGAGCGACTCCT-1_V13M06-331_A1  34.5526732   9.9607370   0.8077293   .
+AAACAGCTTTCAGAAG-1_V13M06-331_A1 -35.4841169   5.6680641   0.3662955   .
+                             ...           .           .           .   .
+TTGTTGTGTGTCAAGA-1_V13B23-286_B1 -18.5640798 -13.8116862  -9.6022477   .
+TTGTTTCACATCCAGG-1_V13B23-286_B1  20.4831349   0.4289455  -3.0806737   .
+TTGTTTCATTAGTCTA-1_V13B23-286_B1  41.6136291  12.5548364   1.2618807   .
+TTGTTTCCATACAACT-1_V13B23-286_B1 -64.3447105 -20.5301748 -16.0181942   .
+TTGTTTGTGTAAATTC-1_V13B23-286_B1  23.0712009   0.4740326  -1.9692457   .
+                                        PC49        PC50
+AAACAAGTATCTCCCA-1_V13M06-331_A1  0.52764471  0.77641662
+AAACAATCTACTAGCA-1_V13M06-331_A1  0.81462792  1.35997836
+AAACACCAATAACTGC-1_V13M06-331_A1  0.14195949  0.04639604
+AAACAGAGCGACTCCT-1_V13M06-331_A1 -0.01527671  0.33902259
+AAACAGCTTTCAGAAG-1_V13M06-331_A1  1.07457316 -0.06333722
+                             ...           .           .
+TTGTTGTGTGTCAAGA-1_V13B23-286_B1 -0.28408430  0.28043016
+TTGTTTCACATCCAGG-1_V13B23-286_B1 -0.12047622  0.01552822
+TTGTTTCATTAGTCTA-1_V13B23-286_B1 -0.16635423 -0.07457308
+TTGTTTCCATACAACT-1_V13B23-286_B1  2.15955902 -0.35287344
+TTGTTTGTGTAAATTC-1_V13B23-286_B1 -0.02344976  0.41582428
+R version 4.3.2 Patched (2024-02-08 r85876)
+Platform: x86_64-conda-linux-gnu (64-bit)
+Running under: Rocky Linux 9.4 (Blue Onyx)
+
+Matrix products: default
+BLAS:   /jhpce/shared/community/core/conda_R/4.3.x/R/lib64/R/lib/libRblas.so 
+LAPACK: /jhpce/shared/community/core/conda_R/4.3.x/R/lib64/R/lib/libRlapack.so;  LAPACK version 3.11.0
+
+locale:
+ [1] LC_CTYPE=en_US.UTF-8       LC_NUMERIC=C              
+ [3] LC_TIME=en_US.UTF-8        LC_COLLATE=en_US.UTF-8    
+ [5] LC_MONETARY=en_US.UTF-8    LC_MESSAGES=en_US.UTF-8   
+ [7] LC_PAPER=en_US.UTF-8       LC_NAME=C                 
+ [9] LC_ADDRESS=C               LC_TELEPHONE=C            
+[11] LC_MEASUREMENT=en_US.UTF-8 LC_IDENTIFICATION=C       
+
+time zone: US/Eastern
+tzcode source: system (glibc)
+
+attached base packages:
+[1] stats4    stats     graphics  grDevices utils     datasets  methods  
+[8] base     
+
+other attached packages:
+ [1] here_1.0.1                  BiocParallel_1.36.0        
+ [3] HDF5Array_1.30.0            rhdf5_2.46.1               
+ [5] DelayedArray_0.28.0         SparseArray_1.2.4          
+ [7] S4Arrays_1.2.1              abind_1.4-5                
+ [9] Matrix_1.6-5                glmpca_0.2.0               
+[11] scry_1.14.0                 scater_1.30.1              
+[13] ggplot2_3.5.1               scuttle_1.12.0             
+[15] SingleCellExperiment_1.24.0 SummarizedExperiment_1.32.0
+[17] Biobase_2.62.0              GenomicRanges_1.54.1       
+[19] GenomeInfoDb_1.38.8         IRanges_2.36.0             
+[21] S4Vectors_0.40.2            BiocGenerics_0.48.1        
+[23] MatrixGenerics_1.14.0       matrixStats_1.3.0          
+
+loaded via a namespace (and not attached):
+ [1] gtable_0.3.5              beeswarm_0.4.0           
+ [3] ggrepel_0.9.5             lattice_0.22-5           
+ [5] rhdf5filters_1.14.1       vctrs_0.6.5              
+ [7] tools_4.3.2               bitops_1.0-7             
+ [9] generics_0.1.3            parallel_4.3.2           
+[11] tibble_3.2.1              fansi_1.0.6              
+[13] pkgconfig_2.0.3           BiocNeighbors_1.20.2     
+[15] sparseMatrixStats_1.14.0  lifecycle_1.0.4          
+[17] GenomeInfoDbData_1.2.11   compiler_4.3.2           
+[19] munsell_0.5.1             codetools_0.2-19         
+[21] vipor_0.4.7               RCurl_1.98-1.14          
+[23] pillar_1.9.0              crayon_1.5.3             
+[25] MASS_7.3-60.0.1           viridis_0.6.5            
+[27] tidyselect_1.2.1          rsvd_1.0.5               
+[29] BiocSingular_1.18.0       dplyr_1.1.4              
+[31] rprojroot_2.0.4           grid_4.3.2               
+[33] colorspace_2.1-0          cli_3.6.2                
+[35] magrittr_2.0.3            utf8_1.2.4               
+[37] withr_3.0.0               DelayedMatrixStats_1.24.0
+[39] scales_1.3.0              ggbeeswarm_0.7.2         
+[41] XVector_0.42.0            gridExtra_2.3            
+[43] ScaledMatrix_1.10.0       beachmat_2.18.0          
+[45] irlba_2.3.5.1             viridisLite_0.4.2        
+[47] rlang_1.1.4               Rcpp_1.0.12              
+[49] glue_1.7.0                Rhdf5lib_1.24.2          
+[51] R6_2.5.1                  zlibbioc_1.48.2          
+─ Session info ───────────────────────────────────────────────────────────────
+ setting  value
+ version  R version 4.3.2 Patched (2024-02-08 r85876)
+ os       Rocky Linux 9.4 (Blue Onyx)
+ system   x86_64, linux-gnu
+ ui       X11
+ language (EN)
+ collate  en_US.UTF-8
+ ctype    en_US.UTF-8
+ tz       US/Eastern
+ date     2024-08-15
+ pandoc   3.1.3 @ /jhpce/shared/community/core/conda_R/4.3.x/bin/pandoc
+
+─ Packages ───────────────────────────────────────────────────────────────────
+ package              * version    date (UTC) lib source
+ abind                * 1.4-5      2016-07-21 [2] CRAN (R 4.3.2)
+ beachmat               2.18.0     2023-10-24 [2] Bioconductor
+ beeswarm               0.4.0      2021-06-01 [2] CRAN (R 4.3.2)
+ Biobase              * 2.62.0     2023-10-24 [2] Bioconductor
+ BiocGenerics         * 0.48.1     2023-11-01 [2] Bioconductor
+ BiocNeighbors          1.20.2     2024-01-07 [2] Bioconductor 3.18 (R 4.3.2)
+ BiocParallel         * 1.36.0     2023-10-24 [2] Bioconductor
+ BiocSingular           1.18.0     2023-10-24 [2] Bioconductor
+ bitops                 1.0-7      2021-04-24 [2] CRAN (R 4.3.2)
+ cli                    3.6.2      2023-12-11 [2] CRAN (R 4.3.2)
+ codetools              0.2-19     2023-02-01 [3] CRAN (R 4.3.2)
+ colorspace             2.1-0      2023-01-23 [2] CRAN (R 4.3.2)
+ crayon                 1.5.3      2024-06-20 [1] CRAN (R 4.3.2)
+ DelayedArray         * 0.28.0     2023-10-24 [2] Bioconductor
+ DelayedMatrixStats     1.24.0     2023-10-24 [2] Bioconductor
+ dplyr                  1.1.4      2023-11-17 [2] CRAN (R 4.3.2)
+ fansi                  1.0.6      2023-12-08 [2] CRAN (R 4.3.2)
+ generics               0.1.3      2022-07-05 [2] CRAN (R 4.3.2)
+ GenomeInfoDb         * 1.38.8     2024-03-15 [1] Bioconductor 3.18 (R 4.3.2)
+ GenomeInfoDbData       1.2.11     2024-02-09 [2] Bioconductor
+ GenomicRanges        * 1.54.1     2023-10-29 [2] Bioconductor
+ ggbeeswarm             0.7.2      2023-04-29 [2] CRAN (R 4.3.2)
+ ggplot2              * 3.5.1      2024-04-23 [1] CRAN (R 4.3.2)
+ ggrepel                0.9.5      2024-01-10 [2] CRAN (R 4.3.2)
+ glmpca               * 0.2.0      2020-07-18 [2] CRAN (R 4.3.2)
+ glue                   1.7.0      2024-01-09 [2] CRAN (R 4.3.2)
+ gridExtra              2.3        2017-09-09 [2] CRAN (R 4.3.2)
+ gtable                 0.3.5      2024-04-22 [1] CRAN (R 4.3.2)
+ HDF5Array            * 1.30.0     2023-10-24 [2] Bioconductor
+ here                 * 1.0.1      2020-12-13 [2] CRAN (R 4.3.2)
+ IRanges              * 2.36.0     2023-10-24 [2] Bioconductor
+ irlba                  2.3.5.1    2022-10-03 [2] CRAN (R 4.3.2)
+ lattice                0.22-5     2023-10-24 [3] CRAN (R 4.3.2)
+ lifecycle              1.0.4      2023-11-07 [2] CRAN (R 4.3.2)
+ magrittr               2.0.3      2022-03-30 [2] CRAN (R 4.3.2)
+ MASS                   7.3-60.0.1 2024-01-13 [3] CRAN (R 4.3.2)
+ Matrix               * 1.6-5      2024-01-11 [3] CRAN (R 4.3.2)
+ MatrixGenerics       * 1.14.0     2023-10-24 [2] Bioconductor
+ matrixStats          * 1.3.0      2024-04-11 [1] CRAN (R 4.3.2)
+ munsell                0.5.1      2024-04-01 [1] CRAN (R 4.3.2)
+ pillar                 1.9.0      2023-03-22 [2] CRAN (R 4.3.2)
+ pkgconfig              2.0.3      2019-09-22 [2] CRAN (R 4.3.2)
+ R6                     2.5.1      2021-08-19 [2] CRAN (R 4.3.2)
+ Rcpp                   1.0.12     2024-01-09 [2] CRAN (R 4.3.2)
+ RCurl                  1.98-1.14  2024-01-09 [2] CRAN (R 4.3.2)
+ rhdf5                * 2.46.1     2023-11-29 [2] Bioconductor 3.18 (R 4.3.2)
+ rhdf5filters           1.14.1     2023-11-06 [2] Bioconductor
+ Rhdf5lib               1.24.2     2024-02-07 [2] Bioconductor 3.18 (R 4.3.2)
+ rlang                  1.1.4      2024-06-04 [1] CRAN (R 4.3.2)
+ rprojroot              2.0.4      2023-11-05 [2] CRAN (R 4.3.2)
+ rsvd                   1.0.5      2021-04-16 [2] CRAN (R 4.3.2)
+ S4Arrays             * 1.2.1      2024-03-04 [1] Bioconductor 3.18 (R 4.3.2)
+ S4Vectors            * 0.40.2     2023-11-23 [2] Bioconductor 3.18 (R 4.3.2)
+ ScaledMatrix           1.10.0     2023-10-24 [2] Bioconductor
+ scales                 1.3.0      2023-11-28 [2] CRAN (R 4.3.2)
+ scater               * 1.30.1     2023-11-16 [2] Bioconductor
+ scry                 * 1.14.0     2023-10-24 [2] Bioconductor
+ scuttle              * 1.12.0     2023-10-24 [2] Bioconductor
+ sessioninfo            1.2.2      2021-12-06 [2] CRAN (R 4.3.2)
+ SingleCellExperiment * 1.24.0     2023-10-24 [2] Bioconductor
+ SparseArray          * 1.2.4      2024-02-11 [1] Bioconductor 3.18 (R 4.3.2)
+ sparseMatrixStats      1.14.0     2023-10-24 [2] Bioconductor
+ SummarizedExperiment * 1.32.0     2023-10-24 [2] Bioconductor
+ tibble                 3.2.1      2023-03-20 [2] CRAN (R 4.3.2)
+ tidyselect             1.2.1      2024-03-11 [1] CRAN (R 4.3.2)
+ utf8                   1.2.4      2023-10-22 [2] CRAN (R 4.3.2)
+ vctrs                  0.6.5      2023-12-01 [2] CRAN (R 4.3.2)
+ vipor                  0.4.7      2023-12-18 [2] CRAN (R 4.3.2)
+ viridis                0.6.5      2024-01-29 [2] CRAN (R 4.3.2)
+ viridisLite            0.4.2      2023-05-02 [2] CRAN (R 4.3.2)
+ withr                  3.0.0      2024-01-16 [2] CRAN (R 4.3.2)
+ XVector                0.42.0     2023-10-24 [2] Bioconductor
+ zlibbioc               1.48.2     2024-03-13 [1] Bioconductor 3.18 (R 4.3.2)
+
+ [1] /users/bmulvey/R/4.3.x
+ [2] /jhpce/shared/community/core/conda_R/4.3.x/R/lib64/R/site-library
+ [3] /jhpce/shared/community/core/conda_R/4.3.x/R/lib64/R/library
+ [4] /users/bmulvey/R/4.3
+
+──────────────────────────────────────────────────────────────────────────────
+**** Job ends ****
+Thu Aug 15 12:28:07 PM EDT 2024
