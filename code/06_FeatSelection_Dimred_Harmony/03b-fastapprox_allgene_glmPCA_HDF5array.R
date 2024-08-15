@@ -1,29 +1,25 @@
-library(SpatialExperiment)
+library(scater)
 library(scry)
 library(glmpca)
 library(HDF5Array)
+library(BiocParallel)
 
 library(here)
 
-# one time run: write out the counts matrix to a sparse HDF5Array
-# lc <- readRDS(here(here(),"processed-data/05_QC/04-lffLC_noEdges_noLocOutliers_remainder1pctileUMIorGene-removed.RDS"))
-
-## write the counts out to an HDF5Array
-## per https://support.bioconductor.org/p/107468/ this can be sped up 3x just by specifying the HDF5 dump file
-## as will this, assuming RAM availability (this was 6 years ago, so I'm sure its fine), vs. default value of 1e6. allowable max is 4.5e8
+## this will speed up write time, assuming RAM availability
 setHDF5DumpChunkLength(length = 5e7)
 
-# setHDF5DumpFile(here(here(),"processed-data/06_FeatSelection_Dimred_Harmony/03a_lffLC_noEdges_noLocOutliers_remainder1pctileUMIorGene-removed_counts.h5"))
-# writeHDF5Array(Matrix::Matrix(counts(lc)),name="counts",with.dimnames=T,as.sparse=T)
-# rm(lc)
-# gc(full=T)
+lcnullr <- HDF5Array(here(here(),"processed-data/06_FeatSelection_Dimred_Harmony/03a_lffLC_noEdges_noLocOutliers_remainder1pctileUMIorGene-removed_nullresiduals.h5"),name="nullresid")
 
-lcct <- HDF5Array(here(here(),"processed-data/06_FeatSelection_Dimred_Harmony/03a_lffLC_noEdges_noLocOutliers_remainder1pctileUMIorGene-removed_counts.h5"),name="counts",as.sparse = T)
+setHDF5DumpFile(here(here(),"processed-data/06_FeatSelection_Dimred_Harmony/03b_lffLC_noEdges_noLocOutliers_remainder1pctileUMIorGene-removed_allgeneGLMPCA.h5"))
 
-setHDF5DumpFile(here(here(),"processed-data/06_FeatSelection_Dimred_Harmony/03b_lffLC_noEdges_noLocOutliers_remainder1pctileUMIorGene-removed_nullresiduals.h5"))
-nullresid <- nullResiduals(lcct)
+glmout <- scater::calculatePCA(lcnullr, ncomponents = 50,
+                      ntop = nrow(lcnullr),
+                      scale = TRUE,
+                      BSPARAM = BiocSingular::RandomParam(),
+                      BPPARAM = MulticoreParam(4))
 
-writeHDF5Array(nullresid,name="nullresid",with.dimnames=T)
+writeHDF5Array(glmout,name="GLM-PCA",with.dimnames=T)
 
 ## reproducibility info
 sessionInfo()
