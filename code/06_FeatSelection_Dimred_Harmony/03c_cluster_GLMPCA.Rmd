@@ -1,0 +1,77 @@
+---
+title: "03c-Clustering on GLMPCA"
+output: html_document
+date: "2024-08-15"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(fig.height = 10,fig.width = 7,include = FALSE)
+#### sets tab autocompletion for directories to begin from the directory containing the .Rproj session, instead of the script's directory if different
+knitr::opts_knit$set(root.dir = here::here())
+
+library(data.table)
+library(SpatialExperiment)
+library(scater)
+library(scran)
+library(bluster)
+library(HDF5Array)
+library(Matrix)
+
+## rstudio GUI tweaks
+require(colorout)
+ColorOut()
+options("styler.addins_style_transformer" = "biocthis::bioc_style()")
+##
+
+## enable forked parallel processing with BiocParallel::multicoreParam, future::, etc. seemed to need this a couple times, but otherwise havent so its here as a preventative measure. part of this is adding the line 
+# OBJC_DISABLE_INITIALIZE_FORK_SAFETY=YES
+# to Renviron.site. see e.g. top response on https://stackoverflow.com/questions/73638290/python-on-mac-is-it-safe-to-set-objc-disable-initialize-fork-safety-yes-globall 
+library(parallelly)
+options(parallelly.supportsMulticore.disableOn="")
+options(parallelly.fork.enable=TRUE)
+library(BiocParallel)
+options(bphost="localhost")
+
+## last of all, unload the base package datasets, whose data keep getting in the way of autocompletions (e.g., Theoph is priortized over TRUE)
+unloadNamespace("datasets")
+```
+
+```{r}
+lcglmpca <- HDF5Array("processed-data/06_FeatSelection_Dimred_Harmony/03b_lffLC_noEdges_noLocOutliers_remainder1pctileUMIorGene-removed_allgeneGLMPCA.h5",name="GLM-PCA")
+
+# realize the matrix for parallelization
+lcglmpca <- as(lcglmpca,"Matrix")
+# dim(lcglmpca) #132484 x 50! success!
+
+### shared nearest neighbors with k=10, 15, 20
+### leiden and louvain clustering for each k at resolutions of 0.5, 1, and 2 for each clustering approach
+### need to use MAKE snngraph, not buildsnngraph for the initial neighbor graph; we can't tell the latter function we're giving it a reduced dimension matrix as a standalone object
+k <- c(10,15,20)
+SNNlouvlist <- lapply(k, FUN=function(x){
+    snn <- makeSNNGraph(lcglmpca, k=x,BPPARAM=MulticoreParam(6))
+    louv <- igraph::cluster_louvain(snn)
+    louv5 <- igraph::cluster_louvain(snn,resolution = 0.5)
+    louv2 <- igraph::cluster_louvain(snn,resolution=2)
+    
+    leid <- igraph::cluster_leiden(snn)
+    leid5 <- igraph::cluster_leiden(snn,resolution = 0.5)
+    leid2 <- igraph::cluster_leiden(snn,resolution=2)
+    
+    rettab <- as.data.table(cbind(rownames(lcglmpca),
+                            paste0("X",louv5$membership),
+                            paste0("X",louv$membership),
+                            paste0("X",louv2$membership),
+                            paste0("X",leid5$membership),
+                            paste0("X",leid$membership),
+                            paste0("X",leid2$membership)))
+    louvnames <- paste0(paste0("snn",x,"_louv_res"),c("0.5","1","2"))
+    leidnames <- paste0(paste0("snn",x,"_leid_res"),c("0.5","1","2"))
+    setnames(rettab,c("rn",louvnames,leidnames))
+    return(rettab)
+})
+names(SNNlouvlist) <- paste0("GLMPCAallgene_SNN",k,"_louvain")
+
+saveRDS(SNNlouvlist,"processed-data/06_FeatSelection_Dimred_Harmony/03c_GLMPCAallgene_SNN10-15-20_leidenAndLouvain_res05-1-2.RDS")
+
+```
+## left off here, need to examine cluster stability metrics for these.
