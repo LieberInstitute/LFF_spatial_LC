@@ -1,0 +1,286 @@
+---
+title: "02-Nonspatial clustering QC"
+output: html_document
+date: "2024-09-16"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(fig.height = 10,fig.width = 7,include = FALSE)
+#### sets tab autocompletion for directories to begin from the directory containing the .Rproj session, instead of the script's directory if different
+knitr::opts_knit$set(root.dir = here::here())
+
+library(data.table)
+library(ggplot2)
+library(gridExtra)
+library(SpatialExperiment)
+library(bluster)
+library(HDF5Array)
+
+## rstudio GUI tweaks
+require(colorout)
+ColorOut()
+options("styler.addins_style_transformer" = "biocthis::bioc_style()")
+##
+
+## enable forked parallel processing with BiocParallel::multicoreParam, future::, etc. seemed to need this a couple times, but otherwise havent so its here as a preventative measure. part of this is adding the line 
+# OBJC_DISABLE_INITIALIZE_FORK_SAFETY=YES
+# to Renviron.site. see e.g. top response on https://stackoverflow.com/questions/73638290/python-on-mac-is-it-safe-to-set-objc-disable-initialize-fork-safety-yes-globall 
+library(parallelly)
+options(parallelly.supportsMulticore.disableOn="")
+options(parallelly.fork.enable=TRUE)
+library(BiocParallel)
+options(bphost="localhost")
+library(parallel)
+
+
+## ggplot defaults
+theme_set(theme_bw()+theme(axis.text.x = element_text(size = 14), axis.title.x = element_text(size = 16), axis.text.y = element_text(size = 14), axis.title.y = element_text(size =16), plot.title = element_text(size = 20,hjust=0.5), strip.text = element_text(size=18), legend.text = element_text(size=10), legend.title = element_text(size=11,hjust=0.5)))
+
+## last of all, unload the base package datasets, whose data keep getting in the way of autocompletions (e.g., Theoph is priortized over TRUE)
+unloadNamespace("datasets")
+```
+
+# Silhouette Widths
+## load glmpca matrix, clustering results from the same matrix (the two inputs to bluster for sil. widths)
+```{r}
+lcglmpca <- HDF5Array("processed-data/06_FeatSelection_Dimred_Harmony/03b_lffLC_noEdges_noLocOutliers_remainder1pctileUMIorGene-removed_allgeneGLMPCA.h5",name="GLM-PCA")
+
+SNNlouvlist <- readRDS("processed-data/06_FeatSelection_Dimred_Harmony/03c_GLMPCAallgene_SNN10-15-20_leidenAndLouvain_res05-1-2.RDS")
+## all clustering assignments are in columns with names reflecting the clustering method, SNN k value, and resolution parameter. each list entry is the results for one SNN k value so we can merge the columns into one big table for simplicity here.
+
+SNNlouvs <- merge.data.table(SNNlouvlist[[1]],SNNlouvlist[[2]],by="rn")
+SNNlouvs <- merge.data.table(SNNlouvs,SNNlouvlist[[3]],by="rn")
+
+## are any of these like, clearly wacked out results?
+SNNlouvs[,lapply(.SD,FUN=function(x){length(unique(x))}),.SDcols=c(2:ncol(SNNlouvs))]
+
+## uhhh, yes, leiden clusterings all had 400-5100 clusters o.0
+## lets just use the louvain clusterings
+keepclus <- c("rn",grep(names(SNNlouvs),pattern="_louv_",value=T))
+SNNlouvs <- SNNlouvs[,..keepclus]
+
+rm(keepclus,SNNlouvlist)
+```
+
+### calculate silhouette withs from the cluster assignments and the corresponding dimensionality reduction matrix (here GLMPCA of all genes)
+```{r}
+## get the clustering column names (everything except "rn" in keepclus)
+keepclus <- keepclus[2:length(keepclus)]
+
+## reorder the rows of the pca matrix to match the data.table input. (way harder to do this vice versa)
+lcglmpca <- lcglmpca[SNNlouvs$rn,]
+stopifnot(sum(rownames(lcglmpca)==SNNlouvs$rn)==nrow(lcglmpca))
+
+## run silhouette width approximation for each clustering result and the underlying glmpca mat
+silres <- mclapply(X=keepclus,mc.cores=5,FUN=function(clusts){
+    getcols <- c("rn",clusts)
+  clusts <- copy(SNNlouvs[,..getcols])
+  clusts <- as.data.frame(clusts,row.names = clusts$rn)
+  clusts <- clusts[rownames(lcglmpca),]
+  clusts$rn <- NULL
+  names(clusts)[1] <- "curclus"
+  silwidths <- approxSilhouette(x = lcglmpca,clusters = clusts$curclus)
+  return(silwidths)
+})
+names(silres) <- keepclus
+
+### save results
+saveRDS(silwidths,"processed-data/07_Clustering/02-SNNk10-15-20_louvain_allgeneGLMPCA_silwidths.RDS")
+
+rm(silwidths)
+```
+
+### cluster purity in bluster (same inputs)
+```{r}
+## run cluster purity in bluster for each clustering result and the underlying glmpca mat
+clustpurity <- mclapply(X=keepclus,mc.cores=5,FUN=function(clusts){
+    getcols <- c("rn",clusts)
+    clusts <- copy(SNNlouvs[,..getcols])
+    clusts <- as.data.frame(clusts,row.names = clusts$rn)
+    clusts <- clusts[rownames(lcglmpca),]
+    clusts$rn <- NULL
+    names(clusts)[1] <- "curclus"
+    clustpurity <- neighborPurity(x = lcglmpca,clusters = clusts$curclus)
+    return(clustpurity)
+})
+
+names(clustpurity) <- keepclus
+
+### save results
+saveRDS(clustpurity,"processed-data/07_Clustering/02-SNNk10-15-20_louvain_allgeneGLMPCA_clustpurity.RDS")
+```
+
+cluster RMSDs
+```{r}
+crmsd <- mclapply(X=keepclus,mc.cores=5,FUN=function(clusts){
+    getcols <- c("rn",clusts)
+    clusts <- copy(SNNlouvs[,..getcols])
+    clusts <- as.data.frame(clusts,row.names = clusts$rn)
+    clusts <- clusts[rownames(lcglmpca),]
+    clusts$rn <- NULL
+    names(clusts)[1] <- "curclus"
+    cRMSD <- clusterRMSD(x = lcglmpca,clusters = clusts$curclus)
+    return(cRMSD)
+})
+names(crmsd) <- keepclus
+
+saveRDS(crmsd,"processed-data/07_Clustering/02-SNNk10-15-20_louvain_allgeneGLMPCA_clustRMSDs.RDS")
+```
+
+## cluster modularity requires the spot-spot distance matrix from the SNN graph upstream of clustering, which we did not save and so cannot execute.
+
+interpretation notes from OSCA re: purity and silhouette widths: "The main difference between the cluster purity and silhouette width is that the former ignores the intra-cluster variance. This provides a simpler interpretation of cluster separation; a low silhouette width may still occur in well-separated clusters if the internal heterogeneity is high, while no such complication exists for the cluster purity. Comparing these two metrics can give us an indication of which clusters are heterogeneous, well-separated, or both."
+
+# reproducibility info
+```{r}
+sessionInfo()
+sessioninfo::session_info()
+```
+R version 4.4.1 RC (2024-06-06 r86719)
+Platform: aarch64-apple-darwin20
+Running under: macOS Sonoma 14.5
+
+Matrix products: default
+BLAS:   /System/Library/Frameworks/Accelerate.framework/Versions/A/Frameworks/vecLib.framework/Versions/A/libBLAS.dylib 
+LAPACK: /Library/Frameworks/R.framework/Versions/4.4-arm64/Resources/lib/libRlapack.dylib;  LAPACK version 3.12.0
+
+locale:
+[1] en_US.UTF-8/en_US.UTF-8/en_US.UTF-8/C/en_US.UTF-8/en_US.UTF-8
+
+time zone: America/Chicago
+tzcode source: internal
+
+attached base packages:
+[1] parallel  stats4    stats     graphics  grDevices utils     methods   base     
+
+other attached packages:
+ [1] HDF5Array_1.32.0            rhdf5_2.48.0               
+ [3] DelayedArray_0.30.1         SparseArray_1.4.8          
+ [5] S4Arrays_1.4.1              abind_1.4-5                
+ [7] Matrix_1.7-0                BiocParallel_1.38.0        
+ [9] parallelly_1.38.0           colorout_1.3-0.2           
+[11] bluster_1.14.0              SpatialExperiment_1.14.0   
+[13] SingleCellExperiment_1.26.0 SummarizedExperiment_1.34.0
+[15] Biobase_2.64.0              GenomicRanges_1.56.1       
+[17] GenomeInfoDb_1.40.1         IRanges_2.38.1             
+[19] S4Vectors_0.42.1            BiocGenerics_0.50.0        
+[21] MatrixGenerics_1.16.0       matrixStats_1.3.0          
+[23] gridExtra_2.3               ggplot2_3.5.1              
+[25] data.table_1.15.4           rlang_1.1.4                
+
+loaded via a namespace (and not attached):
+ [1] gtable_0.3.5            rjson_0.2.21            xfun_0.45              
+ [4] lattice_0.22-6          rhdf5filters_1.16.0     vctrs_0.6.5            
+ [7] tools_4.4.1             generics_0.1.3          tibble_3.2.1           
+[10] fansi_1.0.6             cluster_2.1.6           pkgconfig_2.0.3        
+[13] BiocNeighbors_1.22.0    lifecycle_1.0.4         GenomeInfoDbData_1.2.12
+[16] compiler_4.4.1          munsell_0.5.1           codetools_0.2-20       
+[19] htmltools_0.5.8.1       yaml_2.3.9              pillar_1.9.0           
+[22] crayon_1.5.3            sessioninfo_1.2.2       magick_2.8.3           
+[25] tidyselect_1.2.1        digest_0.6.36           dplyr_1.1.4            
+[28] rprojroot_2.0.4         fastmap_1.2.0           grid_4.4.1             
+[31] here_1.0.1              colorspace_2.1-0        cli_3.6.3              
+[34] magrittr_2.0.3          utf8_1.2.4              withr_3.0.0            
+[37] scales_1.3.0            UCSC.utils_1.0.0        rmarkdown_2.27         
+[40] XVector_0.44.0          httr_1.4.7              igraph_2.0.3           
+[43] evaluate_0.24.0         knitr_1.48              Rcpp_1.0.13            
+[46] glue_1.7.0              rstudioapi_0.16.0       jsonlite_1.8.8         
+[49] Rhdf5lib_1.26.0         R6_2.5.1                zlibbioc_1.50.0        
+> sessioninfo::session_info()
+─ Session info ────────────────────────────────────────────────────────────────────
+ setting  value
+ version  R version 4.4.1 RC (2024-06-06 r86719)
+ os       macOS Sonoma 14.5
+ system   aarch64, darwin20
+ ui       RStudio
+ language (EN)
+ collate  en_US.UTF-8
+ ctype    en_US.UTF-8
+ tz       America/Chicago
+ date     2024-09-16
+ rstudio  2024.07.0-daily+219 Cranberry Hibiscus (desktop)
+ pandoc   3.1.11 @ /Applications/RStudio.app/Contents/Resources/app/quarto/bin/tools/aarch64/ (via rmarkdown)
+
+─ Packages ────────────────────────────────────────────────────────────────────────
+ ! package              * version date (UTC) lib source
+   abind                * 1.4-5   2016-07-21 [1] CRAN (R 4.4.0)
+   Biobase              * 2.64.0  2024-04-30 [1] Bioconductor 3.19 (R 4.4.1)
+   BiocGenerics         * 0.50.0  2024-04-30 [1] Bioconductor 3.19 (R 4.4.0)
+   BiocNeighbors          1.22.0  2024-04-30 [1] Bioconductor 3.19 (R 4.4.0)
+   BiocParallel         * 1.38.0  2024-04-30 [1] Bioconductor 3.19 (R 4.4.0)
+   bluster              * 1.14.0  2024-04-30 [1] Bioconductor 3.19 (R 4.4.0)
+ P cli                    3.6.3   2024-06-21 [2] CRAN (R 4.4.0)
+   cluster                2.1.6   2023-12-01 [1] CRAN (R 4.4.1)
+   codetools              0.2-20  2024-03-31 [1] CRAN (R 4.4.1)
+   colorout             * 1.3-0.2 2024-05-01 [1] Github (jalvesaq/colorout@c6113a2)
+   colorspace             2.1-0   2023-01-23 [1] CRAN (R 4.4.0)
+   crayon                 1.5.3   2024-06-20 [1] CRAN (R 4.4.0)
+   data.table           * 1.15.4  2024-03-30 [2] CRAN (R 4.4.0)
+   DelayedArray         * 0.30.1  2024-05-07 [1] Bioconductor 3.19 (R 4.4.0)
+   digest                 0.6.36  2024-06-23 [1] CRAN (R 4.4.0)
+   dplyr                  1.1.4   2023-11-17 [1] CRAN (R 4.4.0)
+   evaluate               0.24.0  2024-06-10 [1] CRAN (R 4.4.0)
+   fansi                  1.0.6   2023-12-08 [1] CRAN (R 4.4.0)
+   fastmap                1.2.0   2024-05-15 [1] CRAN (R 4.4.0)
+   generics               0.1.3   2022-07-05 [1] CRAN (R 4.4.0)
+   GenomeInfoDb         * 1.40.1  2024-05-24 [1] Bioconductor 3.19 (R 4.4.0)
+   GenomeInfoDbData       1.2.12  2024-05-01 [1] Bioconductor
+   GenomicRanges        * 1.56.1  2024-06-12 [1] Bioconductor 3.19 (R 4.4.1)
+   ggplot2              * 3.5.1   2024-04-23 [1] CRAN (R 4.4.0)
+   glue                   1.7.0   2024-01-09 [1] CRAN (R 4.4.0)
+   gridExtra            * 2.3     2017-09-09 [1] CRAN (R 4.4.0)
+   gtable                 0.3.5   2024-04-22 [1] CRAN (R 4.4.0)
+   HDF5Array            * 1.32.0  2024-04-30 [1] Bioconductor 3.19 (R 4.4.0)
+   here                   1.0.1   2020-12-13 [1] CRAN (R 4.4.0)
+   htmltools              0.5.8.1 2024-04-04 [1] CRAN (R 4.4.0)
+   httr                   1.4.7   2023-08-15 [1] CRAN (R 4.4.0)
+   igraph                 2.0.3   2024-03-13 [1] CRAN (R 4.4.0)
+   IRanges              * 2.38.1  2024-07-03 [1] Bioconductor 3.19 (R 4.4.1)
+   jsonlite               1.8.8   2023-12-04 [1] CRAN (R 4.4.0)
+   knitr                  1.48    2024-07-07 [1] CRAN (R 4.4.1)
+   lattice                0.22-6  2024-03-20 [1] CRAN (R 4.4.1)
+   lifecycle              1.0.4   2023-11-07 [1] CRAN (R 4.4.0)
+   magick                 2.8.3   2024-02-18 [1] CRAN (R 4.4.0)
+   magrittr               2.0.3   2022-03-30 [1] CRAN (R 4.4.0)
+   Matrix               * 1.7-0   2024-04-26 [1] CRAN (R 4.4.1)
+   MatrixGenerics       * 1.16.0  2024-04-30 [1] Bioconductor 3.19 (R 4.4.0)
+   matrixStats          * 1.3.0   2024-04-11 [1] CRAN (R 4.4.0)
+   munsell                0.5.1   2024-04-01 [1] CRAN (R 4.4.0)
+   parallelly           * 1.38.0  2024-07-27 [1] CRAN (R 4.4.0)
+   pillar                 1.9.0   2023-03-22 [1] CRAN (R 4.4.0)
+   pkgconfig              2.0.3   2019-09-22 [1] CRAN (R 4.4.0)
+   R6                     2.5.1   2021-08-19 [1] CRAN (R 4.4.0)
+   Rcpp                   1.0.13  2024-07-17 [1] CRAN (R 4.4.0)
+   rhdf5                * 2.48.0  2024-04-30 [1] Bioconductor 3.19 (R 4.4.0)
+   rhdf5filters           1.16.0  2024-04-30 [1] Bioconductor 3.19 (R 4.4.0)
+   Rhdf5lib               1.26.0  2024-04-30 [1] Bioconductor 3.19 (R 4.4.0)
+   rjson                  0.2.21  2022-01-09 [1] CRAN (R 4.4.0)
+ P rlang                * 1.1.4   2024-06-04 [2] CRAN (R 4.4.1)
+   rmarkdown              2.27    2024-05-17 [1] CRAN (R 4.4.0)
+   rprojroot              2.0.4   2023-11-05 [1] CRAN (R 4.4.0)
+   rstudioapi             0.16.0  2024-03-24 [1] CRAN (R 4.4.0)
+   S4Arrays             * 1.4.1   2024-05-20 [1] Bioconductor 3.19 (R 4.4.0)
+   S4Vectors            * 0.42.1  2024-07-03 [1] Bioconductor 3.19 (R 4.4.1)
+   scales                 1.3.0   2023-11-28 [1] CRAN (R 4.4.0)
+   sessioninfo            1.2.2   2021-12-06 [1] CRAN (R 4.4.0)
+   SingleCellExperiment * 1.26.0  2024-04-30 [1] Bioconductor 3.19 (R 4.4.0)
+   SparseArray          * 1.4.8   2024-05-30 [1] Bioconductor 3.19 (R 4.4.0)
+   SpatialExperiment    * 1.14.0  2024-04-30 [1] Bioconductor 3.19 (R 4.4.0)
+   SummarizedExperiment * 1.34.0  2024-04-30 [1] Bioconductor 3.19 (R 4.4.0)
+   tibble                 3.2.1   2023-03-20 [1] CRAN (R 4.4.0)
+   tidyselect             1.2.1   2024-03-11 [1] CRAN (R 4.4.0)
+   UCSC.utils             1.0.0   2024-05-06 [1] Bioconductor 3.19 (R 4.4.0)
+   utf8                   1.2.4   2023-10-22 [1] CRAN (R 4.4.0)
+   vctrs                  0.6.5   2023-12-01 [1] CRAN (R 4.4.0)
+   withr                  3.0.0   2024-01-16 [1] CRAN (R 4.4.0)
+   xfun                   0.45    2024-06-16 [1] CRAN (R 4.4.0)
+   XVector                0.44.0  2024-04-30 [1] Bioconductor 3.19 (R 4.4.0)
+   yaml                   2.3.9   2024-07-05 [1] CRAN (R 4.4.0)
+   zlibbioc               1.50.0  2024-04-30 [1] Bioconductor 3.19 (R 4.4.0)
+
+ [1] /Library/Frameworks/R.framework/Versions/4.4-arm64/Resources/library
+ [2] /Users/bmulvey/Library/R/arm64/4.4/library
+
+ P ── Loaded and on-disk path mismatch.
+
+───────────────────────────────────────────────────────────────────────────────────
