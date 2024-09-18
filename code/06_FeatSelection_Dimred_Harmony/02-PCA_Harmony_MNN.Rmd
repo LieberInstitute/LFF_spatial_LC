@@ -46,7 +46,7 @@ spesessionloader <- function(){
   lc <- readRDS("processed-data/05_QC/04-lffLC_noEdges_noLocOutliers_remainder1pctileUMIorGene-removed.RDS")
   
   # make sure colnames of the spe are unique (i.e., colData(hyp2)$key)
-  colnames(hyp2) <- hyp2$key
+  colnames(lc) <- lc$key
   
   ## for efficiency during these steps, drop the imgData slot
   lc@int_metadata$imgData <- DataFrame()
