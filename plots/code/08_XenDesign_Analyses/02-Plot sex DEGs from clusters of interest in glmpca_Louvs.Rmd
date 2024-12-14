@@ -1,0 +1,344 @@
+---
+title: "02-Plot sex DEGs for simple 1-factor DE model from clusters of interest in glmpca_Louvs"
+author: "Bernie Mulvey"
+date: "2024-12-13"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(fig.height = 10,fig.width = 7,include = FALSE)
+#### sets tab autocompletion for directories to begin from the directory containing the .Rproj session, instead of the script's directory if different
+knitr::opts_knit$set(root.dir = here::here())
+
+library(data.table)
+library(ggplot2)
+library(gridExtra)
+library(SpatialExperiment)
+library(escheR)
+library(ggtext)
+library(ggrastr)
+
+## rstudio GUI tweaks
+require(colorout)
+ColorOut()
+options("styler.addins_style_transformer" = "biocthis::bioc_style()")
+##
+
+## enable forked parallel processing with BiocParallel::multicoreParam, future::, etc. seemed to need this a couple times, but otherwise havent so its here as a preventative measure. part of this is adding the line 
+# OBJC_DISABLE_INITIALIZE_FORK_SAFETY=YES
+# to Renviron.site. see e.g. top response on https://stackoverflow.com/questions/73638290/python-on-mac-is-it-safe-to-set-objc-disable-initialize-fork-safety-yes-globall 
+library(parallelly)
+options(parallelly.supportsMulticore.disableOn="")
+options(parallelly.fork.enable=TRUE)
+library(BiocParallel)
+options(bphost="localhost")
+
+
+## ggplot defaults
+theme_set(theme_bw()+theme(axis.text.x = element_text(size = 9), axis.title.x = element_text(size = 8), axis.text.y = element_text(size = 8), axis.title.y = element_text(size =9), plot.title = element_markdown(size = 11,hjust=0.5), strip.text = element_text(size=11), legend.text = element_text(size=8), legend.title = element_text(size=9,hjust=0.5)))
+
+## last of all, unload the base package datasets, whose data keep getting in the way of autocompletions (e.g., Theoph is priortized over TRUE)
+unloadNamespace("datasets")
+```
+
+### load SPE, cluster assignments, annotations, sex DE results
+```{r}
+lc2 <- readRDS("processed-data/05_QC/04-lffLC_noEdges_noLocOutliers_remainder1pctileUMIorGene-removed.RDS")
+
+### remove tissue images to save memory
+lc2 <- SpatialExperiment(assays=list(logcounts=logcounts(lc2)),rowData=rowData(lc2),colData=colData(lc2),sample_id = colData(lc2)$sample_id,spatialCoords = spatialCoords(lc2))
+
+
+## cluster assignments
+louvs <- readRDS("processed-data/07_Clustering/01-GLMPCAallgene_SNN10-15-20_leidenAndLouvain_res05-1-2.RDS")
+louvs <- louvs$GLMPCAallgene_SNN10_LeidLouv[,.(rn,snn10_louv_res0.5,snn10_louv_res1)]
+
+### annots
+ann05 <- fread("processed-data/07_Clustering/03-glmpca_snn10_louv0.5_tentativeannotsbytop10lfcmks.txt")
+ann1 <- fread("processed-data/07_Clustering/03-glmpca_snn10_louv1_tentativeannotsbytop10lfcmks.txt")
+ann1 <- unique(ann1[,.(clus,label)])
+
+## sex de-simple
+sexde <- readRDS("processed-data/08_XenDesign_Analyses/02a-glmPCA-snn10-louvs_sexDE_sexOnlyFactor.RDS")
+names(sexde) #louv05, louv1
+
+## sex DE covaried for E4 status and age
+sexdecov <- readRDS("processed-data/08_XenDesign_Analyses/02b-glmPCA-snn10-louvs_sexDE_ageAPOEcovar.RDS")
+names(sexdecov) # same
+```
+
+extract sex DE tables, append annotations, filter to clusters of interest
+```{r}
+## get autosomal fdr-sig genes, collated into one table per clustering paradigm
+sexdel <- list(
+    rbindlist(lapply(sexde[[1]],function(x){x$de[adj.P.Val<0.05 & !(chromosome_name %in% c("chrX","chrY","chrMT"))]}),idcol="clus"), 
+    rbindlist(lapply(sexde[[2]],function(x){x$de[adj.P.Val<0.05 & !(chromosome_name %in% c("chrX","chrY","chrMT"))]}),idcol="clus"),
+    rbindlist(lapply(sexdecov[[1]],function(x){x$de[adj.P.Val<0.05 & !(chromosome_name %in% c("chrX","chrY","chrMT"))]}),idcol="clus"),
+    rbindlist(lapply(sexdecov[[2]],function(x){x$de[adj.P.Val<0.05 & !(chromosome_name %in% c("chrX","chrY","chrMT"))]}),idcol="clus")
+)
+
+## append cluster annots to each of these
+sexdel[[1]] <- merge.data.table(sexdel[[1]],ann05,by="clus")
+sexdel[[2]] <- merge.data.table(sexdel[[2]],ann1,by="clus")
+sexdel[[3]] <- merge.data.table(sexdel[[3]],ann05,by="clus")
+sexdel[[4]] <- merge.data.table(sexdel[[4]],ann1,by="clus")
+## add clustering paradigm info for directory creation
+names(sexdel) <- c(paste0(names(sexde),"_sexOnly"),paste0(names(sexde),"_ageAPOEcovar"))
+
+# clean up
+rm(sexde,sexdecov)
+```
+
+subset to clusters of interest in the two clustering paradigms:
+louv05: Interneurons_1_SERT, raphe, astrocyte_1, LC_1, Interneurons_2_top10_2lnc_4maybegenes
+louv1: LC.1, 5HT.1, Microglia.MostlyPutativeXscrips, Inh.SST.CCK.HTR2C, Exc.17A6.RBP4.TAC1.HTR2C, Astrocyte.1, Unsure.2.PCDHGC5.AVP
+```{r}
+sexdel$louv05_sexOnly <- sexdel$louv05_sexOnly[annot %in% c("Interneurons_1_SERT","raphe","astrocyte_1","LC_1","Interneurons_2_top10_2lnc_4maybegenes")]
+sexdel$louv05_ageAPOEcovar <- sexdel$louv05_ageAPOEcovar[annot %in% c("Interneurons_1_SERT","raphe","astrocyte_1","LC_1","Interneurons_2_top10_2lnc_4maybegenes")]
+
+sexdel$louv1_sexOnly <- sexdel$louv1_sexOnly[label %in% c("LC.1","5HT.1","Microglia.MostlyPutativeXscrips","Inh.SST.CCK.HTR2C","Exc.17A6.RBP4.TAC1.HTR2C","Astrocyte.1","Unsure.2.PCDHGC5.AVP")]
+sexdel$louv1_ageAPOEcovar <- sexdel$louv1_ageAPOEcovar[label %in% c("LC.1","5HT.1","Microglia.MostlyPutativeXscrips","Inh.SST.CCK.HTR2C","Exc.17A6.RBP4.TAC1.HTR2C","Astrocyte.1","Unsure.2.PCDHGC5.AVP")]
+
+## standardize names here
+setnames(sexdel$louv1_sexOnly,"label","annot")
+setnames(sexdel$louv1_ageAPOEcovar,"label","annot")
+```
+
+### make SPEs pre-subsetted to clusters of interest and genes of interest for each paradigm
+```{r}
+assign05 <- louvs[,.(rn,snn10_louv_res0.5)]
+assign05 <- merge.data.table(assign05,ann05,by.x="snn10_louv_res0.5",by.y="clus")
+assign05 <- DataFrame(assign05,row.names=assign05$rn)[colnames(lc2),]
+lc05 <- copy(lc2)
+colLabels(lc05) <- assign05$annot
+lc05 <- lc05[,lc05$label %in% c("Interneurons_1_SERT","raphe","astrocyte_1","LC_1","Interneurons_2_top10_2lnc_4maybegenes")]
+rownames(lc05) <- rowData(lc05)$gene_name
+lc05 <- lc05[rownames(lc05) %in% c(sexdel$louv05_sexOnly$gene_name,sexdel$louv05_ageAPOEcovar$gene_name),]
+
+assign1 <- louvs[,.(rn,snn10_louv_res1)]
+assign1 <- merge.data.table(assign1,ann1,by.x="snn10_louv_res1",by.y="clus")
+assign1 <- DataFrame(assign1,row.names=assign1$rn)[colnames(lc2),]
+lc1 <- copy(lc2)
+colLabels(lc1) <- assign1$label
+lc1 <- lc1[,lc1$label %in% c("LC.1","5HT.1","Microglia.MostlyPutativeXscrips","Inh.SST.CCK.HTR2C","Exc.17A6.RBP4.TAC1.HTR2C","Astrocyte.1","Unsure.2.PCDHGC5.AVP")]
+rownames(lc1) <- rowData(lc1)$gene_name
+lc1 <- lc1[rownames(lc1) %in% c(sexdel$louv1_sexOnly$gene_name,sexdel$louv1_ageAPOEcovar$gene_name),]
+
+## spe per clustering regime per DE analysis approach, for simplicity's sake with mapply below
+spes <- list(lc05,lc1,lc05,lc1)
+
+## toss the full SPE and other misc since it'll take up RAM needed for parallelizing all the plotting
+rm(lc2,lc05,lc1,assign05,assign1,ann1,ann05,louvs)
+gc(full=T)
+```
+
+parallelize over clustering paradigms, sex DE analysis models, and clusters. include info on the DE direction of effect in the filename
+```{r}
+### something weird was going on here where, at no specific point in the process, either the loop would error out early, or the code would still appear to be running but only one (instead of 6) spawned parallelized processes appeared in bash top with flat 0% CPU usage. R acted like it was still running something until the spawned parallel process was killed from the command line. after fruitless troubleshooting, the run used hung up early into the third set of sex DE results (with covariates, louvain res 0.5). dropped the lists of inputs down to just the with-covariates (i.e., indices 3+4) results, which then reached the finish line cleanly. the following two lines reflect subsetting the inputs down to the with-covariates parts after getting through the sex-only DE plots. 
+
+# sexdel <- sexdel[c(3:4)]
+# spes <- spes[c(3:4)]
+
+mapply(d=sexdel,s=spes,od=names(sexdel),SIMPLIFY = FALSE,FUN = function(d,s,od){
+    if(!file.exists(paste0("plots/08_XenDesign_Analyses/02_sexDEGs/",od))){dir.create(paste0("plots/08_XenDesign_Analyses/02_sexDEGs/",od))}
+    od2 <- paste0("plots/08_XenDesign_Analyses/02_sexDEGs/",od)
+    lapply(unique(s$label),FUN = function(l){
+        if(!file.exists(paste0(od2,"/",l))){dir.create(paste0(od2,"/",l))}
+        od3 <- paste0(od2,"/",l)
+        
+        tmps <- s[,s$label==l]
+        keepg <- d[d$annot==l,]$gene_name
+        tmps <- tmps[keepg,]
+
+        if(nrow(tmps)!=0){
+            
+            bplapply(rownames(tmps),BPPARAM=MulticoreParam(6),FUN=function(g){
+                # plot all male samples then all female samples for visual inspectability
+                sampord <- c(
+                    unique(tmps[,tmps$Sex=="M"]$sample_id),
+                    unique(tmps[,tmps$Sex=="F"]$sample_id))
+                
+                # get the global max spot logcounts and pl[ot everything on the same scale 
+                globscalhi <- max(logcounts(tmps[g,]))
+                dir <- ifelse(d[gene_name==g&annot==l,logFC]>0,yes="_MALEup",no="_FEMup")
+                
+                plts <- lapply(sampord,FUN=function(x){
+                    tmps2 <- tmps[,tmps$sample_id==x]
+                    colData(tmps2)$curg <- as.numeric(logcounts(tmps2[g,]))
+                    p <- make_escheR(tmps2)
+                    p <- p |> add_fill("curg",size=1.25,point_size = 1.25)
+                    p <- p+ggtitle(paste0(g," ",unique(tmps2$Sex)))
+                    p <- p+scale_fill_continuous(type="viridis",limits=c(0,globscalhi))
+                    p <- rasterize(p,layers="Points",dpi=600,dev="cairo_png")
+                })
+                
+                pdf(paste0(od3,"/",g,dir,".pdf"),width=15,height=20)
+                do.call("grid.arrange",plts)
+                dev.off()
+            })
+        } else{
+            message("next clust")
+        }
+    })
+})
+```
+
+### plots are for visual inspection to ascertain sex patterns that are consistent within a cluster across the sample set. so time to make some coffee.
+
+reprod inf
+```{r}
+sessionInfo()
+sessioninfo::session_info()
+```
+
+R version 4.4.1 RC (2024-06-06 r86719)
+Platform: aarch64-apple-darwin20
+Running under: macOS Sonoma 14.7.1
+
+Matrix products: default
+BLAS:   /System/Library/Frameworks/Accelerate.framework/Versions/A/Frameworks/vecLib.framework/Versions/A/libBLAS.dylib 
+LAPACK: /Library/Frameworks/R.framework/Versions/4.4-arm64/Resources/lib/libRlapack.dylib;  LAPACK version 3.12.0
+
+locale:
+[1] en_US.UTF-8/en_US.UTF-8/en_US.UTF-8/C/en_US.UTF-8/en_US.UTF-8
+
+time zone: America/Chicago
+tzcode source: internal
+
+attached base packages:
+[1] stats4    stats     graphics  grDevices utils     methods   base     
+
+other attached packages:
+ [1] BiocParallel_1.40.0         parallelly_1.40.1          
+ [3] colorout_1.3-0.2            ggrastr_1.0.2              
+ [5] ggtext_0.1.2                escheR_1.6.0               
+ [7] SpatialExperiment_1.16.0    SingleCellExperiment_1.28.1
+ [9] SummarizedExperiment_1.36.0 Biobase_2.66.0             
+[11] GenomicRanges_1.58.0        GenomeInfoDb_1.42.1        
+[13] IRanges_2.40.1              S4Vectors_0.44.0           
+[15] BiocGenerics_0.52.0         MatrixGenerics_1.18.0      
+[17] matrixStats_1.4.1           gridExtra_2.3              
+[19] ggplot2_3.5.1               data.table_1.16.4          
+[21] rlang_1.1.4                
+
+loaded via a namespace (and not attached):
+ [1] gtable_0.3.6            beeswarm_0.4.0          rjson_0.2.23           
+ [4] xfun_0.49               lattice_0.22-6          vctrs_0.6.5            
+ [7] tools_4.4.1             generics_0.1.3          parallel_4.4.1         
+[10] tibble_3.2.1            fansi_1.0.6             pkgconfig_2.0.3        
+[13] Matrix_1.7-1            lifecycle_1.0.4         GenomeInfoDbData_1.2.13
+[16] farver_2.1.2            compiler_4.4.1          munsell_0.5.1          
+[19] codetools_0.2-20        vipor_0.4.7             htmltools_0.5.8.1      
+[22] yaml_2.3.10             pillar_1.9.0            crayon_1.5.3           
+[25] DelayedArray_0.32.0     magick_2.8.5            abind_1.4-8            
+[28] digest_0.6.37           tidyselect_1.2.1        dplyr_1.1.4            
+[31] fastmap_1.2.0           rprojroot_2.0.4         grid_4.4.1             
+[34] here_1.0.1              colorspace_2.1-1        cli_3.6.3              
+[37] SparseArray_1.6.0       magrittr_2.0.3          S4Arrays_1.6.0         
+[40] utf8_1.2.4              withr_3.0.2             scales_1.3.0           
+[43] UCSC.utils_1.2.0        ggbeeswarm_0.7.2        rmarkdown_2.29         
+[46] XVector_0.46.0          httr_1.4.7              evaluate_1.0.1         
+[49] knitr_1.49              viridisLite_0.4.2       gridtext_0.1.5         
+[52] Rcpp_1.0.13-1           glue_1.8.0              xml2_1.3.6             
+[55] rstudioapi_0.17.1       jsonlite_1.8.9          R6_2.5.1               
+[58] zlibbioc_1.52.0        
+> sessioninfo::session_info()
+─ Session info ──────────────────────────────────────────────────────────────────
+ setting  value
+ version  R version 4.4.1 RC (2024-06-06 r86719)
+ os       macOS Sonoma 14.7.1
+ system   aarch64, darwin20
+ ui       RStudio
+ language (EN)
+ collate  en_US.UTF-8
+ ctype    en_US.UTF-8
+ tz       America/Chicago
+ date     2024-12-14
+ rstudio  2024.07.0-daily+219 Cranberry Hibiscus (desktop)
+ pandoc   3.1.11 @ /Applications/RStudio.app/Contents/Resources/app/quarto/bin/tools/aarch64/ (via rmarkdown)
+
+─ Packages ──────────────────────────────────────────────────────────────────────
+ ! package              * version  date (UTC) lib source
+   abind                  1.4-8    2024-09-12 [1] CRAN (R 4.4.1)
+   beeswarm               0.4.0    2021-06-01 [1] CRAN (R 4.4.0)
+   Biobase              * 2.66.0   2024-11-08 [1] Bioconductor 3.20 (R 4.4.1)
+   BiocGenerics         * 0.52.0   2024-11-08 [1] Bioconductor 3.20 (R 4.4.1)
+   BiocParallel         * 1.40.0   2024-11-23 [1] Bioconductor 3.20 (R 4.4.2)
+ P cli                    3.6.3    2024-06-21 [2] CRAN (R 4.4.0)
+   codetools              0.2-20   2024-03-31 [1] CRAN (R 4.4.1)
+   colorout             * 1.3-0.2  2024-05-01 [1] Github (jalvesaq/colorout@c6113a2)
+   colorspace             2.1-1    2024-07-26 [1] CRAN (R 4.4.0)
+   crayon                 1.5.3    2024-06-20 [1] CRAN (R 4.4.0)
+   data.table           * 1.16.4   2024-12-06 [1] CRAN (R 4.4.1)
+   DelayedArray           0.32.0   2024-11-08 [1] Bioconductor 3.20 (R 4.4.1)
+   digest                 0.6.37   2024-08-19 [1] CRAN (R 4.4.1)
+   dplyr                  1.1.4    2023-11-17 [1] CRAN (R 4.4.0)
+   escheR               * 1.6.0    2024-11-08 [1] Bioconductor 3.20 (R 4.4.1)
+   evaluate               1.0.1    2024-10-10 [1] CRAN (R 4.4.1)
+   fansi                  1.0.6    2023-12-08 [1] CRAN (R 4.4.0)
+   farver                 2.1.2    2024-05-13 [1] CRAN (R 4.4.0)
+   fastmap                1.2.0    2024-05-15 [1] CRAN (R 4.4.0)
+   generics               0.1.3    2022-07-05 [1] CRAN (R 4.4.0)
+   GenomeInfoDb         * 1.42.1   2024-11-28 [1] Bioconductor 3.20 (R 4.4.2)
+   GenomeInfoDbData       1.2.13   2024-12-12 [1] Bioconductor
+   GenomicRanges        * 1.58.0   2024-11-08 [1] Bioconductor 3.20 (R 4.4.1)
+   ggbeeswarm             0.7.2    2023-04-29 [1] CRAN (R 4.4.0)
+   ggplot2              * 3.5.1    2024-04-23 [1] CRAN (R 4.4.0)
+   ggrastr              * 1.0.2    2023-06-01 [1] CRAN (R 4.4.0)
+   ggtext               * 0.1.2    2022-09-16 [1] CRAN (R 4.4.0)
+   glue                   1.8.0    2024-09-30 [1] CRAN (R 4.4.1)
+   gridExtra            * 2.3      2017-09-09 [1] CRAN (R 4.4.0)
+   gridtext               0.1.5    2022-09-16 [1] CRAN (R 4.4.0)
+   gtable                 0.3.6    2024-10-25 [1] CRAN (R 4.4.1)
+   here                   1.0.1    2020-12-13 [1] CRAN (R 4.4.0)
+   htmltools              0.5.8.1  2024-04-04 [1] CRAN (R 4.4.0)
+   httr                   1.4.7    2023-08-15 [1] CRAN (R 4.4.0)
+   IRanges              * 2.40.1   2024-12-05 [1] Bioconductor 3.20 (R 4.4.2)
+   jsonlite               1.8.9    2024-09-20 [1] CRAN (R 4.4.1)
+   knitr                  1.49     2024-11-08 [1] CRAN (R 4.4.1)
+   lattice                0.22-6   2024-03-20 [1] CRAN (R 4.4.1)
+   lifecycle              1.0.4    2023-11-07 [1] CRAN (R 4.4.0)
+   magick                 2.8.5    2024-09-20 [1] CRAN (R 4.4.1)
+   magrittr               2.0.3    2022-03-30 [1] CRAN (R 4.4.0)
+   Matrix                 1.7-1    2024-10-18 [1] CRAN (R 4.4.1)
+   MatrixGenerics       * 1.18.0   2024-11-08 [1] Bioconductor 3.20 (R 4.4.1)
+   matrixStats          * 1.4.1    2024-09-08 [1] CRAN (R 4.4.1)
+   munsell                0.5.1    2024-04-01 [1] CRAN (R 4.4.0)
+   parallelly           * 1.40.1   2024-12-04 [1] CRAN (R 4.4.1)
+   pillar                 1.9.0    2023-03-22 [1] CRAN (R 4.4.0)
+   pkgconfig              2.0.3    2019-09-22 [1] CRAN (R 4.4.0)
+   R6                     2.5.1    2021-08-19 [1] CRAN (R 4.4.0)
+   Rcpp                   1.0.13-1 2024-11-02 [1] CRAN (R 4.4.1)
+   rjson                  0.2.23   2024-09-16 [1] CRAN (R 4.4.1)
+ P rlang                * 1.1.4    2024-06-04 [2] CRAN (R 4.4.1)
+   rmarkdown              2.29     2024-11-04 [1] CRAN (R 4.4.1)
+   rprojroot              2.0.4    2023-11-05 [1] CRAN (R 4.4.0)
+   rstudioapi             0.17.1   2024-10-22 [1] CRAN (R 4.4.1)
+   S4Arrays               1.6.0    2024-11-08 [1] Bioconductor 3.20 (R 4.4.1)
+   S4Vectors            * 0.44.0   2024-11-08 [1] Bioconductor 3.20 (R 4.4.1)
+   scales                 1.3.0    2023-11-28 [1] CRAN (R 4.4.0)
+   sessioninfo            1.2.2    2021-12-06 [1] CRAN (R 4.4.0)
+   SingleCellExperiment * 1.28.1   2024-11-23 [1] Bioconductor 3.20 (R 4.4.2)
+   SparseArray            1.6.0    2024-11-08 [1] Bioconductor 3.20 (R 4.4.1)
+   SpatialExperiment    * 1.16.0   2024-11-08 [1] Bioconductor 3.20 (R 4.4.1)
+   SummarizedExperiment * 1.36.0   2024-11-08 [1] Bioconductor 3.20 (R 4.4.1)
+   tibble                 3.2.1    2023-03-20 [1] CRAN (R 4.4.0)
+   tidyselect             1.2.1    2024-03-11 [1] CRAN (R 4.4.0)
+   UCSC.utils             1.2.0    2024-11-08 [1] Bioconductor 3.20 (R 4.4.1)
+   utf8                   1.2.4    2023-10-22 [1] CRAN (R 4.4.0)
+   vctrs                  0.6.5    2023-12-01 [1] CRAN (R 4.4.0)
+   vipor                  0.4.7    2023-12-18 [1] CRAN (R 4.4.0)
+   viridisLite            0.4.2    2023-05-02 [1] CRAN (R 4.4.0)
+   withr                  3.0.2    2024-10-28 [1] CRAN (R 4.4.1)
+   xfun                   0.49     2024-10-31 [1] CRAN (R 4.4.1)
+   xml2                   1.3.6    2023-12-04 [1] CRAN (R 4.4.0)
+   XVector                0.46.0   2024-11-08 [1] Bioconductor 3.20 (R 4.4.1)
+   yaml                   2.3.10   2024-07-26 [1] CRAN (R 4.4.0)
+   zlibbioc               1.52.0   2024-11-08 [1] Bioconductor 3.20 (R 4.4.1)
+
+ [1] /Library/Frameworks/R.framework/Versions/4.4-arm64/Resources/library
+ [2] /Users/bmulvey/Library/R/arm64/4.4/library
+
+ P ── Loaded and on-disk path mismatch.
+
+─────────────────────────────────────────────────────────────────────────────────

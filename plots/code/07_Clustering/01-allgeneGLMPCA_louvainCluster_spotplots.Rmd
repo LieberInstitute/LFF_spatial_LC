@@ -1,7 +1,7 @@
 ---
 title: "01-allgeneGLMPCA_louvainCluster_spotplots"
 output: html_document
-date: "2024-09-17"
+date: "2024-12-10"
 ---
 
 ```{r setup, include=FALSE}
@@ -15,6 +15,7 @@ library(gridExtra)
 library(SpatialExperiment)
 library(spatialLIBD)
 library(Polychrome)
+library(escheR)
 
 ## rstudio GUI tweaks
 require(colorout)
@@ -132,6 +133,83 @@ lapply(colnames(SNNlouvs),FUN=function(clus){
     
 })
 ```
+
+### some preliminary annotations of glmpca SNN k=10 louvain resolution 1 markers looks promising for some neuropeptide-rich cells surrounding LC. so load the rough annotations and subset to the pops of interest to plot the same way.
+
+```{r}
+snn10louv1 <- SNNlouvs$snn10_louv_res1
+annot <- fread("processed-data/07_Clustering/03-glmpca_snn10_louv1_tentativeannotsbytop10lfcmks.txt")
+annot <- unique(annot[,.(clus,label)])
+
+snn10louv1 <- as.data.table(cbind(colnames(lc2),snn10louv1))
+snn10louv1 <- merge.data.table(snn10louv1,annot,by.x="snn10louv1",by.y="clus")
+snn10louv1 <- DataFrame(snn10louv1,row.names=snn10louv1$V1)[colnames(lc2),]
+
+colLabels(lc2) <- snn10louv1$label
+
+lc2sub <- lc2[,lc2$label %in% c("Inh.SST.CCK.HTR2C","LC.1","5HT.1","Exc.17A6.RBP4.TAC1.HTR2C","Unsure.2.PCDHGC5.AVP")]
+lc2sub$label <- factor(lc2sub$label,levels=c("Inh.SST.CCK.HTR2C","LC.1","5HT.1","Exc.17A6.RBP4.TAC1.HTR2C","Unsure.2.PCDHGC5.AVP"))
+
+### write plot
+nclusts <- length(unique(lc2sub$label))
+pal <- palette36.colors(n = nclusts+2)[c(3:(nclusts+2))]
+# next line is needed for consistency in color-cluster assignments between libdspatial and the generated legend below
+names(pal) <- levels(lc2sub$label)
+
+## create a unified legend spanning all possible cluster values (regardless of presence in a given sample)
+leg.tmp <- ggplot(as.data.table(colData(lc2sub))[,.(label,array_row,array_col)],aes(x=array_row,y=array_col,col=label))+geom_point()+
+  scale_color_manual(values=pal)+
+  guides(color=guide_legend(ncol=2,override.aes=list(size=3)))+
+  theme(
+              legend.text = element_text(size = 10),
+              legend.title = element_text(size = 10, hjust = 0.5),
+              legend.spacing.y = unit(0, "cm"),
+              legend.spacing.x = unit(0.1, "cm"))
+leg.tmp2 <- extract_legend(leg.tmp)
+dev.off()
+### make spotplots
+s <- unique(lc2sub$sample_id)
+
+plt <- lapply(s,FUN=function(s){
+   cursub <- lc2sub[,lc2sub$sample_id==s]
+   
+   mke <- make_escheR(cursub)
+   mke <- mke |> add_fill("label",size=2.5,point_size = 2.5)
+   mke <- mke+ggtitle(s)
+   return(mke)
+})
+
+# pull legend from a plot, then wipe legends from individual plots
+leg.tmp2 <- extract_legend(plt[[1]])
+dev.off()
+
+### adjust font sizes, drop individual plot legends
+plt <- lapply(
+  plt,
+  FUN = function(x) {
+      x +
+          theme(
+              plot.title = element_text(size = 14, hjust = 0.5),
+              strip.text = element_text(size = 10),
+          )+
+          guides(fill="none")
+  }
+)
+
+
+# save
+pdf(
+      "plots/07_Clustering/01-spotplots/01-allgeneGLMPCA_SNN10_louvain1_clusofinterestonly.pdf",
+  width = 26,
+  height = 90,
+  onefile=FALSE
+)
+### arrangeGrob() on the spotplot list --> 3 x 3 of plots from that list only, constituting the "first column" of the parent; leg.tmp2 is an additional thing being plotted in the second column of the parent. width of the plot grid is set to 24, width of the second column (legend only) set to 2.
+do.call("grid.arrange",list(arrangeGrob(grobs=plt,ncol=3),leg.tmp2,ncol=2,widths=c(24,2)))
+dev.off()
+
+```
+
 
 reprod info
 ```{r}
