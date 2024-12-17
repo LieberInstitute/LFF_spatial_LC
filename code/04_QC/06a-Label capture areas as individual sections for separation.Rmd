@@ -341,7 +341,7 @@ dev.off()
 
 ## all look good. save the table
 tmpcd2 <- as.data.table(tmpcd2,keep.rownames=T)
-fwrite(tmpcd2,"processed-data/05_QC/06a-capture_areas_split_withOUT_slibd.txt",sep='\t',quote=F)
+fwrite(tmpcd2,"processed-data/04_QC/06a-capture_areas_split_withOUT_slibd.txt",sep='\t',quote=F)
 ```
 
 Manually trace in spatial libd browser:

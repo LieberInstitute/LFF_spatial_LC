@@ -57,7 +57,7 @@ BUT, the ability to bulk select spots is imperfect and a few of these ended up w
 
 ```{r}
 ## read in the imperfect outputs
-imperfectsearch <- list.files("processed-data/05_QC/06b-Uncleaned_capture_area_sectionsplitting_spatialLIBD_outputs",full.names = TRUE)
+imperfectsearch <- list.files("processed-data/04_QC/06b-Uncleaned_capture_area_sectionsplitting_spatialLIBD_outputs",full.names = TRUE)
 imperfect <- grep(imperfectsearch,pattern="^.*outputs/.*remov.*$",value=T)
 imperfect <- grep(imperfect,pattern="^.*\\.txt|\\.csv.*$",value=T)
 rm(imperfectsearch)
@@ -187,7 +187,7 @@ fixedannots[sample_id=="V13M06-402_A1" &
 
 ### now load the other spatialLIBD section annotations and check all of them, including the imperfects
 ```{r}
-checkanno <- list.files("processed-data/05_QC/06b-Uncleaned_capture_area_sectionsplitting_spatialLIBD_outputs",full.names = TRUE)
+checkanno <- list.files("processed-data/04_QC/06b-Uncleaned_capture_area_sectionsplitting_spatialLIBD_outputs",full.names = TRUE)
 checkanno <- grep(checkanno,pattern="^.*outputs/.*remov.*$",value=T,invert=T)
 checkanno <- grep(checkanno,pattern="^.*\\.txt|\\.csv.*$",value=T)
 
@@ -504,7 +504,7 @@ allsectionannots[sample_id=="V13M06-404_D1" & array_col==73 & array_row==29,Manu
 ### WE DID IT THANK GITHUB COPILOT
 ### now attach all of the previous simple linear-geometry extracted annotations and save as one bigol table
 ```{r}
-simplesplits <- fread("/Users/bmulvey/Desktop/KM Lab/local_lffLC/LFF_spatial_LC/processed-data/05_QC/06a-capture_areas_split_withOUT_slibd.txt")
+simplesplits <- fread("/Users/bmulvey/Desktop/KM Lab/local_lffLC/LFF_spatial_LC/processed-data/04_QC/06a-capture_areas_split_withOUT_slibd.txt")
 
 # names(simplesplits)
 # subset to the same columns we have in allsectionannots 
@@ -530,7 +530,7 @@ stopifnot(nrow(allfinalsectionsplits[,.N,by="key"][N>1])==0)
 stopifnot(length(unique(allfinalsectionsplits$section))==2)
 
 ## wow actually checks out. save it.
-fwrite(allfinalsectionsplits,"processed-data/05_QC/06c-raw_SPE_spots_assigned_to_tissue-section-1or2_for_all_capture_areas.txt",sep='\t',quote=F)
+fwrite(allfinalsectionsplits,"processed-data/04_QC/06c-raw_SPE_spots_assigned_to_tissue-section-1or2_for_all_capture_areas.txt",sep='\t',quote=F)
 
 ## clean up
 rm(plt,simplesplits,finalfixgridpltdat,checkspe,allsectionannots)
@@ -546,7 +546,7 @@ fullres_with_splitannots <- merge.data.table(fullres_with_splitannots,allfinalse
 
 fullres_with_splitannots <- fullres_with_splitannots[,.(sample_id,section,pxl_col_in_fullres,pxl_row_in_fullres)]
 
-fwrite(fullres_with_splitannots,"processed-data/05_QC/06c-tissueOverlapping_spots_with_fullres-pixel-row-col-coords_and_section_annotations.txt",sep='\t',quote=F)
+fwrite(fullres_with_splitannots,"processed-data/04_QC/06c-tissueOverlapping_spots_with_fullres-pixel-row-col-coords_and_section_annotations.txt",sep='\t',quote=F)
 ```
 
 

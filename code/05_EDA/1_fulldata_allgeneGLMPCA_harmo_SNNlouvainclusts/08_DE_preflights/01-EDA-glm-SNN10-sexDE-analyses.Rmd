@@ -1,5 +1,5 @@
 ---
-title: "02-glm-SNN10-sexDE-analyses"
+title: "01-INITIAL-glm-SNN10-sexDE-analyses"
 author: "Bernie Mulvey"
 date: "2024-12-12"
 output: html_document
@@ -172,7 +172,7 @@ bsHna60s <- lapply(lvcl,function(b){
 })
 
 i<-1
-for (i in c(1:length(bsHna60s))){
+for (i in c(1:length(bsHna60s))){d
     j<-1
     for (j in c(1:length(bsHna60s[[i]]))){
         tmp <- as.data.table(bsHna60s[[i]][[j]][[2]],keep.rownames=T)
@@ -181,7 +181,7 @@ for (i in c(1:length(bsHna60s))){
     }
 }
 
-saveRDS(bsHna60s,"processed-data/08_XenDesign_Analyses/02a-glmPCA-snn10-louvs_sexDE_sexOnlyFactor.RDS")
+saveRDS(bsHna60s,"processed-data/08_DE_preflights/03a-glmPCA-snn10-louvs_sexDE_sexOnlyFactor.RDS")
 
 ```
 
@@ -308,7 +308,7 @@ for (i in c(1:length(bsHna60cov))){
     }
 }
 
-saveRDS(bsHna60cov,"processed-data/08_XenDesign_Analyses/02b-glmPCA-snn10-louvs_sexDE_ageAPOEcovar.RDS")
+saveRDS(bsHna60cov,"processed-data/08_DE_preflights/03b-glmPCA-snn10-louvs_sexDE_ageAPOEcovar.RDS")
 
 ```
 

@@ -43,9 +43,9 @@ lc <- readRDS("processed-data/02_build_spe/spe_raw.rds")
 colnames(lc) <- lc$key
 
 ## QC labels from edge detection, spotsweeper:
-edgelabs <- fread("processed-data/05_QC/01-tissue margin spots.txt")
+edgelabs <- fread("processed-data/04_QC/01-tissue margin spots.txt")
 setnames(edgelabs,2,"spot_type")
-locout <- fread("processed-data/05_QC/02-Spotsweeper_outliers_post-edge-rm.txt")
+locout <- fread("processed-data/04_QC/02-Spotsweeper_outliers_post-edge-rm.txt")
 
 ## combine, get filter-passing spots, subset LC accordingly, and append QC to the subsetted spe colData
 qccols <- merge.data.table(edgelabs,locout,by="rn",all.x=T)
@@ -105,7 +105,7 @@ plts <- lapply(plts,FUN=function(x){
     return(x)
 })
 
-pdf("plots/05_QC/03a-totalUMIs-nonEdge-nonLocalOutliers.pdf",height=14,width=9)
+pdf("plots/04_QC/03a-totalUMIs-nonEdge-nonLocalOutliers.pdf",height=14,width=9)
 do.call("grid.arrange",c(plts,ncol=6))
 dev.off()
 ```
@@ -152,7 +152,7 @@ plts <- lapply(plts,FUN=function(x){
     return(x)
 })
 
-pdf("plots/05_QC/03b-91orfewerUMIs.pdf",height=14,width=9)
+pdf("plots/04_QC/03b-91orfewerUMIs.pdf",height=14,width=9)
 do.call("grid.arrange",c(plts,ncol=6))
 dev.off()
 ```
@@ -187,7 +187,7 @@ plts <- lapply(plts,FUN=function(x){
     return(x)
 })
 
-pdf("plots/05_QC/03c-uniqueGenes.pdf",height=14,width=9)
+pdf("plots/04_QC/03c-uniqueGenes.pdf",height=14,width=9)
 do.call("grid.arrange",c(plts,ncol=6))
 dev.off()
 ```
@@ -234,7 +234,7 @@ plts <- lapply(plts,FUN=function(x){
     return(x)
 })
 
-pdf("plots/05_QC/03d-56orfewerGenes.pdf",height=14,width=9)
+pdf("plots/04_QC/03d-56orfewerGenes.pdf",height=14,width=9)
 do.call("grid.arrange",c(plts,ncol=6))
 dev.off()
 ```
@@ -277,7 +277,7 @@ plts <- lapply(plts,FUN=function(x){
     return(x)
 })
 
-pdf("plots/05_QC/03e-pctMito.pdf",height=14,width=9)
+pdf("plots/04_QC/03e-pctMito.pdf",height=14,width=9)
 do.call("grid.arrange",c(plts,ncol=6))
 dev.off()
 ```

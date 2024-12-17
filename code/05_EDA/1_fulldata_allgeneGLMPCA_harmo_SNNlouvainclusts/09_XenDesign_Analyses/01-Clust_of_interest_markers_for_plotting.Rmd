@@ -23,6 +23,7 @@ options("styler.addins_style_transformer" = "biocthis::bioc_style()")
 unloadNamespace("datasets")
 ```
 
+
 We already determined markers and made putative annotations for the clusters from glmpca-SNN k 10-louvain resolution 0.5. So load these in, filter, and save a subset of genes for which we'll plot (with a column added to indicate which cluster we think they mark).
 
 ```{r}
@@ -44,7 +45,32 @@ topfdrs <- mktab[order(fdr),head(.SD,15),by="clus"][,.(clus,gene,annot)]
 top30s <- unique(rbind(toplfcs,topfdrs))
 top30s[,plottitle:=paste0(gene, " ", annot)]
 
-fwrite(top30s,"processed-data/08_XenDesign_Analyses/01_snn10louv0.5_markers_svgs/top30_for_lc_dr_iN_astro.txt",sep='\t',quote=F)
+fwrite(top30s,"processed-data/09_XenDesign_Analyses/01a-louv.5_top10markers_for_lc_dr_iN_astro.txt",sep='\t',quote=F)
+```
+
+
+We also already determined markers and made putative annotations for the clusters from glmpca-SNN k 10-louvain resolution 1. So same thing
+
+```{r}
+snnlouvmks <- readRDS("processed-data/07_Clustering/03-allgeneGLMPCA_snnk10-15-20_louvain_FDR0.1markers.RDS")
+
+mktab <- snnlouvmks[["snn10_louv_res1"]]
+
+## append cluster annots
+annot <- fread("processed-data/07_Clustering/03-glmpca_snn10_louv1_tentativeannotsbytop10lfcmks.txt")
+
+mktab <- merge.data.table(mktab,unique(annot[,.(clus,label)]),by="clus")
+
+## filter to only the clusters of interest: "Exc.17A6.RBP4.TAC1.HTR2C"", "Astrocyte.1", "Microglia.MostlyPutativeXscrips", "Inh.SST.CCK.HTR2C", "5HT.1", "LC.1"
+mktab <- mktab[label %in% c("Exc.17A6.RBP4.TAC1.HTR2C","Astrocyte.1","Microglia.MostlyPutativeXscrips","Inh.SST.CCK.HTR2C","5HT.1","LC.1")]
+
+## get top 15 by LFC and top 15 by FDR (table is prefiltered to fdr 0.1 so may yield fewer than 30 genes) for each
+toplfcs <- mktab[order(-logFC),head(.SD,15),by="clus"][,.(clus,gene,label)]
+topfdrs <- mktab[order(fdr),head(.SD,15),by="clus"][,.(clus,gene,label)]
+top30s <- unique(rbind(toplfcs,topfdrs))
+top30s[,plottitle:=paste0(gene, " ", label)]
+
+fwrite(top30s,"processed-data/09_XenDesign_Analyses/01b-louv1_top10markers_for_lc_dr_iN_TAC1ex_astro_mglia.txt",sep='\t',quote=F)
 ```
 
 rep inf

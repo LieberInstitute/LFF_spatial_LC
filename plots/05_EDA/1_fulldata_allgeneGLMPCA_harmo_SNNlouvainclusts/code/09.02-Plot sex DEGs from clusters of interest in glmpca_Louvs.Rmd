@@ -59,11 +59,11 @@ ann1 <- fread("processed-data/07_Clustering/03-glmpca_snn10_louv1_tentativeannot
 ann1 <- unique(ann1[,.(clus,label)])
 
 ## sex de-simple
-sexde <- readRDS("processed-data/08_XenDesign_Analyses/02a-glmPCA-snn10-louvs_sexDE_sexOnlyFactor.RDS")
+sexde <- readRDS("processed-data/09_XenDesign_Analyses/02a-glmPCA-snn10-louvs_sexDE_sexOnlyFactor.RDS")
 names(sexde) #louv05, louv1
 
 ## sex DE covaried for E4 status and age
-sexdecov <- readRDS("processed-data/08_XenDesign_Analyses/02b-glmPCA-snn10-louvs_sexDE_ageAPOEcovar.RDS")
+sexdecov <- readRDS("processed-data/09_XenDesign_Analyses/02b-glmPCA-snn10-louvs_sexDE_ageAPOEcovar.RDS")
 names(sexdecov) # same
 ```
 
@@ -140,8 +140,8 @@ parallelize over clustering paradigms, sex DE analysis models, and clusters. inc
 # spes <- spes[c(3:4)]
 
 mapply(d=sexdel,s=spes,od=names(sexdel),SIMPLIFY = FALSE,FUN = function(d,s,od){
-    if(!file.exists(paste0("plots/08_XenDesign_Analyses/02_sexDEGs/",od))){dir.create(paste0("plots/08_XenDesign_Analyses/02_sexDEGs/",od))}
-    od2 <- paste0("plots/08_XenDesign_Analyses/02_sexDEGs/",od)
+    if(!file.exists(paste0("plots/09_XenDesign_Analyses/02_sexDEGs/",od))){dir.create(paste0("plots/09_XenDesign_Analyses/02_sexDEGs/",od))}
+    od2 <- paste0("plots/09_XenDesign_Analyses/02_sexDEGs/",od)
     lapply(unique(s$label),FUN = function(l){
         if(!file.exists(paste0(od2,"/",l))){dir.create(paste0(od2,"/",l))}
         od3 <- paste0(od2,"/",l)

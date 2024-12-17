@@ -1,6 +1,5 @@
 ---
-title: "04-Remove edge spots, local outliers, and remaining bottom 1pctile of umis
-  and genes"
+title: "05-Examine binomial gene deviances across SPE, batched by brnum, batched by slide"
 output: html_document
 date: "2024-07-22"
 ---
@@ -15,7 +14,7 @@ library(Biostrings)
 library(ggplot2)
 library(gridExtra)
 library(SpatialExperiment)
-library(spatialLIBD)
+library(scry)
 
 ## rstudio GUI tweaks
 require(colorout)
@@ -23,164 +22,171 @@ ColorOut()
 options("styler.addins_style_transformer" = "biocthis::bioc_style()")
 ##
 
-## enable forked parallel processing with BiocParallel::multicoreParam, future::, etc. seemed to need this a couple times, but otherwise havent so its here as a preventative measure.
-library(parallelly)
-options(parallelly.supportsMulticore.disableOn="")
-options(parallelly.fork.enable=TRUE)
-library(BiocParallel)
-options(bphost="localhost")
-
-## ggplot defaults
-theme_set(theme_bw()+theme(axis.text.x = element_text(size = 14), axis.title.x = element_text(size = 16), axis.text.y = element_text(size = 14), axis.title.y = element_text(size =16), plot.title = element_text(size = 20,hjust=0.5), strip.text = element_text(size=18), legend.text = element_text(size=10), legend.title = element_text(size=11,hjust=0.5)))
+library(parallel)
 ```
 
-load SPE, tissue edge labels, local outlier labels, and append the latter two to colData
+### load filtered SPE, append donor ids (not in the SPE somehow)
 ```{r}
-lc <- readRDS("processed-data/02_build_spe/spe_raw.rds")
-## make colnames globally unique
-colnames(lc) <- lc$key
-
-## load QC result tables
-edgespots <- fread("processed-data/05_QC/01-tissue margin spots.txt")
-locout <- fread("processed-data/05_QC/02-Spotsweeper_outliers_post-edge-rm.txt")
-qccols <- merge.data.table(edgespots,locout,by="rn",all.x=T)
-qccols <- DataFrame(qccols,row.names=qccols$rn)
-qccols <- qccols[colnames(lc),]
-qccols$rn <- NULL
-
-stopifnot(all(rownames(qccols) %in% colnames(lc)))
-# append to coldata
-colData(lc) <- cbind(colData(lc),qccols)
-
-rm(edgespots,locout,qccols)
-```
-
-### maximal subset: in_tissue==T, nonzero rowsums, nonzero colsums
-```{r}
-lc <- lc[,lc$in_tissue==TRUE]
-lc <- lc[rowSums(counts(lc))!=0,]
-lc <- lc[,colSums(counts(lc))!=0]
-
-# descriptive stats on the maximal subset
-dim(lc) # 30104, 149671
-tmpstat.max <- as.data.table(colData(lc))
-tmpstat.max[,mn_umi:=mean(sum_umi),by="sample_id"]
-tmpstat.max[,md_umi:=median(sum_umi),by="sample_id"]
-tmpstat.max[,mn_gene:=mean(sum_gene),by="sample_id"]
-tmpstat.max[,md_gene:=median(sum_gene),by="sample_id"]
-tmpstat.max <- unique(tmpstat.max[,.(sample_id,mn_umi,md_umi,mn_gene,md_gene)])
-tmpstat.max[,filtstep:="InTiss_NonZeroGene_NonZeroSpot"]
-```
-
-### remove edge spots and get stats again
-```{r}
-lc <- lc[,lc$spot_type %in% c("keep","image perimeter")]
-lc <- lc[rowSums(counts(lc))!=0,]
-
-dim(lc)
-# 29878, 134593: 15078 spots, 226 genes removed
-tmpstat.noedge <- as.data.table(colData(lc))
-tmpstat.noedge[,mn_umi:=mean(sum_umi),by="sample_id"]
-tmpstat.noedge[,md_umi:=median(sum_umi),by="sample_id"]
-tmpstat.noedge[,mn_gene:=mean(sum_gene),by="sample_id"]
-tmpstat.noedge[,md_gene:=median(sum_gene),by="sample_id"]
-tmpstat.noedge <- unique(tmpstat.noedge[,.(sample_id,mn_umi,md_umi,mn_gene,md_gene)])
-tmpstat.noedge[,filtstep:="Edge_Removal"]
-```
-
-### remove local outliers and get stats again
-```{r}
-lc <- lc[,!(lc$sum_umi_outliers_low)&!(lc$sum_gene_outliers_low)&!(lc$expr_chrM_ratio_outliers_hi)]
-lc <- lc[rowSums(counts(lc))!=0,]
-
-dim(lc)
-# 29877, 134209: 384 spots, 1 gene removed
-tmpstat.nooutlie <- as.data.table(colData(lc))
-tmpstat.nooutlie[,mn_umi:=mean(sum_umi),by="sample_id"]
-tmpstat.nooutlie[,md_umi:=median(sum_umi),by="sample_id"]
-tmpstat.nooutlie[,mn_gene:=mean(sum_gene),by="sample_id"]
-tmpstat.nooutlie[,md_gene:=median(sum_gene),by="sample_id"]
-tmpstat.nooutlie <- unique(tmpstat.nooutlie[,.(sample_id,mn_umi,md_umi,mn_gene,md_gene)])
-tmpstat.nooutlie[,filtstep:="LocalOutlier_Removal"]
-```
-
-### lastly, identify the bottom 1%ile of remaing spots in terms of their UMI, gene content and remove them. tabulate shit once more.
-```{r}
-quantile(lc$sum_umi,0.01) # 23
-quantile(lc$sum_gene,0.01) # 17
-
-lc <- lc[,lc$sum_umi>23&lc$sum_gene>17]
-lc <- lc[rowSums(counts(lc))>0,]
-dim(lc)
-# 29877, 132484: 1725 spots, no genes removed
-tmpstat.botptile <- as.data.table(colData(lc))
-tmpstat.botptile[,mn_umi:=mean(sum_umi),by="sample_id"]
-tmpstat.botptile[,md_umi:=median(sum_umi),by="sample_id"]
-tmpstat.botptile[,mn_gene:=mean(sum_gene),by="sample_id"]
-tmpstat.botptile[,md_gene:=median(sum_gene),by="sample_id"]
-tmpstat.botptile <- unique(tmpstat.botptile[,.(sample_id,mn_umi,md_umi,mn_gene,md_gene)])
-tmpstat.botptile[,filtstep:="BotPtile_UMIorGene_removal"]
-```
-
-### combine stats
-```{r}
-filtstats <- rbind(tmpstat.max,tmpstat.noedge,tmpstat.nooutlie,tmpstat.botptile)
-
-### save
-fwrite(filtstats,"processed-data/05_QC/04-Samplewise UMI and gene stats per filt step.txt",sep='\t',quote=F)
-```
-
-#### plot filter step outcomes
-```{r}
-filtstats <- melt(filtstats,id.vars=c("sample_id","filtstep"))
-filtstats[variable=="mn_umi",variable:="Mean UMIs/spot"]
-filtstats[variable=="md_umi",variable:="Median UMIs/spot"]
-filtstats[variable=="mn_gene",variable:="Mean Genes/spot"]
-filtstats[variable=="md_gene",variable:="Median Genes/spot"]
-
-filtstats[,variable:=factor(variable,levels=c("Mean UMIs/spot","Mean Genes/spot","Median UMIs/spot","Median Genes/spot"))]
-filtstats[,filtstep:=factor(filtstep,levels=c("InTiss_NonZeroGene_NonZeroSpot","Edge_Removal","LocalOutlier_Removal","BotPtile_UMIorGene_removal"))]
-
-
-
-plt <- ggplot(filtstats,aes(x=filtstep,y=value,col=variable))+
-   geom_boxplot(outlier.shape=NA)+
-   geom_point(position=position_jitterdodge(),size=0.3)+
-   theme(axis.text.x=element_text(angle=90,hjust=1,size=7))
-plt
-
-
-```
-
-## finally, the colData seems to be missing the donor BrNums for each sample, which we need since there are some duplicates in here. the demos table also has 10x reagent kit ID for each slide, which we'll want for exploration as a potential technical variable (since some kits were used across multiple slides eg). also, there's a bunch of 10x columns we can toss.
-```{r}
-tmpcd <- as.data.table(colData(lc),keep.rownames=TRUE)
+lc <- readRDS("processed-data/04_QC/04-lffLC_noEdges_noLocOutliers_remainder1pctileUMIorGene-removed.RDS")
 
 demos <- fread("raw-data/demos.txt")
 demos[,sample_id:=paste0(slide,"_",array)]
 setnames(demos,"Donors","brnum")
-tmpcd <- merge.data.table(tmpcd,demos[,.(sample_id,brnum,Kit)],by="sample_id",all.x=T)
 
-keepnames <- grep(names(tmpcd),pattern="X10",value=T,invert=T)
-tmpcd <- DataFrame(tmpcd[,..keepnames],row.names=tmpcd$rn)
+tmpcd <- as.data.table(colData(lc),keep.rownames=T)
+tmpcd <- merge.data.table(tmpcd,demos[,.(sample_id,slide,brnum)],by="sample_id",all.x=T)
+tmpcd <- DataFrame(tmpcd,row.names=tmpcd$rn)[colnames(lc),]
 tmpcd$rn <- NULL
-colData(lc) <- tmpcd[colnames(lc),]
+colData(lc) <- tmpcd
+
+rm(tmpcd,demos)
+gc()
 ```
 
-calculate log normed counts and save SPE
+
+### run full-SPE binomial deviance calcs, templating from Jacqui Thomson code @ https://github.com/LieberInstitute/spatialDLPFC_mdd_bpd/blob/devel/code/04_preprocessing/02_calculate_binomial_deviance_batch-slide.r
 ```{r}
-lc <- computeLibraryFactors(lc)
-lc <- logNormCounts(lc)
+## this returns an SPE with a binomial deviance column added to rowdata
+devspe <- devianceFeatureSelection(lc,fam="binomial",batch=NULL)
 
-saveRDS(lc,"processed-data/05_QC/04-lffLC_noEdges_noLocOutliers_remainder1pctileUMIorGene-removed.RDS")
-
+devspe <- as.data.table(rowData(devspe))
+setnames(devspe,"binomial_deviance","dev_nobatch")
+## get ranks for the deviance value (then reverse order so greatest deviance --> highest rank)
+devspe[,rank_nobatch:=rank(dev_nobatch)]
+devspe[,rank_nobatch:=1+nrow(devspe)-rank_nobatch]
 ```
 
-reprod inf
+### per the same script, get these values with batch as brnum
+```{r}
+lc$brnum <- as.factor(lc$brnum)
+devbr <- as.data.table(rowData(devianceFeatureSelection(lc,fam="binomial",batch=lc$brnum)),keep.rownames=T)
+
+setnames(devbr,"binomial_deviance","dev_brnum")
+devbr[,rank_devbr:=rank(dev_brnum)]
+devbr[,rank_devbr:=1+nrow(devbr)-rank_devbr]
+
+devstab <- merge.data.table(devspe,devbr[,.(gene_id,dev_brnum,rank_devbr)],by="gene_id")
+
+rm(devbr,devspe)
+```
+
+### get the same two things PER slide
+```{r}
+# remove image data for smoother sailing
+imgData(lc) <- NULL
+
+slidespes <- lapply(unique(lc$slide),FUN=function(s){lc[,lc$slide==s]})
+names(slidespes) <- unique(lc$slide)
+
+slidesperes <- mcmapply(X=slidespes,Y=names(slidespes),mc.cores = 6,SIMPLIFY = F,FUN=function(X,Y){
+   devslide <- as.data.table(rowData(devianceFeatureSelection(X,fam="binomial")),keep.rownames=T)
+   
+   slidecolname <- paste0(gsub(Y,pattern="-",replacement="_"))
+   setnames(devslide,"binomial_deviance",paste0("dev_",slidecolname))
+   slidedevcol <- paste0("dev_",slidecolname)
+   
+   devslide[,rank_slide:=rank(get(slidedevcol))]
+   devslide[,rank_slide:=1+nrow(devslide)-rank_slide]
+   
+   setnames(devslide,"rank_slide",paste0("rank_",slidecolname))
+   
+   retnames <- c("gene_id",grep(names(devslide),pattern=slidecolname,value=T))
+   devslide <- devslide[,..retnames]
+   
+   ### and again with donor batching
+   devslidebr <- as.data.table(rowData(devianceFeatureSelection(X,fam="binomial",batch=X$brnum)),keep.rownames=T)
+   
+   setnames(devslidebr,"binomial_deviance",paste0("dev_",slidecolname,"_brnum"))
+   slidedevcolbr <- paste0("dev_",slidecolname,"_brnum")
+   
+   devslidebr[,rank_slidebr:=rank(get(slidedevcolbr))]
+   devslidebr[,rank_slidebr:=1+nrow(devslidebr)-rank_slidebr]
+   
+   setnames(devslidebr,"rank_slidebr",paste0("rank_",slidecolname,"_brnum"))
+   
+   retnamesbr <- c("gene_id",grep(names(devslidebr),pattern=slidecolname,value=T))
+   devslidebr <- devslidebr[,..retnamesbr]
+   
+   ret <- merge.data.table(devslide,devslidebr,by="gene_id")
+   return(ret)
+})
+
+## concat
+i<-1
+for (i in c(1:length(slidesperes))){
+   if(i==1){
+      sampwiseres <- slidesperes[[i]]
+   }
+   else{sampwiseres <- merge.data.table(sampwiseres,slidesperes[[i]],by="gene_id")}
+}
+rm(i)
+
+### append to other results
+devstab <- merge.data.table(devstab,sampwiseres,by="gene_id")
+
+## tidy up
+rm(slidesperes,slidespes,sampwiseres)
+gc()
+```
+
+
+### save
+```{r}
+saveRDS(devstab,"processed-data/04_QC/05-binomial_gene_deviances_panSPE_nobatch-brnumAsBatch_andWithinSlide_nobatch-brnumbatch.RDS")
+```
+
+### examine teh table (visually) to scroll through top genes for the no-batch, donor-blocked, sample-blocked
+
+```{r}
+devstab <- readRDS("processed-data/04_QC/05-binomial_gene_deviances_panSPE_nobatch-brnumAsBatch_andWithinSlide_nobatch-brnumbatch.RDS")
+### get unique slide numbers as they appear in the colnames of devstab
+slns <- unique(gsub(grep(names(devstab),pattern="_(V.{9})",value=T),pattern="^.*_(V.{9}).*$",replacement="\\1"))
+
+## concatenate within-slide nobatch vs. donor-blocked deviances
+rdiffs <- rbindlist(lapply(slns,FUN=function(x){
+   nobatchcol <- paste0("rank_",x)
+   brnumbatch <- paste0(nobatchcol,"_brnum")
+   
+   ## calculate in the main devstab, but also break out the result to rbind together across slides
+   devstab[,newcol:=get(brnumbatch)-get(nobatchcol)]
+   retdf <- devstab[,.(newcol,gene_id)]
+   setnames(retdf,"newcol","rdiff")
+   retdf[,slide:=x]
+   
+   setnames(devstab,"newcol",paste0("rdiff_",x))
+   return(retdf)
+}))
+
+### limit to top 10k genes from null model (SPE-wide no batch)
+rdiffs2 <- rdiffs[gene_id %in% devstab[rank_nobatch<=10000,gene_id]]
+
+# global outliers
+mean1 <- mean(rdiffs2$rdiff)
+sd1 <- sd(rdiffs2$rdiff)
+rdiffs2[,nSD:=(rdiff-mean1)/sd1]
+## view how many genes are ≥5 SDs out per slide
+rdiffs2[nSD>5,.N,by="slide"]
+
+# slidewise outliers
+rdiffs2[,slide.meanrdiff:=mean(rdiff),by="slide"]
+rdiffs2[,slide.SD:=sd(rdiff),by="slide"]
+rdiffs2[,nSD.slide:=(rdiff-slide.meanrdiff)/slide.SD]
+
+# attach gene symbols for more interpretability
+tmprd <- as.data.table(rowData(lc))[,.(gene_id,gene_name)]
+rdiffs2 <- merge.data.table(rdiffs2,tmprd,by="gene_id",all.x=T)
+fwrite(rdiffs2,"processed-data/04_QC/05-SPEwide_and_slidewise_gene-binDevs_inSDs.txt",sep='\t',quote=F)
+```
+
+### in all cases, the top genes here are genes of biological interest / biologically sensible (MT genes, canonical marker genes for astrocytes (GFAP, AQP4), neurons (SNAP25, FEV (5HT)), LC (TH,PHOX2A,PHOX2B), blood (HBA, HBB genes), etc.) or genes that clearly delineate a demographic feature imbalance within the slide (e.g., sex chromosomal genes, namely XIST and many many Y genes). To my eye as a brain transcriptomics analyst, there isn't a preponderance of unfamiliar-looking genes here (i.e., the high-variance genes are genes routinely encountered in this biological context, which is a good thing).  
+
+
+reprod info
 ```{r}
 sessionInfo()
 sessioninfo::session_info()
 ```
+
 R version 4.4.1 RC (2024-06-06 r86719)
 Platform: aarch64-apple-darwin20
 Running under: macOS Sonoma 14.5
@@ -196,20 +202,21 @@ time zone: America/Chicago
 tzcode source: internal
 
 attached base packages:
-[1] stats4    stats     graphics  grDevices utils     datasets  methods   base     
+[1] parallel  stats4    stats     graphics  grDevices utils     datasets  methods  
+[9] base     
 
 other attached packages:
- [1] BiocParallel_1.38.0         parallelly_1.37.1          
- [3] colorout_1.3-0.2            spatialLIBD_1.16.2         
- [5] SpatialExperiment_1.14.0    SingleCellExperiment_1.26.0
- [7] SummarizedExperiment_1.34.0 Biobase_2.64.0             
- [9] GenomicRanges_1.56.1        MatrixGenerics_1.16.0      
-[11] matrixStats_1.3.0           gridExtra_2.3              
-[13] ggplot2_3.5.1               Biostrings_2.72.1          
-[15] GenomeInfoDb_1.40.1         XVector_0.44.0             
-[17] IRanges_2.38.1              S4Vectors_0.42.1           
-[19] BiocGenerics_0.50.0         data.table_1.15.4          
-[21] rlang_1.1.4                
+ [1] scry_1.16.0                 BiocParallel_1.38.0        
+ [3] parallelly_1.37.1           colorout_1.3-0.2           
+ [5] spatialLIBD_1.16.2          SpatialExperiment_1.14.0   
+ [7] SingleCellExperiment_1.26.0 SummarizedExperiment_1.34.0
+ [9] Biobase_2.64.0              GenomicRanges_1.56.1       
+[11] MatrixGenerics_1.16.0       matrixStats_1.3.0          
+[13] gridExtra_2.3               ggplot2_3.5.1              
+[15] Biostrings_2.72.1           GenomeInfoDb_1.40.1        
+[17] XVector_0.44.0              IRanges_2.38.1             
+[19] S4Vectors_0.42.1            BiocGenerics_0.50.0        
+[21] data.table_1.15.4           rlang_1.1.4                
 
 loaded via a namespace (and not attached):
   [1] RColorBrewer_1.1-3        rstudioapi_0.16.0         jsonlite_1.8.8           
@@ -251,11 +258,10 @@ loaded via a namespace (and not attached):
 [109] tibble_3.2.1              BiocManager_1.30.23       cli_3.6.3                
 [112] xtable_1.8-4              jquerylib_0.1.4           munsell_0.5.1            
 [115] golem_0.4.1               Rcpp_1.0.13               dbplyr_2.5.0             
-[118] png_0.1-8                 XML_3.99-0.17             parallel_4.4.1           
-[121] blob_1.2.4                dotCall64_1.1-1           sparseMatrixStats_1.16.0 
-[124] bitops_1.0-7              viridisLite_0.4.2         scales_1.3.0             
-[127] purrr_1.0.2               crayon_1.5.3              cowplot_1.1.3            
-[130] KEGGREST_1.44.1          
+[118] png_0.1-8                 XML_3.99-0.17             blob_1.2.4               
+[121] dotCall64_1.1-1           sparseMatrixStats_1.16.0  bitops_1.0-7             
+[124] viridisLite_0.4.2         scales_1.3.0              purrr_1.0.2              
+[127] crayon_1.5.3              cowplot_1.1.3             KEGGREST_1.44.1          
 > sessioninfo::session_info()
 ─ Session info ──────────────────────────────────────────────────────────────────
  setting  value
@@ -392,6 +398,7 @@ loaded via a namespace (and not attached):
    ScaledMatrix           1.12.0    2024-04-30 [1] Bioconductor 3.19 (R 4.4.0)
    scales                 1.3.0     2023-11-28 [1] CRAN (R 4.4.0)
    scater                 1.32.0    2024-04-30 [1] Bioconductor 3.19 (R 4.4.0)
+   scry                 * 1.16.0    2024-04-30 [1] Bioconductor 3.19 (R 4.4.0)
    scuttle                1.14.0    2024-04-30 [1] Bioconductor 3.19 (R 4.4.0)
    sessioninfo            1.2.2     2021-12-06 [1] CRAN (R 4.4.0)
    shiny                  1.8.1.1   2024-04-02 [1] CRAN (R 4.4.0)

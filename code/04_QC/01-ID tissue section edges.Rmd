@@ -1,5 +1,5 @@
 ---
-title: "02-Spotsweeper"
+title: "01-ID tissue section edges"
 output: html_document
 date: "2024-07-22"
 ---
@@ -15,8 +15,9 @@ library(ggplot2)
 library(gridExtra)
 library(SpatialExperiment)
 library(spatialLIBD)
-library(SpotSweeper)
-library(ggtext)
+library(spdep)
+library(scater)
+library(dplyr)
 
 ## rstudio GUI tweaks
 require(colorout)
@@ -35,86 +36,85 @@ options(bphost="localhost")
 theme_set(theme_bw()+theme(axis.text.x = element_text(size = 14), axis.title.x = element_text(size = 16), axis.text.y = element_text(size = 14), axis.title.y = element_text(size =16), plot.title = element_text(size = 20,hjust=0.5), strip.text = element_text(size=18), legend.text = element_text(size=10), legend.title = element_text(size=11,hjust=0.5)))
 ```
 
-# load in raw SPE, subset to tissue spots not at tissue edges as ID'ed in prev. script
+### load SPE
 ```{r}
 lc <- readRDS("processed-data/02_build_spe/spe_raw.rds")
 
-## make colnames unique
+## make colnames globally unique
 colnames(lc) <- lc$key
+# ## we WANT out of tissue spots for edge detection.
+# lc <- lc[,lc$in_tissue==TRUE]
 
-## read in tissue edge spot assignments and append
-edgespots <- fread("processed-data/05_QC/01-tissue margin spots.txt")
-edgespots <- DataFrame(edgespots,row.names=edgespots$rn)
-edgespots <- edgespots[colnames(lc),]
-lc$spot_type <- edgespots$spot_type
-rm(edgespots)
-## 
+# ## drop zero count spots, zero count genes
+# lc2 <- lc[,colSums(counts(lc))!=0]
+# lc2 <- lc2[rowSums(counts(lc))!=0,]
+```
 
-## subset to non-tissue edge spots (image perimeter spots are those in the outermost row/column of spots in the frame, but not necessarily at the tissue edge)
-lc <- lc[,lc$in_tissue==TRUE & lc$spot_type %in% c("keep","image perimeter")]
-## ncol(lc) : 134613
+functions written to precede spotsweeper etc, code by Jacqui Thomson: https://github.com/LieberInstitute/spatialDLPFC_mdd_bpd/blob/devel/code/03_QC/01_revised_edge_detection.r 
+```{r}
 
-## drop zero count spots, zero count genes
-lc <- lc[,colSums(counts(lc))!=0]
-lc <- lc[rowSums(counts(lc))!=0,]
-## dim(lc): 29878, 134593
+## initialize list of sample 
+l1 = unique(lc$sample_id)
+names(l1) = lapply(l1, function(x) unique(colData(lc)[lc$sample_id==x,"sample_id"]))
 
-## get colnames for sum genes, sum umis, % mito to use for local outlier detection w spotsweeper
-# colnames(colData(lc))
+# extract colData per sample
+l1 = lapply(l1, function(x) colData(lc[,lc$sample_id==x]))
+
+## get nearest neighbors and determine whether they are all out of tissue, all in tissue, or mixed (ie edges):
+newColData <- do.call(rbind, lapply(l1, function(x) {
+	m1 = as.matrix(x[,c("array_row","array_col")])
+	rownames(m1) = x$key
+	nbors = dnearneigh(m1, d1=1, d2=2.1, bounds=c("GE","LE")) #d2 of 2.1 identifies closest 6 spots
+	names(nbors) = x$key
+	index= 1:nrow(x)
+	off.tissue.index = index[x$in_tissue==FALSE]
+	off.nbors = sapply(nbors, function(y) length(intersect(y, off.tissue.index)))
+	x$keep = "keep"
+	x[off.nbors>0,"keep"] = "tissue perimeter"
+	x[off.tissue.index,"keep"] = "off tissue"
+
+	east = max(x$array_row)
+	west = min(x$array_row)
+	north = max(x$array_col)
+	south = min(x$array_col)
+	cardinal.check = x$array_row %in% c(east, west) | x$array_col %in% c(north, south)
+	x[x$keep!="off tissue" & cardinal.check,"keep"] = "image perimeter"
+	return(x)
+}))
+
+### preview resulting colData
+head(newColData)
+
+###
+newColData <- newColData[colnames(lc),]
+colData(lc) <- newColData
 ```
 
 ```{r}
-### ID lower-bound outliers for UMIs
-lc <- SpotSweeper::localOutliers(spe=lc,metric = "sum_umi",direction = "lower",log=TRUE)
+### plot check
+lc$keep <- as.character(lc$keep)
+pal <- c("pink","green","black","red")
+names(pal) <- unique(lc$keep)
 
-## change the resulting colnames to indicate low
-sscolinds <- c((ncol(colData(lc))-2):ncol(colData(lc)))
-colnames(colData(lc))[sscolinds] <- paste0(colnames(colData(lc))[sscolinds],"_low")
+plts <- spatialLIBD::vis_grid_clus(lc,clustervar = "keep",return_plots = T,spatial = T,point_size = 1.5,alpha=0.75,image_id = "lowres",colors=c("pink","green","black","red"))
 
-### same for unique genes
-lc <- SpotSweeper::localOutliers(spe=lc,metric = "sum_gene",direction = "lower",log=TRUE)
+plts <- lapply(plts,FUN=function(x){x+theme(axis.text.x=element_blank(),axis.text.y=element_blank(),title=element_text(size=5),legend.text = element_text(size=4),legend.title = element_text(size=4))})
 
-## change the resulting colnames to indicate low
-sscolinds <- c((ncol(colData(lc))-2):ncol(colData(lc)))
-colnames(colData(lc))[sscolinds] <- paste0(colnames(colData(lc))[sscolinds],"_low")
-
-## % mito outliers (higher only)--don't log norm these values per spotsweeper vignette
-lc <- SpotSweeper::localOutliers(spe=lc,metric = "expr_chrM_ratio",direction = "higher",log=FALSE)
-
-## edit to indicate hi-end outlier
-sscolinds <- c((ncol(colData(lc))-2):ncol(colData(lc)))
-colnames(colData(lc))[sscolinds] <- paste0(colnames(colData(lc))[sscolinds],"_hi")
+do.call("grid.arrange",plts)
+dev.off()
 ```
 
-## plot em
+This works very nicely, even for samples where there's an interior hole in the tissue or etc! Since the samples are tight packed against one another, and many have sort of ghostly-half-thickness H&E at the margins, we will definitely want to use this to get rid of edge spots. They could be cross-contaminated with neighbor spots from adjacent sections and have odd effects due to low gene/UMI counts in downstream analyses. The LC proper is never right on the edges here either, so no harm done removing the edge spots insofar as the main biological objective here.
+
+Save (parts of) the colData with the in/out/margin classifications so we can bind them to the raw SPE prior to applying other QC steps.
 ```{r}
-# SpotSweeper::plotQCpdf(spe=lc,metric = "sum_umi_log_high",outliers = "sum_umi_outliers_high",point_size = 2,height = 6,width=7,fname="plots/05_QC/02a-Spotsweeper_sumUMI-high_outliers_post-edge-rm.pdf")
-#
-
-SpotSweeper::plotQCpdf(spe=lc,metric = "sum_umi_log_low",outliers = "sum_umi_outliers_low",point_size = 2,height = 6,width=7,fname="plots/05_QC/02b-Spotsweeper_sumUMI-low_outliers_post-edge-rm.pdf")
-#
-
-# SpotSweeper::plotQCpdf(spe=lc,metric = "sum_gene_log_high",outliers = "sum_gene_outliers_high",point_size = 2,height = 6,width=7,fname="plots/05_QC/02c-Spotsweeper_sumGene-high_outliers_post-edge-rm.pdf")
-
-#
-
-SpotSweeper::plotQCpdf(spe=lc,metric = "sum_gene_log_low",outliers = "sum_gene_outliers_low",point_size = 2,height = 6,width=7,fname="plots/05_QC/02d-Spotsweeper_sumGene-low_outliers_post-edge-rm.pdf")
-# 
-
-SpotSweeper::plotQCpdf(spe=lc,metric = "expr_chrM_ratio",outliers = "expr_chrM_ratio_outliers_hi",point_size = 2,height = 6,width=7,fname="plots/05_QC/02e-Spotsweeper_pctMito-high_outliers_post-edge-rm.pdf")
-
+tmpcd <- as.data.table(newColData,keep.rownames=T)
+tmpcd <- tmpcd[,.(rn,keep)]
+setnames(tmpcd,2,"spot_type")
+fwrite(tmpcd,"processed-data/04_QC/01-tissue margin spots.txt",sep='\t',quote=F)
 ```
 
-## save colData with rownames and the spotsweeper output columns for quick reattachment to the SPE during final filtering
-```{r}
-tmpcd <- as.data.table(colData(lc),keep.rownames=T)
-spotswnames <- c("rn",colnames(tmpcd)[c((ncol(tmpcd)-7):ncol(tmpcd))])
-tmpcd <- tmpcd[,..spotswnames]
-
-fwrite(tmpcd,"processed-data/05_QC/02-Spotsweeper_outliers_post-edge-rm.txt",quote=FALSE,sep="\t")
-```
-
-## reproducibility info
+reprod info
 ```{r}
 sessionInfo()
 sessioninfo::session_info()
@@ -156,52 +156,50 @@ loaded via a namespace (and not attached):
   [1] later_1.3.2               BiocIO_1.14.0             bitops_1.0-7             
   [4] filelock_1.0.3            fields_16.2               tibble_3.2.1             
   [7] XML_3.99-0.17             lifecycle_1.0.4           edgeR_4.2.0              
- [10] doParallel_1.0.17         rprojroot_2.0.4           MASS_7.3-61              
- [13] lattice_0.22-6            magrittr_2.0.3            limma_3.60.3             
- [16] plotly_4.10.4             sass_0.4.9                rmarkdown_2.27           
- [19] jquerylib_0.1.4           yaml_2.3.9                httpuv_1.6.15            
- [22] spam_2.10-0               sp_2.1-4                  sessioninfo_1.2.2        
- [25] cowplot_1.1.3             DBI_1.2.3                 RColorBrewer_1.1-3       
- [28] golem_0.4.1               maps_3.4.2                abind_1.4-5              
- [31] zlibbioc_1.50.0           purrr_1.0.2               RCurl_1.98-1.14          
- [34] rappdirs_0.3.3            GenomeInfoDbData_1.2.12   ggrepel_0.9.5            
- [37] irlba_2.3.5.1             terra_1.7-78              units_0.8-5              
- [40] DelayedMatrixStats_1.26.0 codetools_0.2-20          DelayedArray_0.30.1      
- [43] DT_0.33                   tidyselect_1.2.1          farver_2.1.2             
- [46] UCSC.utils_1.0.0          ScaledMatrix_1.12.0       viridis_0.6.5            
- [49] shinyWidgets_0.8.6        BiocFileCache_2.12.0      GenomicAlignments_1.40.0 
- [52] jsonlite_1.8.8            escheR_1.4.0              BiocNeighbors_1.22.0     
- [55] e1071_1.7-14              iterators_1.0.14          dbscan_1.2-0             
- [58] foreach_1.5.2             tools_4.4.1               Rcpp_1.0.13              
- [61] glue_1.7.0                SparseArray_1.4.8         xfun_0.45                
- [64] here_1.0.1                withr_3.0.0               BiocManager_1.30.23      
- [67] fastmap_1.2.0             boot_1.3-30               fansi_1.0.6              
- [70] digest_0.6.36             rsvd_1.0.5                R6_2.5.1                 
- [73] mime_0.12                 wk_0.9.2                  colorspace_2.1-0         
- [76] RSQLite_2.3.7             config_0.3.2              utf8_1.2.4               
- [79] tidyr_1.3.1               generics_0.1.3            class_7.3-22             
- [82] rtracklayer_1.64.0        httr_1.4.7                htmlwidgets_1.6.4        
- [85] S4Arrays_1.4.1            pkgconfig_2.0.3           gtable_0.3.5             
- [88] blob_1.2.4                htmltools_0.5.8.1         dotCall64_1.1-1          
- [91] scales_1.3.0              png_0.1-8                 attempt_0.3.1            
- [94] SpotSweeper_1.0.2         knitr_1.48                rstudioapi_0.16.0        
- [97] rjson_0.2.21              curl_5.2.1                proxy_0.4-27             
-[100] cachem_1.1.0              KernSmooth_2.23-24        BiocVersion_3.19.1       
-[103] parallel_4.4.1            vipor_0.4.7               AnnotationDbi_1.66.0     
-[106] s2_1.1.6                  restfulr_0.0.15           pillar_1.9.0             
-[109] grid_4.4.1                vctrs_0.6.5               promises_1.3.0           
-[112] BiocSingular_1.20.0       dbplyr_2.5.0              beachmat_2.20.0          
-[115] xtable_1.8-4              beeswarm_0.4.0            paletteer_1.6.0          
-[118] evaluate_0.24.0           magick_2.8.3              cli_3.6.3                
-[121] locfit_1.5-9.10           compiler_4.4.1            Rsamtools_2.20.0         
-[124] crayon_1.5.3              labeling_0.4.3            classInt_0.4-10          
-[127] rematch2_2.1.2            spatialEco_2.0-2          ggbeeswarm_0.7.2         
-[130] deldir_2.0-4              viridisLite_0.4.2         munsell_0.5.1            
-[133] lazyeval_0.2.2            Matrix_1.7-0              ExperimentHub_2.12.0     
-[136] benchmarkme_1.0.8         sparseMatrixStats_1.16.0  bit64_4.0.5              
-[139] KEGGREST_1.44.1           statmod_1.5.0             shiny_1.8.1.1            
-[142] AnnotationHub_3.12.0      memoise_2.0.1             bslib_0.7.0              
-[145] benchmarkmeData_1.0.4     bit_4.0.5                
+ [10] doParallel_1.0.17         rprojroot_2.0.4           lattice_0.22-6           
+ [13] magrittr_2.0.3            limma_3.60.3              plotly_4.10.4            
+ [16] sass_0.4.9                rmarkdown_2.27            jquerylib_0.1.4          
+ [19] yaml_2.3.9                httpuv_1.6.15             spam_2.10-0              
+ [22] sp_2.1-4                  sessioninfo_1.2.2         cowplot_1.1.3            
+ [25] DBI_1.2.3                 RColorBrewer_1.1-3        golem_0.4.1              
+ [28] maps_3.4.2                abind_1.4-5               zlibbioc_1.50.0          
+ [31] purrr_1.0.2               RCurl_1.98-1.14           rappdirs_0.3.3           
+ [34] GenomeInfoDbData_1.2.12   ggrepel_0.9.5             irlba_2.3.5.1            
+ [37] units_0.8-5               DelayedMatrixStats_1.26.0 codetools_0.2-20         
+ [40] DelayedArray_0.30.1       DT_0.33                   tidyselect_1.2.1         
+ [43] farver_2.1.2              UCSC.utils_1.0.0          ScaledMatrix_1.12.0      
+ [46] viridis_0.6.5             shinyWidgets_0.8.6        BiocFileCache_2.12.0     
+ [49] GenomicAlignments_1.40.0  jsonlite_1.8.8            BiocNeighbors_1.22.0     
+ [52] e1071_1.7-14              iterators_1.0.14          dbscan_1.2-0             
+ [55] foreach_1.5.2             tools_4.4.1               Rcpp_1.0.13              
+ [58] glue_1.7.0                SparseArray_1.4.8         xfun_0.45                
+ [61] here_1.0.1                withr_3.0.0               BiocManager_1.30.23      
+ [64] fastmap_1.2.0             boot_1.3-30               fansi_1.0.6              
+ [67] digest_0.6.36             rsvd_1.0.5                R6_2.5.1                 
+ [70] mime_0.12                 wk_0.9.2                  colorspace_2.1-0         
+ [73] RSQLite_2.3.7             config_0.3.2              utf8_1.2.4               
+ [76] tidyr_1.3.1               generics_0.1.3            class_7.3-22             
+ [79] rtracklayer_1.64.0        httr_1.4.7                htmlwidgets_1.6.4        
+ [82] S4Arrays_1.4.1            pkgconfig_2.0.3           gtable_0.3.5             
+ [85] blob_1.2.4                htmltools_0.5.8.1         dotCall64_1.1-1          
+ [88] scales_1.3.0              png_0.1-8                 attempt_0.3.1            
+ [91] knitr_1.48                rstudioapi_0.16.0         rjson_0.2.21             
+ [94] curl_5.2.1                proxy_0.4-27              cachem_1.1.0             
+ [97] KernSmooth_2.23-24        BiocVersion_3.19.1        parallel_4.4.1           
+[100] vipor_0.4.7               AnnotationDbi_1.66.0      s2_1.1.6                 
+[103] restfulr_0.0.15           pillar_1.9.0              grid_4.4.1               
+[106] vctrs_0.6.5               promises_1.3.0            BiocSingular_1.20.0      
+[109] dbplyr_2.5.0              beachmat_2.20.0           xtable_1.8-4             
+[112] beeswarm_0.4.0            paletteer_1.6.0           evaluate_0.24.0          
+[115] magick_2.8.3              cli_3.6.3                 locfit_1.5-9.10          
+[118] compiler_4.4.1            Rsamtools_2.20.0          crayon_1.5.3             
+[121] labeling_0.4.3            classInt_0.4-10           rematch2_2.1.2           
+[124] ggbeeswarm_0.7.2          deldir_2.0-4              viridisLite_0.4.2        
+[127] munsell_0.5.1             lazyeval_0.2.2            Matrix_1.7-0             
+[130] ExperimentHub_2.12.0      benchmarkme_1.0.8         sparseMatrixStats_1.16.0 
+[133] bit64_4.0.5               KEGGREST_1.44.1           statmod_1.5.0            
+[136] shiny_1.8.1.1             AnnotationHub_3.12.0      memoise_2.0.1            
+[139] bslib_0.7.0               benchmarkmeData_1.0.4     bit_4.0.5                
 > sessioninfo::session_info()
 ─ Session info ──────────────────────────────────────────────────────────────────
  setting  value
@@ -268,7 +266,6 @@ loaded via a namespace (and not attached):
    DT                     0.33      2024-04-04 [1] CRAN (R 4.4.0)
    e1071                  1.7-14    2023-12-06 [1] CRAN (R 4.4.0)
    edgeR                  4.2.0     2024-04-30 [1] Bioconductor 3.19 (R 4.4.0)
-   escheR                 1.4.0     2024-05-16 [1] Bioconductor 3.19 (R 4.4.0)
    evaluate               0.24.0    2024-06-10 [1] CRAN (R 4.4.0)
    ExperimentHub          2.12.0    2024-04-30 [1] Bioconductor 3.19 (R 4.4.0)
    fansi                  1.0.6     2023-12-08 [1] CRAN (R 4.4.0)
@@ -312,7 +309,6 @@ loaded via a namespace (and not attached):
    magick                 2.8.3     2024-02-18 [1] CRAN (R 4.4.0)
    magrittr               2.0.3     2022-03-30 [1] CRAN (R 4.4.0)
    maps                   3.4.2     2023-12-15 [1] CRAN (R 4.4.0)
-   MASS                   7.3-61    2024-06-13 [1] CRAN (R 4.4.0)
    Matrix                 1.7-0     2024-04-26 [1] CRAN (R 4.4.1)
    MatrixGenerics       * 1.16.0    2024-04-30 [1] Bioconductor 3.19 (R 4.4.0)
    matrixStats          * 1.3.0     2024-04-11 [1] CRAN (R 4.4.0)
@@ -361,15 +357,12 @@ loaded via a namespace (and not attached):
    spam                   2.10-0    2023-10-23 [1] CRAN (R 4.4.0)
    SparseArray            1.4.8     2024-05-30 [1] Bioconductor 3.19 (R 4.4.0)
    sparseMatrixStats      1.16.0    2024-04-30 [1] Bioconductor 3.19 (R 4.4.0)
-   spatialEco             2.0-2     2023-11-17 [1] CRAN (R 4.4.0)
    SpatialExperiment    * 1.14.0    2024-04-30 [1] Bioconductor 3.19 (R 4.4.0)
    spatialLIBD          * 1.16.2    2024-05-28 [1] Bioconductor 3.19 (R 4.4.0)
    spData               * 2.3.1     2024-05-31 [1] CRAN (R 4.4.0)
    spdep                * 1.3-5     2024-06-10 [1] CRAN (R 4.4.0)
-   SpotSweeper            1.0.2     2024-07-14 [1] Bioconductor 3.19 (R 4.4.1)
    statmod                1.5.0     2023-01-06 [1] CRAN (R 4.4.0)
    SummarizedExperiment * 1.34.0    2024-04-30 [1] Bioconductor 3.19 (R 4.4.0)
-   terra                  1.7-78    2024-05-22 [1] CRAN (R 4.4.0)
    tibble                 3.2.1     2023-03-20 [1] CRAN (R 4.4.0)
    tidyr                  1.3.1     2024-01-24 [1] CRAN (R 4.4.0)
    tidyselect             1.2.1     2024-03-11 [1] CRAN (R 4.4.0)
