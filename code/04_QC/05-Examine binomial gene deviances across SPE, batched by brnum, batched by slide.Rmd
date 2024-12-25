@@ -133,6 +133,7 @@ gc()
 ### save
 ```{r}
 saveRDS(devstab,"processed-data/04_QC/05-binomial_gene_deviances_panSPE_nobatch-brnumAsBatch_andWithinSlide_nobatch-brnumbatch.RDS")
+fwrite(devstab,"processed-data/04_QC/05-deviance_binomial_gene_deviances_panSPE_brnumAsBatch_or_slideAsBatch.txt",sep='\t',quote=F)
 ```
 
 ### examine teh table (visually) to scroll through top genes for the no-batch, donor-blocked, sample-blocked

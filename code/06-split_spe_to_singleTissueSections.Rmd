@@ -140,7 +140,7 @@ rm(i,imginds,curcap,capinds,tmpcd.dt)
 
 ```
 
-### now we need to extract the counts matrix, match the old unique ids to the new ones in tmpcd$newrn, swap the rownames of the new coldata (tmpcd) to tmpcd$newrn, double-check they're in the same order, and then pass to SPE the following for the single-section SPE:
+### now we need to extract the counts matrix and logcounts matrix, match the old unique ids to the new ones in tmpcd$newrn, swap the rownames of the new coldata (tmpcd) to tmpcd$newrn, double-check they're in the same order, and then pass to SPE the following for the single-section SPE:
 the new images slot
 renamed counts matrix
 renamed logcounts matrix
@@ -183,9 +183,13 @@ stopifnot(all(colnames(newct)==rownames(tmpcd)))
 stopifnot(all(colnames(newct)==rownames(newspcoord)))
 stopifnot(all(rownames(newct)==rownames(rowData(lc2))))
 
+stopifnot(all(colnames(newlct)==rownames(tmpcd)))
+stopifnot(all(colnames(newlct)==rownames(newspcoord)))
+stopifnot(all(rownames(newlct)==rownames(rowData(lc2))))
+
 ## since we have the listData part of the image data, just let SPE make a blank DF in the imgData slot and then swap the new listData obj in after 
 lc2split <- SpatialExperiment(
-    assays=list(counts=newct),
+    assays=list(counts=newct,logcounts=newlct),
     rowData=rowData(lc2),
     colData=tmpcd2,
     sample_id = tmpcd2$sample_id,

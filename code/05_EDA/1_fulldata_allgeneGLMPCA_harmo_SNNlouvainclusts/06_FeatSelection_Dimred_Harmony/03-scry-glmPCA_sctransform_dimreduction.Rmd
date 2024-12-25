@@ -57,7 +57,7 @@ setHDF5DumpChunkLength(length = 5e7)
 ```
 
 ```{r}
-lcct <- HDF5Array("processed-data/05_QC/04b_lffLC_noEdges_noLocOutliers_remainder1pctileUMIorGene-removed_binomdevs.h5",name="counts",as.sparse = T)
+lcct <- HDF5Array("processed-data/04_QC/04b_lffLC_noEdges_noLocOutliers_remainder1pctileUMIorGene-removed_counts.h5",name="counts",as.sparse = T)
 ```
 
 ```{r}
