@@ -67,6 +67,18 @@ SNNlouvlist <- mclapply(k,mc.cores=3,FUN=function(x){
 })
 names(SNNlouvlist) <- paste0("GLMPCAallgene_SNN",k,"_LeidLouv")
 
+## make one big table to check how many clusters ea.
+i <- 1
+for (i in c(1:length(SNNlouvlist))){
+   if(i==1){checktab <- copy(SNNlouvlist[[i]])} else{
+      checktab <- merge.data.table(checktab,SNNlouvlist[[i]],by="rn")
+   }
+}
+
+lapply(names(checktab)[2:109],FUN=function(x){length(unique(checktab[,get(x)]))})
+### the leiden clusters are all like 100s to 1000s of clusters here, so we will ignore those downstream.
+
+
 saveRDS(SNNlouvlist,"processed-data/07_Clustering/01-GLMPCAallgene_SNN10-15-20_leidenAndLouvain_res05-1-2.RDS")
 
 ```
