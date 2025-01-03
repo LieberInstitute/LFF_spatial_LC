@@ -1,7 +1,7 @@
 ---
 title: "04c-init_louvainCluster_RMSD"
 output: html_document
-date: "2024-09-18"
+date: "2025-01-02"
 ---
 
 ```{r setup, include=FALSE}
@@ -22,10 +22,10 @@ unloadNamespace("datasets")
 ```
 
 ```{r}
-rmsds <- readRDS("processed-data/07_Clustering/02-SNNk10-15-20_louvain_allgeneGLMPCA_clustRMSDs.RDS")
+rmsds <- readRDS("processed-data/07_featureSelection_dimred_harmony_clustering/05c-init_SNNk10_louvain_clustRMSDs.RDS")
 
 mapply(rmsds,names(rmsds),SIMPLIFY=FALSE,FUN=function(r,n){
-    pdf(paste0("plots/07_Clustering/05-RMSDs/",n,".pdf"),width=10,height=6)
+    pdf(paste0("plots/07_featureSelection_dimred_harmony_clustering/04c_init_louv_RMSDs/",n,".pdf"),width=10,height=6)
     barplot(r,ylab="RMSD",xlab="Cluster",main=n)
     dev.off()
 })
@@ -40,7 +40,7 @@ sessioninfo::session_info()
 
 R version 4.4.1 RC (2024-06-06 r86719)
 Platform: aarch64-apple-darwin20
-Running under: macOS Sonoma 14.5
+Running under: macOS Sonoma 14.7.1
 
 Matrix products: default
 BLAS:   /System/Library/Frameworks/Accelerate.framework/Versions/A/Frameworks/vecLib.framework/Versions/A/libBLAS.dylib 
@@ -56,50 +56,50 @@ attached base packages:
 [1] stats     graphics  grDevices utils     methods   base     
 
 other attached packages:
-[1] colorout_1.3-0.2  data.table_1.15.4 rlang_1.1.4      
+[1] colorout_1.3-0.2  data.table_1.16.4 rlang_1.1.4      
 
 loaded via a namespace (and not attached):
  [1] compiler_4.4.1    here_1.0.1        fastmap_1.2.0     rprojroot_2.0.4  
- [5] cli_3.6.3         htmltools_0.5.8.1 tools_4.4.1       rstudioapi_0.16.0
- [9] yaml_2.3.9        rmarkdown_2.27    knitr_1.48        digest_0.6.36    
-[13] xfun_0.45         evaluate_0.24.0   sessioninfo_1.2.2
+ [5] cli_3.6.3         htmltools_0.5.8.1 tools_4.4.1       rstudioapi_0.17.1
+ [9] yaml_2.3.10       rmarkdown_2.29    knitr_1.49        xfun_0.49        
+[13] digest_0.6.37     evaluate_1.0.1   
 > sessioninfo::session_info()
-─ Session info ────────────────────────────────────────────────────────────────────
+─ Session info ───────────────────────────────────────────────────────────────────
  setting  value
  version  R version 4.4.1 RC (2024-06-06 r86719)
- os       macOS Sonoma 14.5
+ os       macOS Sonoma 14.7.1
  system   aarch64, darwin20
  ui       RStudio
  language (EN)
  collate  en_US.UTF-8
  ctype    en_US.UTF-8
  tz       America/Chicago
- date     2024-09-17
+ date     2025-01-02
  rstudio  2024.07.0-daily+219 Cranberry Hibiscus (desktop)
  pandoc   3.1.11 @ /Applications/RStudio.app/Contents/Resources/app/quarto/bin/tools/aarch64/ (via rmarkdown)
 
-─ Packages ────────────────────────────────────────────────────────────────────────
+─ Packages ───────────────────────────────────────────────────────────────────────
  ! package     * version date (UTC) lib source
  P cli           3.6.3   2024-06-21 [2] CRAN (R 4.4.0)
    colorout    * 1.3-0.2 2024-05-01 [1] Github (jalvesaq/colorout@c6113a2)
-   data.table  * 1.15.4  2024-03-30 [2] CRAN (R 4.4.0)
-   digest        0.6.36  2024-06-23 [1] CRAN (R 4.4.0)
-   evaluate      0.24.0  2024-06-10 [1] CRAN (R 4.4.0)
+   data.table  * 1.16.4  2024-12-06 [1] CRAN (R 4.4.1)
+   digest        0.6.37  2024-08-19 [1] CRAN (R 4.4.1)
+   evaluate      1.0.1   2024-10-10 [1] CRAN (R 4.4.1)
    fastmap       1.2.0   2024-05-15 [1] CRAN (R 4.4.0)
    here          1.0.1   2020-12-13 [1] CRAN (R 4.4.0)
    htmltools     0.5.8.1 2024-04-04 [1] CRAN (R 4.4.0)
-   knitr         1.48    2024-07-07 [1] CRAN (R 4.4.1)
+   knitr         1.49    2024-11-08 [1] CRAN (R 4.4.1)
  P rlang       * 1.1.4   2024-06-04 [2] CRAN (R 4.4.1)
-   rmarkdown     2.27    2024-05-17 [1] CRAN (R 4.4.0)
+   rmarkdown     2.29    2024-11-04 [1] CRAN (R 4.4.1)
    rprojroot     2.0.4   2023-11-05 [1] CRAN (R 4.4.0)
-   rstudioapi    0.16.0  2024-03-24 [1] CRAN (R 4.4.0)
+   rstudioapi    0.17.1  2024-10-22 [1] CRAN (R 4.4.1)
    sessioninfo   1.2.2   2021-12-06 [1] CRAN (R 4.4.0)
-   xfun          0.45    2024-06-16 [1] CRAN (R 4.4.0)
-   yaml          2.3.9   2024-07-05 [1] CRAN (R 4.4.0)
+   xfun          0.49    2024-10-31 [1] CRAN (R 4.4.1)
+   yaml          2.3.10  2024-07-26 [1] CRAN (R 4.4.0)
 
  [1] /Library/Frameworks/R.framework/Versions/4.4-arm64/Resources/library
  [2] /Users/bmulvey/Library/R/arm64/4.4/library
 
  P ── Loaded and on-disk path mismatch.
 
-───────────────────────────────────────────────────────────────────────────────────
+──────────────────────────────────────────────────────────────────────────────────

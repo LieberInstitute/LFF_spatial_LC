@@ -1,7 +1,7 @@
 ---
 title: "04e-init_louvainCluster_spotplots"
 output: html_document
-date: "2024-12-10"
+date: "2025-01-02"
 ---
 
 ```{r setup, include=FALSE}
@@ -35,7 +35,7 @@ library(parallel)
 
 
 ## ggplot defaults
-theme_set(theme_bw()+theme(axis.text.x = element_text(size = 14), axis.title.x = element_text(size = 16), axis.text.y = element_text(size = 14), axis.title.y = element_text(size =16), plot.title = element_text(size = 20,hjust=0.5), strip.text = element_text(size=18), legend.text = element_text(size=10), legend.title = element_text(size=11,hjust=0.5)))
+theme_set(theme_bw()+theme(axis.text.x = element_text(size = 10), axis.title.x = element_text(size = 11), axis.text.y = element_text(size = 10), axis.title.y = element_text(size =11), plot.title = element_text(size = 13,hjust=0.5), strip.text = element_text(size=11), legend.text = element_text(size=9), legend.title = element_text(size=10,hjust=0.5)))
 
 ## last of all, unload the base package datasets, whose data keep getting in the way of autocompletions (e.g., Theoph is priortized over TRUE)
 unloadNamespace("datasets")
@@ -43,9 +43,9 @@ unloadNamespace("datasets")
 
 load QC'ed spe, clustering results; subset to louvain clusterings only (leiden clusterings all returned 100s-1000s of clusters)
 ```{r}
-lc2 <- readRDS("processed-data/05_QC/04-lffLC_noEdges_noLocOutliers_remainder1pctileUMIorGene-removed.RDS")
+lc3 <- readRDS("processed-data/06-QCed_SPE_split_to_tissSections.RDS")
 
-SNNlouvlist <- readRDS("processed-data/07_Clustering/01-GLMPCAallgene_SNN10-15-20_leidenAndLouvain_res05-1-2.RDS")
+SNNlouvlist <- readRDS("processed-data/07")
 ## all clustering assignments are in columns with names reflecting the clustering method, SNN k value, and resolution parameter. each list entry is the results for one SNN k value so we can merge the columns into one big table for simplicity here.
 SNNlouvs <- merge.data.table(SNNlouvlist[[1]],SNNlouvlist[[2]],by="rn")
 SNNlouvs <- merge.data.table(SNNlouvs,SNNlouvlist[[3]],by="rn")
@@ -53,7 +53,7 @@ SNNlouvs <- merge.data.table(SNNlouvs,SNNlouvlist[[3]],by="rn")
 ## just use the louvain clusterings
 keepclus <- c("rn",grep(names(SNNlouvs),pattern="_louv_",value=T))
 SNNlouvs <- SNNlouvs[,..keepclus]
-SNNlouvs <- DataFrame(SNNlouvs,row.names=SNNlouvs$rn)[colnames(lc2),]
+SNNlouvs <- DataFrame(SNNlouvs,row.names=SNNlouvs$rn)[colnames(lc3),]
 SNNlouvs$rn <- NULL
 
 rm(keepclus,SNNlouvlist)
@@ -74,13 +74,13 @@ extract_legend <- function(my_ggp) {
 lapply(colnames(SNNlouvs),FUN=function(clus){
     colidx <- which(colnames(SNNlouvs)==clus)
     nclusts <- length(unique(SNNlouvs[, colidx]))
-    colLabels(lc2) <- factor(SNNlouvs[, colidx],levels=paste0("X",c(1:nclusts)))
+    colLabels(lc3) <- factor(SNNlouvs[, colidx],levels=paste0("X",c(1:nclusts)))
     pal <- palette36.colors(n = nclusts+2)[c(3:(nclusts+2))]
     # next line is needed for consistency in color-cluster assignments between libdspatial and the generated legend below
     names(pal) <- paste0("X",c(1:nclusts))
     
     ## create a unified legend spanning all possible cluster values (regardless of presence in a given sample)
-    leg.tmp <- ggplot(as.data.table(colData(lc2))[,.(label,array_row,array_col)],aes(x=array_row,y=array_col,col=label))+geom_point()+
+    leg.tmp <- ggplot(as.data.table(colData(lc3))[,.(label,array_row,array_col)],aes(x=array_row,y=array_col,col=label))+geom_point()+
         scale_color_manual(values=as.character(pal))+
         guides(color=guide_legend(ncol=2,override.aes=list(size=3)))+
         theme(
@@ -93,7 +93,7 @@ lapply(colnames(SNNlouvs),FUN=function(clus){
     ### make spotplots
     plt <-
         spatialLIBD::vis_grid_clus(
-            lc2,
+            lc3,
             clustervar = "label",
             pdf_file = NULL,
             colors = pal,
@@ -141,23 +141,23 @@ snn10louv1 <- SNNlouvs$snn10_louv_res1
 annot <- fread("processed-data/07_Clustering/03-glmpca_snn10_louv1_tentativeannotsbytop10lfcmks.txt")
 annot <- unique(annot[,.(clus,label)])
 
-snn10louv1 <- as.data.table(cbind(colnames(lc2),snn10louv1))
+snn10louv1 <- as.data.table(cbind(colnames(lc3),snn10louv1))
 snn10louv1 <- merge.data.table(snn10louv1,annot,by.x="snn10louv1",by.y="clus")
-snn10louv1 <- DataFrame(snn10louv1,row.names=snn10louv1$V1)[colnames(lc2),]
+snn10louv1 <- DataFrame(snn10louv1,row.names=snn10louv1$V1)[colnames(lc3),]
 
-colLabels(lc2) <- snn10louv1$label
+colLabels(lc3) <- snn10louv1$label
 
-lc2sub <- lc2[,lc2$label %in% c("Inh.SST.CCK.HTR2C","LC.1","5HT.1","Exc.17A6.RBP4.TAC1.HTR2C","Unsure.2.PCDHGC5.AVP")]
-lc2sub$label <- factor(lc2sub$label,levels=c("Inh.SST.CCK.HTR2C","LC.1","5HT.1","Exc.17A6.RBP4.TAC1.HTR2C","Unsure.2.PCDHGC5.AVP"))
+lc3sub <- lc3[,lc3$label %in% c("Inh.SST.CCK.HTR2C","LC.1","5HT.1","Exc.17A6.RBP4.TAC1.HTR2C","Unsure.2.PCDHGC5.AVP")]
+lc3sub$label <- factor(lc3sub$label,levels=c("Inh.SST.CCK.HTR2C","LC.1","5HT.1","Exc.17A6.RBP4.TAC1.HTR2C","Unsure.2.PCDHGC5.AVP"))
 
 ### write plot
-nclusts <- length(unique(lc2sub$label))
+nclusts <- length(unique(lc3sub$label))
 pal <- palette36.colors(n = nclusts+2)[c(3:(nclusts+2))]
 # next line is needed for consistency in color-cluster assignments between libdspatial and the generated legend below
-names(pal) <- levels(lc2sub$label)
+names(pal) <- levels(lc3sub$label)
 
 ## create a unified legend spanning all possible cluster values (regardless of presence in a given sample)
-leg.tmp <- ggplot(as.data.table(colData(lc2sub))[,.(label,array_row,array_col)],aes(x=array_row,y=array_col,col=label))+geom_point()+
+leg.tmp <- ggplot(as.data.table(colData(lc3sub))[,.(label,array_row,array_col)],aes(x=array_row,y=array_col,col=label))+geom_point()+
   scale_color_manual(values=pal)+
   guides(color=guide_legend(ncol=2,override.aes=list(size=3)))+
   theme(
@@ -168,10 +168,10 @@ leg.tmp <- ggplot(as.data.table(colData(lc2sub))[,.(label,array_row,array_col)],
 leg.tmp2 <- extract_legend(leg.tmp)
 dev.off()
 ### make spotplots
-s <- unique(lc2sub$sample_id)
+s <- unique(lc3sub$sample_id)
 
 plt <- lapply(s,FUN=function(s){
-   cursub <- lc2sub[,lc2sub$sample_id==s]
+   cursub <- lc3sub[,lc3sub$sample_id==s]
    
    mke <- make_escheR(cursub)
    mke <- mke |> add_fill("label",size=2.5,point_size = 2.5)

@@ -12,7 +12,6 @@ knitr::opts_knit$set(root.dir = here::here())
 
 library(data.table)
 library(bluster)
-library(HDF5Array)
 
 ## rstudio GUI tweaks
 require(colorout)
@@ -131,6 +130,7 @@ clpur <- mclapply(X=featdrnames,mc.cores=5,FUN=function(fdrn){
         
         rm(curcols,clusts,clustpurity)
     }
+    return(subl)
 })
 names(clpur) <- featdrnames
 
