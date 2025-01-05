@@ -1,8 +1,7 @@
 ---
-title: "05-Calc_init_nonspatial_clust_QCmetrics"
-author: "Bernie Mulvey"
-date: "2024-12-29"
+title: "06d-init_louvainClusts_on_dimreds"
 output: html_document
+date: "2025-01-04"
 ---
 
 ```{r setup, include=FALSE}
@@ -11,7 +10,11 @@ knitr::opts_chunk$set(fig.height = 10,fig.width = 7,include = FALSE)
 knitr::opts_knit$set(root.dir = here::here())
 
 library(data.table)
-library(bluster)
+library(ggplot2)
+library(gridExtra)
+library(HDF5Array)
+library(ggrastr)
+library(Polychrome)
 
 ## rstudio GUI tweaks
 require(colorout)
@@ -27,161 +30,221 @@ options(parallelly.supportsMulticore.disableOn="")
 options(parallelly.fork.enable=TRUE)
 library(BiocParallel)
 options(bphost="localhost")
-library(parallel)
+
+
+## ggplot defaults
+theme_set(theme_bw()+theme(axis.text.x = element_text(size = 10), axis.title.x = element_text(size = 11), axis.text.y = element_text(size = 10), axis.title.y = element_text(size =11), plot.title = element_text(size = 13,hjust=0.5), strip.text = element_text(size=11), legend.text = element_text(size=9), legend.title = element_text(size=10,hjust=0.5)))
 
 ## last of all, unload the base package datasets, whose data keep getting in the way of autocompletions (e.g., Theoph is priortized over TRUE)
 unloadNamespace("datasets")
 ```
 
-# Silhouette Widths
-## load dimred matrices, clustering results from the same matrix (the two inputs to bluster for sil. widths)
+# only use louvain clusterings (leiden returned 100s to 1000s)
 ```{r}
-dimrs <- readRDS("processed-data/07_featureSelection_dimred_harmony_clustering/02-PCA_harmo_UMAP_matrices_HiDevG_HVG_SVG_andmixed_featsets.RDS") 
+dimrs <- readRDS("processed-data/07_featureSelection_dimred_harmony_clustering/02-PCA_harmo_UMAP_matrices_HiDevG_HVG_SVG_andmixed_featsets.RDS")
+
 glmdimrs <- readRDS("processed-data/07_featureSelection_dimred_harmony_clustering/03-initial_HDG-SVG-HVG_sets_nullResid_to_approxGLMPCA.RDS")
 
-## in both of these list objects, the HARMONY corrected dimreds are in slots 3, 7, ...
-alldimrs <- c(lapply(seq(3,35,4),function(x){dimrs[[x]]}),lapply(seq(3,35,4),function(x){glmdimrs[[x]]}))
-names(alldimrs) <- c(names(dimrs)[seq(3,35,4)],names(glmdimrs)[seq(3,35,4)])
-## clean up
+## we want the uncorrected dimred (slots 1, 5, ...) and HARMONYd (slots 3, 7 ...) dimred from these two lists.
+alldimr <- c(dimrs[seq(1,35,2)],glmdimrs[seq(1,35,2)])
+
 rm(dimrs,glmdimrs)
 
+## to save RAM, subset each of these to the first three PCs
+## get the first 3 pcs, only ones we're plotting
+alldimr <- lapply(alldimr,function(adr){
+   keepn <- colnames(adr)[1:3]
+   y <- as.data.table(adr,keep.rownames=T)
+   keepn <- c("rn",keepn)
+   y <- y[,..keepn]
+   # standardize col names for plotting 
+   setnames(y,c(2:4),paste0("Dimred_component_",c(1:3)))
+   return(y)
+})
 
-## load clustering results
+
+### get clusterings
 SNNlouvlist <- readRDS("processed-data/07_featureSelection_dimred_harmony_clustering/04-Initial_louvLeid_res0.5-1-2_clusterings.RDS")
-## all clustering assignments are in columns with names reflecting the feature set, clustering method, and resolution parameter. the leiden ones are all crazy (hundreds of clusters, so we don't need those). but we can make this into one big table.
+
 i<-1
 for (i in c(1:length(SNNlouvlist))){
-    if(i==1){SNNlouvs <- copy(SNNlouvlist[[1]])} else {
-        SNNlouvs <- merge.data.table(SNNlouvs,SNNlouvlist[[i]],by="rn")
-    }
+   if(i==1){snnlouvs <- copy(SNNlouvlist[[i]])} else{
+      snnlouvs <- merge.data.table(snnlouvs,SNNlouvlist[[i]],by="rn")
+   }
 }
-keepn <- grep(names(SNNlouvs),pattern="_leid_",value=T,invert=T)
-SNNlouvs <- SNNlouvs[,..keepn]
 
-# clean up again
-rm(SNNlouvlist,i,keepn)
-gc(full=T)
+## only keep louvain clusterings
+keepclus <- c("rn",grep(names(snnlouvs),pattern="_louv_",value=T))
+snnlouvs <- snnlouvs[,..keepclus]
+
+## get auto-annotations list
+autoan <- readRDS("processed-data/07_featureSelection_dimred_harmony_clustering/05b-init_clusterings_autoannoLCrapheAndGABAergic.RDS")
+
+## clean up
+rm(keepclus,i,SNNlouvlist)
 ```
 
-### calculate silhouette withs from the cluster assignments and the corresponding dimensionality reduction matrix
+## define helper function to extract a single legend - from https://statisticsglobe.com/add-common-legend-to-combined-ggplot2-plots-in-r/#example-2-add-shared-legend-to-ggplot2-plots-using-gridextra-package 
 ```{r}
-## this is easier if we use the dimred list names as the lapply variable (because then we can search for that name in the cluster name columsn without having to manipulate column name strings)
-featdrnames <- names(alldimrs)
+extract_legend <- function(my_ggp) {
+  step1 <- ggplot_gtable(ggplot_build(my_ggp))
+  step2 <- which(sapply(step1$grobs, function(x) x$name) == "guide-box")
+  step3 <- step1$grobs[[step2]]
+  return(step3)
+}
+```
 
-## run silhouette width approximation for each clustering result and the underlying glmpca mat
-silres <- mclapply(X=featdrnames,mc.cores=5,FUN=function(fdrn){
-    getcols <- grep(names(SNNlouvs),pattern=fdrn,value=T)
-    curdr <- alldimrs[[fdrn]]
-    
-    i<-1
-    subl <- list()
-    for (i in c(1:length(getcols))){
-        curcols <- c("rn",getcols[i])
-        clusts <- copy(SNNlouvs[,..curcols])
-        clusts <- as.data.frame(clusts,row.names=clusts$rn)
-        
-        # get the row orders matched up between cluster assignments and dimred
-        clusts <- clusts[rownames(curdr),]
-        clusts$rn <- NULL
-        names(clusts)[1] <- "curclus"
-        silwidths <- approxSilhouette(x = curdr,clusters = clusts$curclus)
-        subl[[i]] <- silwidths
-        names(subl)[i] <- getcols[i]
-        
-        rm(curcols,clusts,silwidths)
-    }
+## plot cluster assignments onto dims 1-2, 1-3, 2-3
+```{r}
+# use the dimred list names to find matched cluster columns (multiple louvain resolutions per feature/reduction). note that we have two reductions we want to plot on and that the names of both reductions are usable as search strings to get the cluster column names. i can't say I coded these variables this way intentionally, but it makes things a whole lot easier.
 
-    return(subl)
+## double check ^ this before starting:
+stopifnot(all(lapply(names(alldimr),function(x){length(grep(names(snnlouvs),pattern=x,value=T))})==3))
+## noice
+## edit: this is not quite accurate. we need to split these out into the glmpca ones and non-glmpca ones to ensure there's not crosstalk between those sets.
+```
+
+## first, the non-glm ones:
+```{r}
+nonglm <- alldimr[grep(names(alldimr),pattern="glmPCA",value=T,invert=T)]
+nonglm.louvname <- grep(names(snnlouvs),pattern="glm",value=T,invert=T)
+nonglm.louvs <- snnlouvs[,..nonglm.louvname]
+
+lapply(names(nonglm),FUN=function(adrn){
+   ## the clusterings corresponding to non-glm PCAs don't contain the string PCA at all, so we need to remove 'PCA' from those list entry names for this to work properly.
+   cluscolstr <- gsub(adrn,pattern="PCA_",replacement="")
+   
+   cluscols <- grep(names(nonglm.louvs),pattern=cluscolstr,value=T)
+   keepcols <- c("rn",cluscols)
+   
+   tmplouvs <- copy(nonglm.louvs)[,..keepcols]
+   
+   curdr <- copy(nonglm[[adrn]])
+   
+   i<-1
+   for (i in c(1:length(cluscols))){
+      clus <- cluscols[i]
+      nclus <- length(unique(tmplouvs[,get(clus)]))
+      pal <- palette36.colors(n = nclus+2)[c(3:(nclus+2))]
+      
+      ## get auto annotations
+      curan <- copy(autoan[[clus]])
+      tmplouvs2 <- merge.data.table(copy(tmplouvs),curan,by.x=clus,by.y="clusid")
+      
+      # next line is needed for consistency in color-cluster assignments between libdspatial and the generated legend below
+      names(pal) <- unique(tmplouvs2$autoanno)
+      
+      pltdat <- merge.data.table(curdr,tmplouvs2[,.(rn,autoanno)],by="rn")
+      setnames(pltdat,"autoanno",clus)
+      # setnames(pltdat,"V2",clus)
+      
+      ## make shared legend
+      leg.tmp <- ggplot(pltdat,aes(x=Dimred_component_1,y=Dimred_component_2,col=get(clus)))+
+         geom_point(size=0.2,stroke = 0)+
+         scale_color_manual(values=as.character(pal))+
+         guides(color=guide_legend(ncol=2,override.aes=list(size=3)))+
+         theme(
+            legend.text = element_text(size = 10),
+            legend.title = element_text(size = 10, hjust = 0.5),
+            legend.spacing.y = unit(0, "cm"),
+            legend.spacing.x = unit(0.1, "cm"))
+      leg.tmp2 <- extract_legend(leg.tmp)
+      dev.off()
+      
+      ## now generate the 3 pc pair plots
+      colcombs <- list(c("Dimred_component_1","Dimred_component_2"),
+                       c("Dimred_component_1","Dimred_component_3"),
+                       c("Dimred_component_2","Dimred_component_3"))
+      
+      p <- lapply(colcombs,FUN=function(cc){
+         ggplot(pltdat,aes_string(x=cc[1],y=cc[2],color=clus))+
+            scale_color_manual(values=pal)+
+            rasterize(geom_point(size=0.4,stroke=0),dpi=300,dev="cairo_png")+
+            guides(color="none")+
+            ggtitle(paste0(clus,":\non ",adrn))+
+            theme(title = element_text(size=9))
+      })
+      ## append legend into the fourth slot of the list so we can have a 2x2 grid of three plots and a legend.  
+      p[[length(p)+1]] <- leg.tmp2
+      
+      pdf(paste0("plots/07_featureSelection_dimred_harmony_clustering/06d_init_louvclusts_on_dimreds/",clus,"_on_",adrn,".pdf"),height=13,width=21)
+      #do.call("grid.arrange",list(arrangeGrob(grobs=p,ncol=3),leg.tmp2,ncol=2,widths=c(19,2)))
+      do.call("grid.arrange",c(p,ncol=2))
+      dev.off()
+   }
 })
 
-silres2 <- list()
-i<-1
-for (i in c(1:length(silres))){
-    silres2 <- c(silres2,silres[[i]])
-}
-
-### save results
-saveRDS(silres2,"processed-data/07_featureSelection_dimred_harmony_clustering/05a-init_SNNk10_louvainClusts_silwidths.RDS")
-
-rm(silres,silres2,i)
 ```
 
-### cluster purity in bluster (same inputs)
+glmpcas:
 ```{r}
-## run cluster purity in bluster for each clustering result and the underlying (glm)pca mat
-clpur <- mclapply(X=featdrnames,mc.cores=5,FUN=function(fdrn){
-    getcols <- grep(names(SNNlouvs),pattern=fdrn,value=T)
-    curdr <- alldimrs[[fdrn]]
-    
-    i<-1
-    subl <- list()
-    for (i in c(1:length(getcols))){
-        curcols <- c("rn",getcols[i])
-        clusts <- copy(SNNlouvs[,..curcols])
-        clusts <- as.data.frame(clusts,row.names=clusts$rn)
-        
-        # get the row orders matched up between cluster assignments and dimred
-        clusts <- clusts[rownames(curdr),]
-        clusts$rn <- NULL
-        names(clusts)[1] <- "curclus"
-        clustpurity <- neighborPurity(x = curdr,clusters = clusts$curclus)
-        subl[[i]] <- clustpurity
-        names(subl)[i] <- getcols[i]
-        
-        rm(curcols,clusts,clustpurity)
-    }
-    return(subl)
+yaglm <- alldimr[!(names(alldimr) %in% names(nonglm))]
+yaglm.louvname <- c("rn",names(snnlouvs)[!(names(snnlouvs) %in% names(nonglm.louvs))])
+yaglm.louvs <- snnlouvs[,..yaglm.louvname]
+
+
+lapply(names(yaglm),FUN=function(adrn){
+   cluscols <- grep(names(yaglm.louvs),pattern=adrn,value=T)
+   keepcols <- c("rn",cluscols)
+   
+   tmplouvs <- copy(yaglm.louvs)[,..keepcols]
+   
+   curdr <- copy(yaglm[[adrn]])
+   
+   i<-1
+   for (i in c(1:length(cluscols))){
+      clus <- cluscols[i]
+      nclus <- length(unique(tmplouvs[,get(clus)]))
+      pal <- palette36.colors(n = nclus+2)[c(3:(nclus+2))]
+      
+      ## get auto annotations
+      curan <- copy(autoan[[clus]])
+      tmplouvs2 <- merge.data.table(copy(tmplouvs),curan,by.x=clus,by.y="clusid")
+      
+      # next line is needed for consistency in color-cluster assignments between libdspatial and the generated legend below
+      names(pal) <- unique(tmplouvs2$autoanno)
+      
+      pltdat <- merge.data.table(curdr,tmplouvs2[,.(rn,autoanno)],by="rn")
+      setnames(pltdat,"autoanno",clus)
+      
+      ## make shared legend
+      leg.tmp <- ggplot(pltdat,aes(x=Dimred_component_1,y=Dimred_component_2,col=get(clus)))+
+         geom_point()+
+         scale_color_manual(values=as.character(pal))+
+         guides(color=guide_legend(ncol=2,override.aes=list(size=3)))+
+         theme(
+            legend.text = element_text(size = 10),
+            legend.title = element_text(size = 10, hjust = 0.5),
+            legend.spacing.y = unit(0, "cm"),
+            legend.spacing.x = unit(0.1, "cm"))
+      leg.tmp2 <- extract_legend(leg.tmp)
+      dev.off()
+      
+      ## now generate the 3 pc pair plots
+      colcombs <- list(c("Dimred_component_1","Dimred_component_2"),
+                       c("Dimred_component_1","Dimred_component_3"),
+                       c("Dimred_component_2","Dimred_component_3"))
+      
+      p <- lapply(colcombs,FUN=function(cc){
+         ggplot(pltdat,aes_string(x=cc[1],y=cc[2],color=clus))+
+            scale_color_manual(values=pal)+
+            rasterize(geom_point(size=0.4,stroke=0),dpi=300,dev="cairo_png")+
+            guides(color="none")+
+            ggtitle(paste0(clus,":\non ",adrn))+
+            theme(title = element_text(size=9))
+      })
+      ## append legend into the fourth slot of the list so we can have a 2x2 grid of three plots and a legend.  
+      p[[length(p)+1]] <- leg.tmp2
+      
+      pdf(paste0("plots/07_featureSelection_dimred_harmony_clustering/06d_init_louvclusts_on_dimreds/",clus,"_on_",adrn,".pdf"),height=13,width=21)
+      #do.call("grid.arrange",list(arrangeGrob(grobs=p,ncol=3),leg.tmp2,ncol=2,widths=c(19,2)))
+      do.call("grid.arrange",c(p,ncol=2))
+      dev.off()
+   }
 })
-names(clpur) <- featdrnames
-
-clpur2 <- list()
-i<-1
-for (i in c(1:length(clpur))){
-    clpur2 <- c(clpur2,clpur[[i]])
-}
-
-### save results
-saveRDS(clpur2,"processed-data/07_featureSelection_dimred_harmony_clustering/05b-init_SNNk10_louvain_clustpuritys.RDS")
 ```
 
-cluster RMSDs
-```{r}
-crmsd <- mclapply(X=featdrnames,mc.cores=5,FUN=function(fdrn){
-    getcols <- grep(names(SNNlouvs),pattern=fdrn,value=T)
-    curdr <- alldimrs[[fdrn]]
-    
-    i<-1
-    subl <- list()
-    for (i in c(1:length(getcols))){
-        curcols <- c("rn",getcols[i])
-        clusts <- copy(SNNlouvs[,..curcols])
-        clusts <- as.data.frame(clusts,row.names=clusts$rn)
-        
-        # get the row orders matched up between cluster assignments and dimred
-        clusts <- clusts[rownames(curdr),]
-        clusts$rn <- NULL
-        names(clusts)[1] <- "curclus"
-        cRMSD <- clusterRMSD(x = curdr,clusters = clusts$curclus)
-        subl[[i]] <- cRMSD
-        names(subl)[i] <- getcols[i]
-        
-        rm(curcols,clusts,cRMSD)
-    }
-    
-    return(subl)
-})
-names(crmsd) <- featdrnames
-
-crmsd2 <- list()
-i<-1
-for (i in c(1:length(crmsd))){
-    crmsd2 <- c(crmsd2,crmsd[[i]])
-}
-
-saveRDS(crmsd2,"processed-data/07_featureSelection_dimred_harmony_clustering/05c-init_SNNk10_louvain_clustRMSDs.RDS")
-```
-
-reprod inf
+reprod info:
 ```{r}
 sessionInfo()
 sessioninfo::session_info()
@@ -204,19 +267,21 @@ attached base packages:
 [1] parallel  stats4    stats     graphics  grDevices utils     methods   base     
 
 other attached packages:
- [1] HDF5Array_1.34.0            rhdf5_2.50.0               
- [3] DelayedArray_0.32.0         SparseArray_1.6.0          
- [5] S4Arrays_1.6.0              abind_1.4-8                
- [7] Matrix_1.7-1                bluster_1.16.0             
- [9] spatialLIBD_1.18.0          BiocParallel_1.40.0        
-[11] parallelly_1.40.1           colorout_1.3-0.2           
-[13] SpatialExperiment_1.16.0    SingleCellExperiment_1.28.1
-[15] SummarizedExperiment_1.36.0 Biobase_2.66.0             
-[17] GenomicRanges_1.58.0        GenomeInfoDb_1.42.1        
-[19] IRanges_2.40.1              S4Vectors_0.44.0           
-[21] BiocGenerics_0.52.0         MatrixGenerics_1.18.0      
-[23] matrixStats_1.4.1           data.table_1.16.4          
-[25] rlang_1.1.4                
+ [1] ggrastr_1.0.2               HDF5Array_1.34.0           
+ [3] rhdf5_2.50.0                DelayedArray_0.32.0        
+ [5] SparseArray_1.6.0           S4Arrays_1.6.0             
+ [7] abind_1.4-8                 Matrix_1.7-1               
+ [9] BiocParallel_1.40.0         parallelly_1.40.1          
+[11] escheR_1.6.0                Polychrome_1.5.1           
+[13] spatialLIBD_1.18.0          SpatialExperiment_1.16.0   
+[15] SingleCellExperiment_1.28.1 SummarizedExperiment_1.36.0
+[17] Biobase_2.66.0              GenomicRanges_1.58.0       
+[19] GenomeInfoDb_1.42.1         IRanges_2.40.1             
+[21] S4Vectors_0.44.0            BiocGenerics_0.52.0        
+[23] MatrixGenerics_1.18.0       matrixStats_1.4.1          
+[25] gridExtra_2.3               ggplot2_3.5.1              
+[27] colorout_1.3-0.2            data.table_1.16.4          
+[29] rlang_1.1.4                
 
 loaded via a namespace (and not attached):
   [1] later_1.4.1              BiocIO_1.16.0            bitops_1.0-9            
@@ -231,36 +296,36 @@ loaded via a namespace (and not attached):
  [28] zlibbioc_1.52.0          purrr_1.0.2              RCurl_1.98-1.16         
  [31] rappdirs_0.3.3           GenomeInfoDbData_1.2.13  ggrepel_0.9.6           
  [34] irlba_2.3.5.1            codetools_0.2-20         DT_0.33                 
- [37] scuttle_1.16.0           tidyselect_1.2.1         UCSC.utils_1.2.0        
- [40] ScaledMatrix_1.14.0      viridis_0.6.5            shinyWidgets_0.8.7      
- [43] BiocFileCache_2.14.0     GenomicAlignments_1.42.0 jsonlite_1.8.9          
- [46] BiocNeighbors_2.0.1      scater_1.34.0            iterators_1.0.14        
- [49] foreach_1.5.2            tools_4.4.1              Rcpp_1.0.13-1           
- [52] glue_1.8.0               gridExtra_2.3            xfun_0.49               
- [55] here_1.0.1               dplyr_1.1.4              BiocManager_1.30.25     
- [58] fastmap_1.2.0            rhdf5filters_1.18.0      fansi_1.0.6             
- [61] digest_0.6.37            rsvd_1.0.5               R6_2.5.1                
- [64] mime_0.12                colorspace_2.1-1         RSQLite_2.3.9           
- [67] config_0.3.2             utf8_1.2.4               tidyr_1.3.1             
- [70] generics_0.1.3           rtracklayer_1.66.0       httr_1.4.7              
- [73] htmlwidgets_1.6.4        pkgconfig_2.0.3          gtable_0.3.6            
- [76] blob_1.2.4               XVector_0.46.0           htmltools_0.5.8.1       
- [79] dotCall64_1.2            scales_1.3.0             png_0.1-8               
- [82] attempt_0.3.1            knitr_1.49               rstudioapi_0.17.1       
- [85] rjson_0.2.23             curl_6.0.1               cachem_1.1.0            
- [88] BiocVersion_3.20.0       vipor_0.4.7              AnnotationDbi_1.68.0    
- [91] restfulr_0.0.15          pillar_1.9.0             grid_4.4.1              
- [94] vctrs_0.6.5              promises_1.3.2           BiocSingular_1.22.0     
- [97] dbplyr_2.5.0             beachmat_2.22.0          xtable_1.8-4            
-[100] cluster_2.1.8            beeswarm_0.4.0           paletteer_1.6.0         
-[103] evaluate_1.0.1           magick_2.8.5             cli_3.6.3               
-[106] locfit_1.5-9.10          compiler_4.4.1           Rsamtools_2.22.0        
-[109] crayon_1.5.3             rematch2_2.1.2           ggbeeswarm_0.7.2        
-[112] viridisLite_0.4.2        munsell_0.5.1            Biostrings_2.74.0       
-[115] lazyeval_0.2.2           ExperimentHub_2.14.0     benchmarkme_1.0.8       
-[118] bit64_4.5.2              Rhdf5lib_1.28.0          ggplot2_3.5.1           
-[121] KEGGREST_1.46.0          statmod_1.5.0            shiny_1.9.1             
-[124] AnnotationHub_3.14.0     igraph_2.1.2             memoise_2.0.1           
+ [37] scuttle_1.16.0           tidyselect_1.2.1         farver_2.1.2            
+ [40] UCSC.utils_1.2.0         ScaledMatrix_1.14.0      viridis_0.6.5           
+ [43] shinyWidgets_0.8.7       BiocFileCache_2.14.0     GenomicAlignments_1.42.0
+ [46] jsonlite_1.8.9           BiocNeighbors_2.0.1      scater_1.34.0           
+ [49] iterators_1.0.14         foreach_1.5.2            tools_4.4.1             
+ [52] Rcpp_1.0.13-1            glue_1.8.0               xfun_0.49               
+ [55] here_1.0.1               dplyr_1.1.4              withr_3.0.2             
+ [58] BiocManager_1.30.25      fastmap_1.2.0            rhdf5filters_1.18.0     
+ [61] fansi_1.0.6              digest_0.6.37            rsvd_1.0.5              
+ [64] R6_2.5.1                 mime_0.12                colorspace_2.1-1        
+ [67] RSQLite_2.3.9            config_0.3.2             utf8_1.2.4              
+ [70] tidyr_1.3.1              generics_0.1.3           rtracklayer_1.66.0      
+ [73] httr_1.4.7               htmlwidgets_1.6.4        scatterplot3d_0.3-44    
+ [76] pkgconfig_2.0.3          gtable_0.3.6             blob_1.2.4              
+ [79] XVector_0.46.0           htmltools_0.5.8.1        dotCall64_1.2           
+ [82] scales_1.3.0             png_0.1-8                attempt_0.3.1           
+ [85] knitr_1.49               rstudioapi_0.17.1        rjson_0.2.23            
+ [88] curl_6.0.1               cachem_1.1.0             BiocVersion_3.20.0      
+ [91] vipor_0.4.7              AnnotationDbi_1.68.0     restfulr_0.0.15         
+ [94] pillar_1.9.0             grid_4.4.1               vctrs_0.6.5             
+ [97] promises_1.3.2           BiocSingular_1.22.0      dbplyr_2.5.0            
+[100] beachmat_2.22.0          xtable_1.8-4             beeswarm_0.4.0          
+[103] paletteer_1.6.0          evaluate_1.0.1           magick_2.8.5            
+[106] cli_3.6.3                locfit_1.5-9.10          compiler_4.4.1          
+[109] Rsamtools_2.22.0         crayon_1.5.3             labeling_0.4.3          
+[112] rematch2_2.1.2           ggbeeswarm_0.7.2         viridisLite_0.4.2       
+[115] munsell_0.5.1            Biostrings_2.74.0        lazyeval_0.2.2          
+[118] ExperimentHub_2.14.0     benchmarkme_1.0.8        bit64_4.5.2             
+[121] Rhdf5lib_1.28.0          KEGGREST_1.46.0          statmod_1.5.0           
+[124] shiny_1.9.1              AnnotationHub_3.14.0     memoise_2.0.1           
 [127] bslib_0.8.0              benchmarkmeData_1.0.4    bit_4.5.0.1             
 > sessioninfo::session_info()
 ─ Session info ───────────────────────────────────────────────────────────────────
@@ -273,7 +338,7 @@ loaded via a namespace (and not attached):
  collate  en_US.UTF-8
  ctype    en_US.UTF-8
  tz       America/Chicago
- date     2025-01-02
+ date     2025-01-04
  rstudio  2024.07.0-daily+219 Cranberry Hibiscus (desktop)
  pandoc   3.1.11 @ /Applications/RStudio.app/Contents/Resources/app/quarto/bin/tools/aarch64/ (via rmarkdown)
 
@@ -301,11 +366,9 @@ loaded via a namespace (and not attached):
    bit64                  4.5.2     2024-09-22 [1] CRAN (R 4.4.1)
    bitops                 1.0-9     2024-10-03 [1] CRAN (R 4.4.1)
    blob                   1.2.4     2023-03-17 [1] CRAN (R 4.4.0)
-   bluster              * 1.16.0    2024-11-08 [1] Bioconductor 3.20 (R 4.4.1)
    bslib                  0.8.0     2024-07-29 [1] CRAN (R 4.4.0)
    cachem                 1.1.0     2024-05-16 [1] CRAN (R 4.4.0)
  P cli                    3.6.3     2024-06-21 [2] CRAN (R 4.4.0)
-   cluster                2.1.8     2024-12-11 [1] CRAN (R 4.4.1)
    codetools              0.2-20    2024-03-31 [1] CRAN (R 4.4.1)
    colorout             * 1.3-0.2   2024-05-01 [1] Github (jalvesaq/colorout@c6113a2)
    colorspace             2.1-1     2024-07-26 [1] CRAN (R 4.4.0)
@@ -323,9 +386,11 @@ loaded via a namespace (and not attached):
    dplyr                  1.1.4     2023-11-17 [1] CRAN (R 4.4.0)
    DT                     0.33      2024-04-04 [1] CRAN (R 4.4.0)
    edgeR                  4.4.1     2024-12-02 [1] Bioconductor 3.20 (R 4.4.2)
+   escheR               * 1.6.0     2024-11-08 [1] Bioconductor 3.20 (R 4.4.1)
    evaluate               1.0.1     2024-10-10 [1] CRAN (R 4.4.1)
    ExperimentHub          2.14.0    2024-11-08 [1] Bioconductor 3.20 (R 4.4.1)
    fansi                  1.0.6     2023-12-08 [1] CRAN (R 4.4.0)
+   farver                 2.1.2     2024-05-13 [1] CRAN (R 4.4.0)
    fastmap                1.2.0     2024-05-15 [1] CRAN (R 4.4.0)
    fields                 16.3      2024-09-30 [1] CRAN (R 4.4.1)
    filelock               1.0.3     2023-12-11 [1] CRAN (R 4.4.0)
@@ -336,11 +401,12 @@ loaded via a namespace (and not attached):
    GenomicAlignments      1.42.0    2024-11-08 [1] Bioconductor 3.20 (R 4.4.1)
    GenomicRanges        * 1.58.0    2024-11-08 [1] Bioconductor 3.20 (R 4.4.1)
    ggbeeswarm             0.7.2     2023-04-29 [1] CRAN (R 4.4.0)
-   ggplot2                3.5.1     2024-04-23 [1] CRAN (R 4.4.0)
+   ggplot2              * 3.5.1     2024-04-23 [1] CRAN (R 4.4.0)
+   ggrastr              * 1.0.2     2023-06-01 [1] CRAN (R 4.4.0)
    ggrepel                0.9.6     2024-09-07 [1] CRAN (R 4.4.1)
    glue                   1.8.0     2024-09-30 [1] CRAN (R 4.4.1)
    golem                  0.5.1     2024-08-27 [1] CRAN (R 4.4.1)
-   gridExtra              2.3       2017-09-09 [1] CRAN (R 4.4.0)
+   gridExtra            * 2.3       2017-09-09 [1] CRAN (R 4.4.0)
    gtable                 0.3.6     2024-10-25 [1] CRAN (R 4.4.1)
    HDF5Array            * 1.34.0    2024-11-08 [1] Bioconductor 3.20 (R 4.4.1)
    here                   1.0.1     2020-12-13 [1] CRAN (R 4.4.0)
@@ -348,7 +414,6 @@ loaded via a namespace (and not attached):
    htmlwidgets            1.6.4     2023-12-06 [1] CRAN (R 4.4.0)
    httpuv                 1.6.15    2024-03-26 [1] CRAN (R 4.4.0)
    httr                   1.4.7     2023-08-15 [1] CRAN (R 4.4.0)
-   igraph                 2.1.2     2024-12-07 [1] CRAN (R 4.4.1)
    IRanges              * 2.40.1    2024-12-05 [1] Bioconductor 3.20 (R 4.4.2)
    irlba                  2.3.5.1   2022-10-03 [1] CRAN (R 4.4.0)
    iterators              1.0.14    2022-02-05 [1] CRAN (R 4.4.0)
@@ -356,6 +421,7 @@ loaded via a namespace (and not attached):
    jsonlite               1.8.9     2024-09-20 [1] CRAN (R 4.4.1)
    KEGGREST               1.46.0    2024-11-08 [1] Bioconductor 3.20 (R 4.4.1)
    knitr                  1.49      2024-11-08 [1] CRAN (R 4.4.1)
+   labeling               0.4.3     2023-08-29 [1] CRAN (R 4.4.0)
    later                  1.4.1     2024-11-27 [1] CRAN (R 4.4.1)
    lattice                0.22-6    2024-03-20 [1] CRAN (R 4.4.1)
    lazyeval               0.2.2     2019-03-15 [1] CRAN (R 4.4.0)
@@ -377,6 +443,7 @@ loaded via a namespace (and not attached):
    pkgconfig              2.0.3     2019-09-22 [1] CRAN (R 4.4.0)
    plotly                 4.10.4    2024-01-13 [1] CRAN (R 4.4.0)
    png                    0.1-8     2022-11-29 [1] CRAN (R 4.4.0)
+   Polychrome           * 1.5.1     2022-05-03 [1] CRAN (R 4.4.0)
    promises               1.3.2     2024-11-28 [1] CRAN (R 4.4.1)
    purrr                  1.0.2     2023-08-10 [1] CRAN (R 4.4.0)
    R6                     2.5.1     2021-08-19 [1] CRAN (R 4.4.0)
@@ -404,6 +471,7 @@ loaded via a namespace (and not attached):
    ScaledMatrix           1.14.0    2024-11-08 [1] Bioconductor 3.20 (R 4.4.1)
    scales                 1.3.0     2023-11-28 [1] CRAN (R 4.4.0)
    scater                 1.34.0    2024-10-29 [1] Bioconductor 3.20 (R 4.4.1)
+   scatterplot3d          0.3-44    2023-05-05 [1] CRAN (R 4.4.0)
    scuttle                1.16.0    2024-11-08 [1] Bioconductor 3.20 (R 4.4.1)
    sessioninfo            1.2.2     2021-12-06 [1] CRAN (R 4.4.0)
    shiny                  1.9.1     2024-08-01 [1] CRAN (R 4.4.0)
@@ -424,6 +492,7 @@ loaded via a namespace (and not attached):
    vipor                  0.4.7     2023-12-18 [1] CRAN (R 4.4.0)
    viridis                0.6.5     2024-01-29 [1] CRAN (R 4.4.0)
    viridisLite            0.4.2     2023-05-02 [1] CRAN (R 4.4.0)
+   withr                  3.0.2     2024-10-28 [1] CRAN (R 4.4.1)
    xfun                   0.49      2024-10-31 [1] CRAN (R 4.4.1)
    XML                    3.99-0.17 2024-06-25 [1] CRAN (R 4.3.3)
    xtable                 1.8-4     2019-04-21 [1] CRAN (R 4.4.0)

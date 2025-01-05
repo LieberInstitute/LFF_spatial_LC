@@ -1,0 +1,314 @@
+---
+title: "04e-init_louvainCluster_spotplots"
+output: html_document
+date: "2025-01-02"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(fig.height = 10,fig.width = 7,include = FALSE)
+#### sets tab autocompletion for directories to begin from the directory containing the .Rproj session, instead of the script's directory if different
+knitr::opts_knit$set(root.dir = here::here())
+
+library(data.table)
+library(ggplot2)
+library(gridExtra)
+library(SpatialExperiment)
+# library(spatialLIBD)
+library(Polychrome)
+library(ggrastr)
+library(escheR)
+
+## rstudio GUI tweaks
+require(colorout)
+ColorOut()
+options("styler.addins_style_transformer" = "biocthis::bioc_style()")
+##
+
+## enable forked parallel processing with BiocParallel::multicoreParam, future::, etc. seemed to need this a couple times, but otherwise havent so its here as a preventative measure. part of this is adding the line 
+# OBJC_DISABLE_INITIALIZE_FORK_SAFETY=YES
+# to Renviron.site. see e.g. top response on https://stackoverflow.com/questions/73638290/python-on-mac-is-it-safe-to-set-objc-disable-initialize-fork-safety-yes-globall 
+library(parallelly)
+options(parallelly.supportsMulticore.disableOn="")
+options(parallelly.fork.enable=TRUE)
+library(BiocParallel)
+options(bphost="localhost")
+library(parallel)
+
+
+## ggplot defaults
+theme_set(theme_bw()+theme(axis.text.x = element_text(size = 10), axis.title.x = element_text(size = 11), axis.text.y = element_text(size = 10), axis.title.y = element_text(size =11), plot.title = element_text(size = 13,hjust=0.5), strip.text = element_text(size=11), legend.text = element_text(size=9), legend.title = element_text(size=10,hjust=0.5)))
+
+## last of all, unload the base package datasets, whose data keep getting in the way of autocompletions (e.g., Theoph is priortized over TRUE)
+unloadNamespace("datasets")
+```
+
+load QC'ed spe, clustering results; subset to louvain clusterings only (leiden clusterings all returned 100s-1000s of clusters)
+```{r}
+lc3 <- readRDS("processed-data/06-QCed_SPE_split_to_tissSections.RDS")
+
+## dump off some unecessary stuff for making these plots (counts and logcounts matrices, image data)
+assays(lc3) <- assays(lc3)[1]
+counts(lc3) <- NULL
+gc(full=T)
+
+imgData(lc3) <- NULL
+gc(full=T)
+
+### get clusterings and cluster autoannot tables
+SNNlouvlist <- readRDS("processed-data/07_featureSelection_dimred_harmony_clustering/04-Initial_louvLeid_res0.5-1-2_clusterings.RDS")
+
+i<-1
+for (i in c(1:length(SNNlouvlist))){
+   if(i==1){snnlouvs <- copy(SNNlouvlist[[i]])} else{
+      snnlouvs <- merge.data.table(snnlouvs,SNNlouvlist[[i]],by="rn")
+   }
+}
+
+## only keep louvain clusterings
+keepclus <- c("rn",grep(names(snnlouvs),pattern="_louv_",value=T))
+snnlouvs <- snnlouvs[,..keepclus]
+
+## annots
+autoan <- readRDS("processed-data/07_featureSelection_dimred_harmony_clustering/05b-init_clusterings_autoannoLCrapheAndGABAergic.RDS")
+
+## clean up
+rm(keepclus,i,SNNlouvlist)
+## just use the louvain clusterings
+```
+
+### define a function to extract a legend from a ggplot (so we have one legend per output pdf); generate a gridded PDF for each clustering result.
+### we can actually do the bigger workhorse of the escheR calls just one time, and then overrwrite the fill with the current clustering in each iteration.
+```{r}
+# helper function to extract a legend and pipe back to a diff plot: from https://statisticsglobe.com/add-common-legend-to-combined-ggplot2-plots-in-r/#example-2-add-shared-legend-to-ggplot2-plots-using-gridextra-package 
+
+extract_legend <- function(my_ggp) {
+  step1 <- ggplot_gtable(ggplot_build(my_ggp))
+  step2 <- which(sapply(step1$grobs, function(x) x$name) == "guide-box")
+  step3 <- step1$grobs[[step2]]
+  return(step3)
+}
+
+lapply(colnames(snnlouvs)[2:ncol(snnlouvs)],FUN=function(clus){
+    colidx <- which(colnames(snnlouvs)==clus)
+    nclusts <- length(unique(snnlouvs[,get(clus)]))
+    
+    keepn <- c("rn",clus)
+    tmplouv <- copy(snnlouvs[,..keepn])
+    tmplouv <- merge.data.table(tmplouv,autoan[[clus]],by.x=clus,by.y="clusid")
+    tmplouv <- DataFrame(tmplouv,row.names=tmplouv$rn)[colnames(lc3),]
+    
+    colLabels(lc3) <- tmplouv$autoanno
+    
+    pal <- palette36.colors(n = nclusts+2)[c(3:(nclusts+2))]
+    # next line is needed for consistency in color-cluster assignments between libdspatial and the generated legend below
+    names(pal) <- unique(tmplouv$autoanno)
+    
+    ## create a unified legend spanning all possible cluster values (regardless of presence in a given sample)
+    leg.tmp <- ggplot(as.data.table(colData(lc3))[,.(label,array_row,array_col)],aes(x=array_row,y=array_col,col=label))+geom_point()+
+        scale_color_manual(values=as.character(pal))+
+        guides(color=guide_legend(ncol=2,override.aes=list(size=3)))+
+        theme(
+                    legend.text = element_text(size = 10),
+                    legend.title = element_text(size = 10, hjust = 0.5),
+                    legend.spacing.y = unit(0, "cm"),
+                    legend.spacing.x = unit(0.1, "cm"))
+    leg.tmp2 <- extract_legend(leg.tmp)
+    dev.off()
+    
+    ### make spotplots. had this in an mclapply loop originally but only the first two plots would generate and then R just acted like it was still running but nothing was happening in terms of file creation or computational resource use.
+    plt <- bplapply(unique(lc3$sample_id),BPPARAM = MulticoreParam(8),FUN=function(s){
+       tmp.p <- make_escheR(lc3[,lc3$sample_id==s])
+       tmp.p <- tmp.p |> add_fill("label",size=1.65,point_size = 1.65)
+       tmp.p + ggtitle(s)
+       tmp.p <- tmp.p+scale_fill_manual(values=pal)
+       tmp.p <- rasterize(tmp.p,layers="Points",dev="cairo_png",dpi=300)
+       return(tmp.p)
+    })
+    
+    ### adjust font sizes, drop individual plot legends
+    plt <- lapply(
+        plt,
+        FUN = function(x) {
+            y <- x +
+                theme(
+                    plot.title = element_text(size = 11, hjust = 0.5),
+                    strip.text = element_text(size = 10),
+                )+
+                guides(fill="none")
+            return(y)
+        }
+    )
+    
+    # save
+    pdf(
+        paste0(
+            "plots/07_featureSelection_dimred_harmony_clustering/06e_init_louvclust_spotplots/",
+            clus,
+            ".pdf"
+        ),
+        width = 26,
+        height = 90,
+        onefile = FALSE
+    )
+    ### arrangeGrob() on the spotplot list --> 3 x 3 of plots from that list only, constituting the "first column" of the parent; leg.tmp2 is an additional thing being plotted in the second column of the parent. width of the plot grid is set to 24, width of the second column (legend only) set to 2.
+    do.call("grid.arrange",list(arrangeGrob(grobs=plt,ncol=5),leg.tmp2,ncol=2,widths=c(24,2)))
+    dev.off()
+    
+})
+```
+
+reprod info
+```{r}
+sessionInfo()
+sessioninfo::session_info()
+```
+R version 4.4.1 RC (2024-06-06 r86719)
+Platform: aarch64-apple-darwin20
+Running under: macOS Sonoma 14.7.1
+
+Matrix products: default
+BLAS:   /System/Library/Frameworks/Accelerate.framework/Versions/A/Frameworks/vecLib.framework/Versions/A/libBLAS.dylib 
+LAPACK: /Library/Frameworks/R.framework/Versions/4.4-arm64/Resources/lib/libRlapack.dylib;  LAPACK version 3.12.0
+
+locale:
+[1] en_US.UTF-8/en_US.UTF-8/en_US.UTF-8/C/en_US.UTF-8/en_US.UTF-8
+
+time zone: America/Chicago
+tzcode source: internal
+
+attached base packages:
+[1] parallel  stats4    stats     graphics  grDevices utils     methods   base     
+
+other attached packages:
+ [1] BiocParallel_1.40.0         parallelly_1.40.1          
+ [3] colorout_1.3-0.2            escheR_1.6.0               
+ [5] ggrastr_1.0.2               Polychrome_1.5.1           
+ [7] SpatialExperiment_1.16.0    SingleCellExperiment_1.28.1
+ [9] SummarizedExperiment_1.36.0 Biobase_2.66.0             
+[11] GenomicRanges_1.58.0        GenomeInfoDb_1.42.1        
+[13] IRanges_2.40.1              S4Vectors_0.44.0           
+[15] BiocGenerics_0.52.0         MatrixGenerics_1.18.0      
+[17] matrixStats_1.4.1           gridExtra_2.3              
+[19] ggplot2_3.5.1               data.table_1.16.4          
+[21] rlang_1.1.4                
+
+loaded via a namespace (and not attached):
+ [1] gtable_0.3.6            beeswarm_0.4.0          rjson_0.2.23           
+ [4] xfun_0.49               lattice_0.22-6          vctrs_0.6.5            
+ [7] tools_4.4.1             generics_0.1.3          tibble_3.2.1           
+[10] fansi_1.0.6             pkgconfig_2.0.3         Matrix_1.7-1           
+[13] scatterplot3d_0.3-44    lifecycle_1.0.4         GenomeInfoDbData_1.2.13
+[16] farver_2.1.2            compiler_4.4.1          munsell_0.5.1          
+[19] codetools_0.2-20        vipor_0.4.7             htmltools_0.5.8.1      
+[22] yaml_2.3.10             pillar_1.9.0            crayon_1.5.3           
+[25] DelayedArray_0.32.0     magick_2.8.5            abind_1.4-8            
+[28] tidyselect_1.2.1        digest_0.6.37           dplyr_1.1.4            
+[31] labeling_0.4.3          rprojroot_2.0.4         fastmap_1.2.0          
+[34] grid_4.4.1              here_1.0.1              colorspace_2.1-1       
+[37] cli_3.6.3               SparseArray_1.6.0       magrittr_2.0.3         
+[40] S4Arrays_1.6.0          utf8_1.2.4              withr_3.0.2            
+[43] scales_1.3.0            UCSC.utils_1.2.0        ggbeeswarm_0.7.2       
+[46] rmarkdown_2.29          XVector_0.46.0          httr_1.4.7             
+[49] evaluate_1.0.1          knitr_1.49              viridisLite_0.4.2      
+[52] Rcpp_1.0.13-1           glue_1.8.0              rstudioapi_0.17.1      
+[55] jsonlite_1.8.9          R6_2.5.1                zlibbioc_1.52.0        
+> sessioninfo::session_info()
+─ Session info ──────────────────────────────────────────────────────────────────
+ setting  value
+ version  R version 4.4.1 RC (2024-06-06 r86719)
+ os       macOS Sonoma 14.7.1
+ system   aarch64, darwin20
+ ui       RStudio
+ language (EN)
+ collate  en_US.UTF-8
+ ctype    en_US.UTF-8
+ tz       America/Chicago
+ date     2025-01-04
+ rstudio  2024.07.0-daily+219 Cranberry Hibiscus (desktop)
+ pandoc   3.1.11 @ /Applications/RStudio.app/Contents/Resources/app/quarto/bin/tools/aarch64/ (via rmarkdown)
+
+─ Packages ──────────────────────────────────────────────────────────────────────
+ ! package              * version  date (UTC) lib source
+   abind                  1.4-8    2024-09-12 [1] CRAN (R 4.4.1)
+   beeswarm               0.4.0    2021-06-01 [1] CRAN (R 4.4.0)
+   Biobase              * 2.66.0   2024-11-08 [1] Bioconductor 3.20 (R 4.4.1)
+   BiocGenerics         * 0.52.0   2024-11-08 [1] Bioconductor 3.20 (R 4.4.1)
+   BiocParallel         * 1.40.0   2024-11-23 [1] Bioconductor 3.20 (R 4.4.2)
+ P cli                    3.6.3    2024-06-21 [2] CRAN (R 4.4.0)
+   codetools              0.2-20   2024-03-31 [1] CRAN (R 4.4.1)
+   colorout             * 1.3-0.2  2024-05-01 [1] Github (jalvesaq/colorout@c6113a2)
+   colorspace             2.1-1    2024-07-26 [1] CRAN (R 4.4.0)
+   crayon                 1.5.3    2024-06-20 [1] CRAN (R 4.4.0)
+   data.table           * 1.16.4   2024-12-06 [1] CRAN (R 4.4.1)
+   DelayedArray           0.32.0   2024-11-08 [1] Bioconductor 3.20 (R 4.4.1)
+   digest                 0.6.37   2024-08-19 [1] CRAN (R 4.4.1)
+   dplyr                  1.1.4    2023-11-17 [1] CRAN (R 4.4.0)
+   escheR               * 1.6.0    2024-11-08 [1] Bioconductor 3.20 (R 4.4.1)
+   evaluate               1.0.1    2024-10-10 [1] CRAN (R 4.4.1)
+   fansi                  1.0.6    2023-12-08 [1] CRAN (R 4.4.0)
+   farver                 2.1.2    2024-05-13 [1] CRAN (R 4.4.0)
+   fastmap                1.2.0    2024-05-15 [1] CRAN (R 4.4.0)
+   generics               0.1.3    2022-07-05 [1] CRAN (R 4.4.0)
+   GenomeInfoDb         * 1.42.1   2024-11-28 [1] Bioconductor 3.20 (R 4.4.2)
+   GenomeInfoDbData       1.2.13   2024-12-12 [1] Bioconductor
+   GenomicRanges        * 1.58.0   2024-11-08 [1] Bioconductor 3.20 (R 4.4.1)
+   ggbeeswarm             0.7.2    2023-04-29 [1] CRAN (R 4.4.0)
+   ggplot2              * 3.5.1    2024-04-23 [1] CRAN (R 4.4.0)
+   ggrastr              * 1.0.2    2023-06-01 [1] CRAN (R 4.4.0)
+   glue                   1.8.0    2024-09-30 [1] CRAN (R 4.4.1)
+   gridExtra            * 2.3      2017-09-09 [1] CRAN (R 4.4.0)
+   gtable                 0.3.6    2024-10-25 [1] CRAN (R 4.4.1)
+   here                   1.0.1    2020-12-13 [1] CRAN (R 4.4.0)
+   htmltools              0.5.8.1  2024-04-04 [1] CRAN (R 4.4.0)
+   httr                   1.4.7    2023-08-15 [1] CRAN (R 4.4.0)
+   IRanges              * 2.40.1   2024-12-05 [1] Bioconductor 3.20 (R 4.4.2)
+   jsonlite               1.8.9    2024-09-20 [1] CRAN (R 4.4.1)
+   knitr                  1.49     2024-11-08 [1] CRAN (R 4.4.1)
+   labeling               0.4.3    2023-08-29 [1] CRAN (R 4.4.0)
+   lattice                0.22-6   2024-03-20 [1] CRAN (R 4.4.1)
+   lifecycle              1.0.4    2023-11-07 [1] CRAN (R 4.4.0)
+   magick                 2.8.5    2024-09-20 [1] CRAN (R 4.4.1)
+   magrittr               2.0.3    2022-03-30 [1] CRAN (R 4.4.0)
+   Matrix                 1.7-1    2024-10-18 [1] CRAN (R 4.4.1)
+   MatrixGenerics       * 1.18.0   2024-11-08 [1] Bioconductor 3.20 (R 4.4.1)
+   matrixStats          * 1.4.1    2024-09-08 [1] CRAN (R 4.4.1)
+   munsell                0.5.1    2024-04-01 [1] CRAN (R 4.4.0)
+   parallelly           * 1.40.1   2024-12-04 [1] CRAN (R 4.4.1)
+   pillar                 1.9.0    2023-03-22 [1] CRAN (R 4.4.0)
+   pkgconfig              2.0.3    2019-09-22 [1] CRAN (R 4.4.0)
+   Polychrome           * 1.5.1    2022-05-03 [1] CRAN (R 4.4.0)
+   R6                     2.5.1    2021-08-19 [1] CRAN (R 4.4.0)
+   Rcpp                   1.0.13-1 2024-11-02 [1] CRAN (R 4.4.1)
+   rjson                  0.2.23   2024-09-16 [1] CRAN (R 4.4.1)
+ P rlang                * 1.1.4    2024-06-04 [2] CRAN (R 4.4.1)
+   rmarkdown              2.29     2024-11-04 [1] CRAN (R 4.4.1)
+   rprojroot              2.0.4    2023-11-05 [1] CRAN (R 4.4.0)
+   rstudioapi             0.17.1   2024-10-22 [1] CRAN (R 4.4.1)
+   S4Arrays               1.6.0    2024-11-08 [1] Bioconductor 3.20 (R 4.4.1)
+   S4Vectors            * 0.44.0   2024-11-08 [1] Bioconductor 3.20 (R 4.4.1)
+   scales                 1.3.0    2023-11-28 [1] CRAN (R 4.4.0)
+   scatterplot3d          0.3-44   2023-05-05 [1] CRAN (R 4.4.0)
+   sessioninfo            1.2.2    2021-12-06 [1] CRAN (R 4.4.0)
+   SingleCellExperiment * 1.28.1   2024-11-23 [1] Bioconductor 3.20 (R 4.4.2)
+   SparseArray            1.6.0    2024-11-08 [1] Bioconductor 3.20 (R 4.4.1)
+   SpatialExperiment    * 1.16.0   2024-11-08 [1] Bioconductor 3.20 (R 4.4.1)
+   SummarizedExperiment * 1.36.0   2024-11-08 [1] Bioconductor 3.20 (R 4.4.1)
+   tibble                 3.2.1    2023-03-20 [1] CRAN (R 4.4.0)
+   tidyselect             1.2.1    2024-03-11 [1] CRAN (R 4.4.0)
+   UCSC.utils             1.2.0    2024-11-08 [1] Bioconductor 3.20 (R 4.4.1)
+   utf8                   1.2.4    2023-10-22 [1] CRAN (R 4.4.0)
+   vctrs                  0.6.5    2023-12-01 [1] CRAN (R 4.4.0)
+   vipor                  0.4.7    2023-12-18 [1] CRAN (R 4.4.0)
+   viridisLite            0.4.2    2023-05-02 [1] CRAN (R 4.4.0)
+   withr                  3.0.2    2024-10-28 [1] CRAN (R 4.4.1)
+   xfun                   0.49     2024-10-31 [1] CRAN (R 4.4.1)
+   XVector                0.46.0   2024-11-08 [1] Bioconductor 3.20 (R 4.4.1)
+   yaml                   2.3.10   2024-07-26 [1] CRAN (R 4.4.0)
+   zlibbioc               1.52.0   2024-11-08 [1] Bioconductor 3.20 (R 4.4.1)
+
+ [1] /Library/Frameworks/R.framework/Versions/4.4-arm64/Resources/library
+ [2] /Users/bmulvey/Library/R/arm64/4.4/library
+
+ P ── Loaded and on-disk path mismatch.
+
+─────────────────────────────────────────────────────────────────────────────────

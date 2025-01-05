@@ -1,7 +1,7 @@
 ---
-title: "04a-init_louvainClusters_purity"
+title: "06a-init_louvainClusters_purity"
 output: html_document
-date: "2025-01-02"
+date: "2025-01-04"
 ---
 
 ```{r setup, include=FALSE}
@@ -33,12 +33,15 @@ unloadNamespace("datasets")
 
 ## plot these as demonstrated in OSCA advanced 5.2.3
 ```{r}
-pur <- readRDS("processed-data/07_featureSelection_dimred_harmony_clustering/05b-init_SNNk10_louvain_clustpuritys.RDS")
+pur <- readRDS("processed-data/07_featureSelection_dimred_harmony_clustering/06b-init_SNNk10_louvain_clustpuritys.RDS")
 
 ## we also need the spot id-cluster label pairs for this one
 
 SNNlouvlist <- readRDS("processed-data/07_featureSelection_dimred_harmony_clustering/04-Initial_louvLeid_res0.5-1-2_clusterings.RDS")
 snnlouvs <- lapply(SNNlouvlist,function(x){return(as.data.table(x))})
+
+## and lastly we need the cluster id auto annotation lookup tables
+autoan <- readRDS("processed-data/07_featureSelection_dimred_harmony_clustering/05b-init_clusterings_autoannoLCrapheAndGABAergic.RDS")
 
 i<-1
 for (i in c(1:length(snnlouvs))){
@@ -54,21 +57,22 @@ mapply(pur,names(pur),SIMPLIFY=FALSE,FUN = function(p,n){
     p <- as.data.table(p,keep.rownames=T)
     getnames <- c("rn",n)
     clusassigns <- snnlouv.dt[,..getnames]
-    setnames(clusassigns,2,"label")
+    
+    clusassigns <- merge.data.table(clusassigns,copy(autoan[[n]]),by.x=n,by.y="clusid")
     
     p <- merge.data.table(p,clusassigns,by="rn")
     
-    nclus <- length(unique(p$label))
+    nclus <- length(unique(p$autoanno))
     pal <- palette36.colors(n = nclus+2)[c(3:(nclus+2))]
-    names(pal) <- paste0("X",c(1:nclus))
+    names(pal) <- unique(p$autoanno)
     
-    plt <- ggplot(p,aes(x=label,y=purity,col=maximum))+
+    plt <- ggplot(p,aes(x=autoanno,y=purity,col=maximum))+
         rasterize(geom_quasirandom(method="smiley"),dev="cairo_png")+
         scale_color_manual(values = pal)+
         theme(axis.text.x = element_text(angle = 90, hjust = 0.5))+
         ggtitle(n)
 
-    pdf(paste0("plots/07_featureSelection_dimred_harmony_clustering/04a_init_louv_clusPuritys/",n,".pdf"),height=8,width=14)
+    pdf(paste0("plots/07_featureSelection_dimred_harmony_clustering/06a_init_louv_clusPuritys/",n,".pdf"),height=8,width=14)
     print(plt)
     dev.off()
 })
@@ -127,7 +131,7 @@ loaded via a namespace (and not attached):
  collate  en_US.UTF-8
  ctype    en_US.UTF-8
  tz       America/Chicago
- date     2025-01-02
+ date     2025-01-04
  rstudio  2024.07.0-daily+219 Cranberry Hibiscus (desktop)
  pandoc   3.1.11 @ /Applications/RStudio.app/Contents/Resources/app/quarto/bin/tools/aarch64/ (via rmarkdown)
 

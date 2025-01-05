@@ -1,11 +1,12 @@
 ---
-title: "04b-init_louvainCluster_silwidths"
+title: "06b-init_louvainCluster_silwidths"
 output: html_document
-date: "2025-01-02"
+date: "2025-01-04"
 ---
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(fig.height = 10,fig.width = 7,include = FALSE)
+
 #### sets tab autocompletion for directories to begin from the directory containing the .Rproj session, instead of the script's directory if different
 knitr::opts_knit$set(root.dir = here::here())
 
@@ -33,7 +34,7 @@ unloadNamespace("datasets")
 
 ## plot these as demonstrated in OSCA advanced 5.2.2
 ```{r}
-silw <- readRDS("processed-data/07_featureSelection_dimred_harmony_clustering/05a-init_SNNk10_louvainClusts_silwidths.RDS")
+silw <- readRDS("processed-data/07_featureSelection_dimred_harmony_clustering/06a-init_SNNk10_louvainClusts_silwidths.RDS")
 
 mapply(silw,names(silw),SIMPLIFY=FALSE,FUN = function(s,n){
     s <- as.data.table(s)
@@ -41,7 +42,7 @@ mapply(silw,names(silw),SIMPLIFY=FALSE,FUN = function(s,n){
     
     nclus <- length(unique(s$cluster))
     pal <- palette36.colors(n = nclus+2)[c(3:(nclus+2))]
-    names(pal) <- paste0("X",c(1:nclus))
+    names(pal) <- unique(s$cluster)
     
     plt <- ggplot(s,aes(x=cluster,y=width,col=closest))+
         rasterize(geom_quasirandom(method="smiley"),dev="cairo_png")+
@@ -49,7 +50,7 @@ mapply(silw,names(silw),SIMPLIFY=FALSE,FUN = function(s,n){
         theme(axis.text.x = element_text(angle = 90, hjust = 0.5))+
         ggtitle(n)
 
-    pdf(paste0("plots/07_featureSelection_dimred_harmony_clustering/04b_init_louv_silwidths/",n,".pdf"),height=8,width=14)
+    pdf(paste0("plots/07_featureSelection_dimred_harmony_clustering/06b_init_louv_silwidths/",n,".pdf"),height=8,width=14)
     print(plt)
     dev.off()
 })
@@ -109,7 +110,7 @@ loaded via a namespace (and not attached):
  collate  en_US.UTF-8
  ctype    en_US.UTF-8
  tz       America/Chicago
- date     2025-01-02
+ date     2025-01-04
  rstudio  2024.07.0-daily+219 Cranberry Hibiscus (desktop)
  pandoc   3.1.11 @ /Applications/RStudio.app/Contents/Resources/app/quarto/bin/tools/aarch64/ (via rmarkdown)
 

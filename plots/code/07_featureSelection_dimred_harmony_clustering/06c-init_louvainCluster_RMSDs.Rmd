@@ -1,7 +1,7 @@
 ---
-title: "04c-init_louvainCluster_RMSD"
+title: "06c-init_louvainCluster_RMSD"
 output: html_document
-date: "2025-01-02"
+date: "2025-01-04"
 ---
 
 ```{r setup, include=FALSE}
@@ -22,10 +22,10 @@ unloadNamespace("datasets")
 ```
 
 ```{r}
-rmsds <- readRDS("processed-data/07_featureSelection_dimred_harmony_clustering/05c-init_SNNk10_louvain_clustRMSDs.RDS")
+rmsds <- readRDS("processed-data/07_featureSelection_dimred_harmony_clustering/06c-init_SNNk10_louvain_clustRMSDs.RDS")
 
 mapply(rmsds,names(rmsds),SIMPLIFY=FALSE,FUN=function(r,n){
-    pdf(paste0("plots/07_featureSelection_dimred_harmony_clustering/04c_init_louv_RMSDs/",n,".pdf"),width=10,height=6)
+    pdf(paste0("plots/07_featureSelection_dimred_harmony_clustering/06c_init_louv_RMSDs/",n,".pdf"),width=10,height=6)
     barplot(r,ylab="RMSD",xlab="Cluster",main=n)
     dev.off()
 })
@@ -74,7 +74,7 @@ loaded via a namespace (and not attached):
  collate  en_US.UTF-8
  ctype    en_US.UTF-8
  tz       America/Chicago
- date     2025-01-02
+ date     2025-01-04
  rstudio  2024.07.0-daily+219 Cranberry Hibiscus (desktop)
  pandoc   3.1.11 @ /Applications/RStudio.app/Contents/Resources/app/quarto/bin/tools/aarch64/ (via rmarkdown)
 
