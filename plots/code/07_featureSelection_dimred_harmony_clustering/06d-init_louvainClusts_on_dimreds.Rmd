@@ -1,7 +1,7 @@
 ---
 title: "06d-init_louvainClusts_on_dimreds"
 output: html_document
-date: "2025-01-04"
+date: "2025-01-06"
 ---
 
 ```{r setup, include=FALSE}
@@ -48,8 +48,6 @@ glmdimrs <- readRDS("processed-data/07_featureSelection_dimred_harmony_clusterin
 ## we want the uncorrected dimred (slots 1, 5, ...) and HARMONYd (slots 3, 7 ...) dimred from these two lists.
 alldimr <- c(dimrs[seq(1,35,2)],glmdimrs[seq(1,35,2)])
 
-rm(dimrs,glmdimrs)
-
 ## to save RAM, subset each of these to the first three PCs
 ## get the first 3 pcs, only ones we're plotting
 alldimr <- lapply(alldimr,function(adr){
@@ -94,6 +92,9 @@ extract_legend <- function(my_ggp) {
 }
 ```
 
+####################
+#### Full dimRs ####
+####################
 ## plot cluster assignments onto dims 1-2, 1-3, 2-3
 ```{r}
 # use the dimred list names to find matched cluster columns (multiple louvain resolutions per feature/reduction). note that we have two reductions we want to plot on and that the names of both reductions are usable as search strings to get the cluster column names. i can't say I coded these variables this way intentionally, but it makes things a whole lot easier.
@@ -167,7 +168,7 @@ lapply(names(nonglm),FUN=function(adrn){
       ## append legend into the fourth slot of the list so we can have a 2x2 grid of three plots and a legend.  
       p[[length(p)+1]] <- leg.tmp2
       
-      pdf(paste0("plots/07_featureSelection_dimred_harmony_clustering/06d_init_louvclusts_on_dimreds/",clus,"_on_",adrn,".pdf"),height=13,width=21)
+      pdf(paste0("plots/07_featureSelection_dimred_harmony_clustering/06d_init_louvclusts_on_dimreds/pca_glmpca_harmony/",clus,"_on_",adrn,".pdf"),height=13,width=21)
       #do.call("grid.arrange",list(arrangeGrob(grobs=p,ncol=3),leg.tmp2,ncol=2,widths=c(19,2)))
       do.call("grid.arrange",c(p,ncol=2))
       dev.off()
@@ -236,7 +237,7 @@ lapply(names(yaglm),FUN=function(adrn){
       ## append legend into the fourth slot of the list so we can have a 2x2 grid of three plots and a legend.  
       p[[length(p)+1]] <- leg.tmp2
       
-      pdf(paste0("plots/07_featureSelection_dimred_harmony_clustering/06d_init_louvclusts_on_dimreds/",clus,"_on_",adrn,".pdf"),height=13,width=21)
+      pdf(paste0("plots/07_featureSelection_dimred_harmony_clustering/06d_init_louvclusts_on_dimreds/pca_glmpca_harmony/",clus,"_on_",adrn,".pdf"),height=13,width=21)
       #do.call("grid.arrange",list(arrangeGrob(grobs=p,ncol=3),leg.tmp2,ncol=2,widths=c(19,2)))
       do.call("grid.arrange",c(p,ncol=2))
       dev.off()
@@ -244,6 +245,117 @@ lapply(names(yaglm),FUN=function(adrn){
 })
 ```
 
+################
+#### UMAPS ####
+################
+## we also want to do the UMAPs in the same manner as these two things above.
+```{r}
+## fix the names on glmdimrs to indicate umaps of uncorrected glmpca
+names(glmdimrs)[seq(2,34,4)] <- gsub(names(glmdimrs)[seq(2,34,4)],pattern="^UMAP",replacement="UMAP_glmPCA")
+
+## we want the uncorrected and corrected UMAPs (slots 2, 6, ... and 4,8...) the two lists.
+allumap <- c(dimrs[seq(2,36,2)],glmdimrs[seq(2,36,2)])
+allumap <- lapply(allumap,function(x){as.data.table(x,keep.rownames=T)})
+```
+
+## first, the non-glm ones:
+```{r}
+nonglm <- allumap[grep(names(allumap),pattern="glmPCA",value=T,invert=T)]
+nonglm.louvname <- grep(names(snnlouvs),pattern="glm",value=T,invert=T)
+nonglm.louvs <- snnlouvs[,..nonglm.louvname]
+
+lapply(names(nonglm),FUN=function(adrn){
+   ## the clusterings corresponding to non-glm PCAs don't contain the string PCA at all, so we need to remove 'PCA' from those list entry names for this to work properly.
+   cluscolstr <- gsub(adrn,pattern="UMAP_|_UMAP",replacement="")
+   
+   cluscols <- grep(names(nonglm.louvs),pattern=cluscolstr,value=T)
+   keepcols <- c("rn",cluscols)
+   
+   tmplouvs <- copy(nonglm.louvs)[,..keepcols]
+   
+   curdr <- copy(nonglm[[adrn]])
+   
+   i<-1
+   for (i in c(1:length(cluscols))){
+      clus <- cluscols[i]
+      nclus <- length(unique(tmplouvs[,get(clus)]))
+      pal <- palette36.colors(n = nclus+2)[c(3:(nclus+2))]
+      
+      ## get auto annotations
+      curan <- copy(autoan[[clus]])
+      tmplouvs2 <- merge.data.table(copy(tmplouvs),curan,by.x=clus,by.y="clusid")
+      
+      # next line is needed for consistency in color-cluster assignments between libdspatial and the generated legend below
+      names(pal) <- unique(tmplouvs2$autoanno)
+      
+      pltdat <- merge.data.table(curdr,tmplouvs2[,.(rn,autoanno)],by="rn")
+      setnames(pltdat,"autoanno",clus)
+      # setnames(pltdat,"V2",clus)
+      
+      p <- ggplot(pltdat,aes_string(x="UMAP1",y="UMAP2",color=clus))+
+         scale_color_manual(values=pal)+
+         rasterize(geom_point(size=0.4,stroke=0),dpi=300,dev="cairo_png")+
+         ggtitle(paste0(clus,":\non ",adrn))+
+         guides(color=guide_legend(override.aes=list(size=2)))+
+         theme(title = element_text(size=9))
+      
+      pdf(paste0("plots/07_featureSelection_dimred_harmony_clustering/06d_init_louvclusts_on_dimreds/umaps/",clus,"_on_",adrn,".pdf"),height=9,width=12)
+      print(p)
+      dev.off()
+   }
+})
+
+```
+
+glmpcas:
+```{r}
+yaglm <- allumap[!(names(allumap) %in% names(nonglm))]
+yaglm.louvname <- c("rn",names(snnlouvs)[!(names(snnlouvs) %in% names(nonglm.louvs))])
+yaglm.louvs <- snnlouvs[,..yaglm.louvname]
+
+lapply(names(yaglm),FUN=function(adrn){
+   ## the clusterings corresponding to non-glm PCAs don't contain the string PCA at all, so we need to remove 'PCA' from those list entry names for this to work properly.
+   cluscolstr <- gsub(adrn,pattern="UMAP_|_UMAP",replacement="")
+   cluscolstr <- gsub(cluscolstr,pattern="^glmPCA",replacement="snnHARMONYlmbna_glmPCA")
+   
+   cluscols <- grep(names(yaglm.louvs),pattern=cluscolstr,value=T)
+   keepcols <- c("rn",cluscols)
+   
+   tmplouvs <- copy(yaglm.louvs)[,..keepcols]
+   
+   curdr <- copy(yaglm[[adrn]])
+   
+   i<-1
+   for (i in c(1:length(cluscols))){
+      clus <- cluscols[i]
+      nclus <- length(unique(tmplouvs[,get(clus)]))
+      pal <- palette36.colors(n = nclus+2)[c(3:(nclus+2))]
+      
+      ## get auto annotations
+      curan <- copy(autoan[[clus]])
+      tmplouvs2 <- merge.data.table(copy(tmplouvs),curan,by.x=clus,by.y="clusid")
+      
+      # next line is needed for consistency in color-cluster assignments between libdspatial and the generated legend below
+      names(pal) <- unique(tmplouvs2$autoanno)
+      
+      pltdat <- merge.data.table(curdr,tmplouvs2[,.(rn,autoanno)],by="rn")
+      setnames(pltdat,"autoanno",clus)
+      # setnames(pltdat,"V2",clus)
+      
+      p <- ggplot(pltdat,aes_string(x="UMAP1",y="UMAP2",color=clus))+
+         scale_color_manual(values=pal)+
+         rasterize(geom_point(size=0.4,stroke=0),dpi=300,dev="cairo_png")+
+         guides(color=guide_legend(override.aes=list(size=2)))+
+         ggtitle(paste0(clus,":\non ",adrn))+
+         theme(title = element_text(size=9))
+      
+      pdf(paste0("plots/07_featureSelection_dimred_harmony_clustering/06d_init_louvclusts_on_dimreds/umaps/",clus,"_on_",adrn,".pdf"),height=9,width=12)
+      print(p)
+      dev.off()
+   }
+})
+
+```
 reprod info:
 ```{r}
 sessionInfo()

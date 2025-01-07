@@ -256,6 +256,17 @@ for (i in seq(1,length(plt),9)){
 dev.off()
 ```
 
+### 01/05/25: also handy to make and save a second, 'lite' copy of the SPE that doesn't include image data or logcounts (which are trivial to recalculate on the fly, but take up a ton of space and read/write time in saved objects).
+```{r}
+lc2s.lite <- lc2s
+rm(lcs2)
+
+imgData(lc2s.lite) <- NULL
+logcounts(lc2s.lite) <- NULL
+
+saveRDS(lc2s.lite,"processed-data/06-countsOnly_noImgData_QCed_SPE_split_to_tissSections.RDS")
+```
+
 reprod info
 ```{r}
 sessionInfo()
