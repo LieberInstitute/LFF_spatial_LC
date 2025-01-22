@@ -13,10 +13,7 @@ cluster_path = here(
 )
 spe_path = here('processed-data', '06-QCed_SPE_split_to_tissSections.RDS')
 plot_dir = here('plots', '07_featureSelection_dimred_harmony_clustering')
-genes = c(
-    'MET', 'PHOX2B', 'GABRE', 'DBH', 'SLC6A2', 'TH', 'SLC18A2', 'ARHGAP36',
-    'CARTPT'
-)
+genes = c('TH', 'DBH', 'SLC6A2')
 
 spe = readRDS(spe_path)
 
@@ -39,9 +36,10 @@ spe$cluster = cluster_df$cluster[match(colnames(spe), cluster_df$key)]
 rownames(spe) = rowData(spe)$gene_name
 stopifnot(all(genes %in% rownames(spe)))
 
-p = plot_gene_express(spe, genes, category = "cluster")
+p = plot_gene_express(spe, genes, category = "cluster", ncol = 1) +
+    theme_bw(base_size = 20)
 
-pdf(file.path(plot_dir, 'cluster_markers.pdf'))
+pdf(file.path(plot_dir, 'cluster_markers.pdf'), width = 10)
 print(p)
 dev.off()
 
