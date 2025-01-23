@@ -1,7 +1,7 @@
 ---
 title: "04e-init_louvainCluster_spotplots"
 output: html_document
-date: "2025-01-02"
+date: "2025-01-08"
 ---
 
 ```{r setup, include=FALSE}
@@ -44,14 +44,11 @@ unloadNamespace("datasets")
 
 load QC'ed spe, clustering results; subset to louvain clusterings only (leiden clusterings all returned 100s-1000s of clusters)
 ```{r}
-lc3 <- readRDS("processed-data/06-QCed_SPE_split_to_tissSections.RDS")
+lc3 <- readRDS("processed-data/06-countsOnly_noImgData_QCed_SPE_split_to_tissSections.RDS")
 
 ## dump off some unecessary stuff for making these plots (counts and logcounts matrices, image data)
 assays(lc3) <- assays(lc3)[1]
 counts(lc3) <- NULL
-gc(full=T)
-
-imgData(lc3) <- NULL
 gc(full=T)
 
 ### get clusterings and cluster autoannot tables
@@ -97,11 +94,11 @@ lapply(colnames(snnlouvs)[2:ncol(snnlouvs)],FUN=function(clus){
     tmplouv <- merge.data.table(tmplouv,autoan[[clus]],by.x=clus,by.y="clusid")
     tmplouv <- DataFrame(tmplouv,row.names=tmplouv$rn)[colnames(lc3),]
     
-    colLabels(lc3) <- tmplouv$autoanno
+    colLabels(lc3) <- as.factor(tmplouv$autoanno)
     
     pal <- palette36.colors(n = nclusts+2)[c(3:(nclusts+2))]
     # next line is needed for consistency in color-cluster assignments between libdspatial and the generated legend below
-    names(pal) <- unique(tmplouv$autoanno)
+    names(pal) <- levels(lc3$label)
     
     ## create a unified legend spanning all possible cluster values (regardless of presence in a given sample)
     leg.tmp <- ggplot(as.data.table(colData(lc3))[,.(label,array_row,array_col)],aes(x=array_row,y=array_col,col=label))+geom_point()+
@@ -118,7 +115,7 @@ lapply(colnames(snnlouvs)[2:ncol(snnlouvs)],FUN=function(clus){
     ### make spotplots. had this in an mclapply loop originally but only the first two plots would generate and then R just acted like it was still running but nothing was happening in terms of file creation or computational resource use.
     plt <- bplapply(unique(lc3$sample_id),BPPARAM = MulticoreParam(8),FUN=function(s){
        tmp.p <- make_escheR(lc3[,lc3$sample_id==s])
-       tmp.p <- tmp.p |> add_fill("label",size=1.65,point_size = 1.65)
+       tmp.p <- tmp.p |> add_fill("label",size=1.9,point_size = 1.9)
        tmp.p + ggtitle(s)
        tmp.p <- tmp.p+scale_fill_manual(values=pal)
        tmp.p <- rasterize(tmp.p,layers="Points",dev="cairo_png",dpi=300)
@@ -223,7 +220,7 @@ loaded via a namespace (and not attached):
  collate  en_US.UTF-8
  ctype    en_US.UTF-8
  tz       America/Chicago
- date     2025-01-04
+ date     2025-01-08
  rstudio  2024.07.0-daily+219 Cranberry Hibiscus (desktop)
  pandoc   3.1.11 @ /Applications/RStudio.app/Contents/Resources/app/quarto/bin/tools/aarch64/ (via rmarkdown)
 
