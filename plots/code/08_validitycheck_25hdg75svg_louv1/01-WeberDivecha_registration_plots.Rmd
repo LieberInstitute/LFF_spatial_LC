@@ -72,6 +72,25 @@ lapply(names(plts),function(n){
 })
 ```
 
+## line plots per cell-cell pair of x=top N genes, y=score
+```{r}
+mapply(x=regs2,n=names(regs2),SIMPLIFY=FALSE,FUN=function(x,n){
+   i <- 1
+   plts <- list()
+   for (i in unique(x$LFF_clus)){
+      pltdat <- x[LFF_clus==i]
+      plts[[i]] <- ggplot(pltdat,aes(x=log10(topNmk),y=value,color=variable))+
+         geom_line()+
+         geom_point()+
+         ggtitle(paste0("LFF Louv Cluster ",i))
+   }
+   
+   pdf(paste0("plots/08_validitycheck_25hdg75svg_louv1/01b_LC3_to_WebDiv_",n,".pdf"),height=8,width=10,onefile=TRUE)
+   lapply(plts,print)
+   dev.off()
+})
+```
+
 reprodinf 
 ```{r}
 sessionInfo()

@@ -549,6 +549,29 @@ fullres_with_splitannots <- fullres_with_splitannots[,.(sample_id,section,pxl_co
 fwrite(fullres_with_splitannots,"processed-data/04_QC/06c-tissueOverlapping_spots_with_fullres-pixel-row-col-coords_and_section_annotations.txt",sep='\t',quote=F)
 ```
 
+#### 01-25-2025 -- create a second version of ^ that is subsetted to retained spots
+```{r}
+allfinalsectionsplits <- fread("processed-data/04_QC/06c-raw_SPE_spots_assigned_to_tissue-section-1or2_for_all_capture_areas.txt")
+
+lc3 <- readRDS("processed-data/06-countsOnly_noImgData_QCed_SPE_split_to_tissSections.RDS")
+# ^ this SPE has a colData column with the original spot id, which is the identifier in the split assignment table
+
+allfinalsectionsplits <- allfinalsectionsplits[key %in% lc3$original_spot_id]
+stopifnot(nrow(allfinalsectionsplits)==ncol(lc3))
+
+## then following the code block at line 540, get a table together with the fullres pixel coords, but only for retained spoots (which the lc3 spe is already filtered to)
+
+fullres_with_splitannots2 <- as.data.table(cbind(colData(lc3)[,c("original_spot_id","sample_id","array_row","array_col")],lc3@int_colData$spatialCoords))
+
+fullres_with_splitannots2 <- merge.data.table(allfinalsectionsplits[,.(key,section)],fullres_with_splitannots2,by.x="key",by.y="original_spot_id")
+
+fullres_with_splitannots2 <- fullres_with_splitannots2[,.(sample_id,section,pxl_col_in_fullres,pxl_row_in_fullres)]
+
+fullres_with_splitannots2[,slide_array_id:=gsub(sample_id,pattern="^(V.*)s.$",replacement="\\1")]
+setnames(fullres_with_splitannots2,"sample_id","bjm_spe_tissSection_id")
+
+fwrite(fullres_with_splitannots2,"processed-data/04_QC/06c-tissueOverlapping_spots_with_fullres-pixel-row-col-coords_and_section_annotations_retained_spots_only.txt",sep='\t',quote=F)
+```
 
 reproducibility info
 ```{r}
