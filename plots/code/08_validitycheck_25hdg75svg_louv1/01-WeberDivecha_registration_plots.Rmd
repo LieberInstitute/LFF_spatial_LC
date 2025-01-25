@@ -1,7 +1,7 @@
 ---
-title: "07-Compare_LCpseudobulkxpr_louvain_to_manualExpressionAnnots"
+title: "01-WeberDivecha_registration_plots"
 author: "Bernie Mulvey"
-date: "2025-01-23"
+date: "2025-01-25"
 output: html_document
 ---
 
@@ -39,82 +39,44 @@ theme_set(theme_bw()+theme(axis.text.x = element_text(size = 9), axis.title.x = 
 unloadNamespace("datasets")
 ```
 
-already tabulated these into plottable form:
+## load registration results, collate to tables
 ```{r}
-louvman <- readRDS("processed-data/07_featureSelection_dimred_harmony_clustering/07-manualLCdefs_vs_louvains.RDS")
+regs <- readRDS("processed-data/08_validitycheck_25hdg75svg_louv1/01-LC3_registration_to_WeberDivecha23.RDS")
 
-plts <- lapply(louvman,FUN=function(l){
-    pltl <- melt.data.table(l,id.vars=c("rn"))
-    pltl[,variable:=gsub(variable,pattern="^.*__(.*)$",replacement="\\1")]
-    setnames(pltl,"variable","manual_annot_type")
-    setnames(pltl,"rn","tissue_sect")
-    pltl[,value:=as.numeric(value)]
-    plt <- ggplot(pltl,aes(x=manual_annot_type,y=tissue_sect,fill=value))+geom_tile()+scale_fill_continuous(breaks = seq(0.4,1,0.1),type="viridis")
-    return(plt)
+regs2 <- lapply(regs,function(x){
+    y <- rbindlist(x,idcol="topNmk")
+    y[,topNmk:=as.numeric(gsub(topNmk,pattern="^.*_top_(.*)$",replacement="\\1"))]
+    z <- melt.data.table(y,id.vars=c("LFF_clus","topNmk"))
+    return(z)
 })
+```
 
-names(plts) <- names(louvman)
 
-mapply(X=plts,Y=names(plts),SIMPLIFY=FALSE,FUN=function(X,Y){
-    pdf(paste0("plots/07_featureSelection_dimred_harmony_clustering/07_compare_louvclust_manclust/",Y,".pdf"),height=10,width=5)
-    print(X)
+## plot registration results as heatmaps using 250 genes to start
+```{r}
+plts <- lapply(X=regs2,FUN=function(x){
+    pltdat <- x[topNmk==250]
+    ggplot(pltdat,aes(x=LFF_clus,y=variable,fill=value))+
+        geom_tile()+
+        scale_x_discrete(expand = c(0,0)) +
+        scale_y_discrete(expand = c(0,0)) +
+        scale_fill_continuous(type="viridis",limits=c(min(pltdat$value),max(pltdat$value)))
+    
+})
+names(plts) <- names(regs2)
+
+lapply(names(plts),function(n){
+    pdf(paste0("plots/08_validitycheck_25hdg75svg_louv1/01_LC3_reg_to_WebDiv_",n,"top250.pdf"),height=8,width=10)
+    print(plts[[n]])
     dev.off()
 })
 ```
 
-### make two more plots with ALL the different louvains and one of the two manual definitions
-```{r}
-i <-1 
-for (i in c(1:length(louvman))){
-   if(i==1){allman <- copy(louvman[[1]])}
-   else{allman <- merge.data.table(allman,louvman[[i]],by="rn",all=T)}
-}
-
-allman.histr <- c("rn",grep(names(allman),pattern="histr",value=T))
-allman.histr <- allman[,..allman.histr]
-allman.histr <- melt.data.table(allman.histr,id.vars="rn")
-allman.histr[,variable:=gsub(variable,pattern="^(.*)__.*$",replacement="\\1")]
-allman.histr[,value:=as.numeric(value)]
-
-allman.lostr <- c("rn",grep(names(allman),pattern="lostr",value=T))
-allman.lostr <- allman[,..allman.lostr]
-allman.lostr <- melt.data.table(allman.lostr,id.vars="rn")
-allman.lostr[,variable:=gsub(variable,pattern="^(.*)__.*$",replacement="\\1")]
-allman.lostr[,value:=as.numeric(value)]
-
-allman.bros <- list(allman.lostr,allman.histr)
-names(allman.bros) <- c("manual_exprbased_LC_lostr","manual_exprbased_LC_histr")
-
-
-plts2 <- lapply(allman.bros,function(x){
-    setnames(x,"rn","tissue_sect",skip_absent = T)
-    plt <- ggplot(x,aes(y=variable,x=tissue_sect,fill=value))+geom_tile()+scale_fill_continuous(breaks = seq(0.4,1,0.1),type="viridis")+xlab("Louvain Clustering")+theme(axis.text.x=element_text(size=9,angle=45,hjust=1,vjust=1))
-    return(plt)
-})
-names(plts2) <- names(allman.bros)
-
-lapply(names(plts2),function(pn){
-   pdf(paste0("plots/07_featureSelection_dimred_harmony_clustering/07_compare_louvclust_manclust/all_louvain_LCs_vs_",pn,".pdf"),height=20,width=12)
-   print(plts2[[pn]])
-   dev.off()
-})
-```
-
-also save tables of mean sectionwise correlations to low, hi stringency definitions
-```{r}
-allman.histr <- allman.histr[,mean_cor:=mean(value,na.rm=T),by="variable"]
-allman.lostr <- allman.lostr[,mean_cor:=mean(value,na.rm=T),by="variable"]
-
-fwrite(allman.histr,"plots/07_featureSelection_dimred_harmony_clustering/07_compare_louvclust_manclust/section_mean_correls_histringencyManualLC_vs_louvains.txt",sep='\t',quote=F,row.names=F)
-
-fwrite(allman.lostr,"plots/07_featureSelection_dimred_harmony_clustering/07_compare_louvclust_manclust/section_mean_correls_lostringencyManualLC_vs_louvains.txt",sep='\t',quote=F,row.names=F)
-```
-# rep inf
+reprodinf 
 ```{r}
 sessionInfo()
 sessioninfo::session_info()
 ```
-
 R version 4.4.1 RC (2024-06-06 r86719)
 Platform: aarch64-apple-darwin20
 Running under: macOS Sonoma 14.7.1
@@ -159,7 +121,7 @@ loaded via a namespace (and not attached):
  collate  en_US.UTF-8
  ctype    en_US.UTF-8
  tz       America/Chicago
- date     2025-01-23
+ date     2025-01-24
  rstudio  2024.07.0-daily+219 Cranberry Hibiscus (desktop)
  pandoc   3.1.11 @ /Applications/RStudio.app/Contents/Resources/app/quarto/bin/tools/aarch64/ (via rmarkdown)
 
@@ -218,7 +180,3 @@ loaded via a namespace (and not attached):
  P ── Loaded and on-disk path mismatch.
 
 ─────────────────────────────────────────────────────────────────────────────────
-
-
-
-```
