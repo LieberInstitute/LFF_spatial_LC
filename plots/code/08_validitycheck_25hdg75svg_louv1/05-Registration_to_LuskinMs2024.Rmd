@@ -1,0 +1,192 @@
+---
+title: "05-LuskinMs2024_registration_plots"
+author: "Bernie Mulvey"
+date: "2025-01-31"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(fig.height = 10,fig.width = 7,include = FALSE)
+#### sets tab autocompletion for directories to begin from the directory containing the .Rproj session, instead of the script's directory if different
+knitr::opts_knit$set(root.dir = here::here())
+
+library(data.table)
+library(ggplot2)
+library(ggtext)
+library(gridExtra)
+# library(SpatialFeatureExperiment)
+
+## rstudio GUI tweaks
+require(colorout)
+ColorOut()
+options("styler.addins_style_transformer" = "biocthis::bioc_style()")
+##
+
+## enable forked parallel processing with BiocParallel::multicoreParam, future::, etc. seemed to need this a couple times, but otherwise havent so its here as a preventative measure. part of this is adding the line 
+# OBJC_DISABLE_INITIALIZE_FORK_SAFETY=YES
+# to Renviron.site. see e.g. top response on https://stackoverflow.com/questions/73638290/python-on-mac-is-it-safe-to-set-objc-disable-initialize-fork-safety-yes-globall 
+library(parallelly)
+options(parallelly.supportsMulticore.disableOn="")
+options(parallelly.fork.enable=TRUE)
+library(BiocParallel)
+options(bphost="localhost")
+
+
+## ggplot defaults
+theme_set(theme_bw()+theme(axis.text.x = element_text(size = 9), axis.title.x = element_text(size = 8), axis.text.y = element_text(size = 8), axis.title.y = element_text(size =9), plot.title = element_markdown(size = 11,hjust=0.5), strip.text = element_text(size=11), legend.text = element_text(size=8), legend.title = element_text(size=9,hjust=0.5)))
+
+## last of all, unload the base package datasets, whose data keep getting in the way of autocompletions (e.g., Theoph is priortized over TRUE)
+unloadNamespace("datasets")
+```
+
+
+## plot using the number of genes where LC (most confidently mappable cell type in the area for both datasets given wholly exclusive genes like DBH) registration to the luskin DBH cluster is its highest
+```{r}
+lff.luskin.reg <- readRDS("processed-data/08_validitycheck_25hdg75svg_louv1/05-Registrations_to_LuskinMs2024.RDS")
+
+mapply(s=lff.luskin.reg,n=names(lff.luskin.reg),SIMPLIFY=FALSE,FUN=function(s,n){
+    plotn <- s[LFFclus=="LC.1"&msAnnot %in% c("DBH_neurons","NeuronDbh")][value==max(value),topNmsmk]
+
+    plt <- ggplot(s[topNmsmk==plotn],aes(y=msAnnot,x=LFFclus,fill=value))+
+        geom_tile()+
+        scale_fill_continuous(type="viridis",
+            limits=c(
+                min(s[topNmsmk==plotn,value]),
+                max(s[topNmsmk==plotn,value])))+
+        theme(axis.text.x=element_text(angle=90))
+
+    pdf(paste0("plots/08_validitycheck_25hdg75svg_louv1/05-LC3_reg_to_Luskin_",n,"_top",plotn,"msMks.pdf"),height=6,width=7.5)
+    print(plt)
+    dev.off()
+})
+```
+
+reprod inf
+```{r}
+sessionInfo()
+sessioninfo::session_info()
+```
+R version 4.4.1 RC (2024-06-06 r86719)
+Platform: aarch64-apple-darwin20
+Running under: macOS Sonoma 14.7.1
+
+Matrix products: default
+BLAS:   /System/Library/Frameworks/Accelerate.framework/Versions/A/Frameworks/vecLib.framework/Versions/A/libBLAS.dylib 
+LAPACK: /Library/Frameworks/R.framework/Versions/4.4-arm64/Resources/lib/libRlapack.dylib;  LAPACK version 3.12.0
+
+locale:
+[1] en_US.UTF-8/en_US.UTF-8/en_US.UTF-8/C/en_US.UTF-8/en_US.UTF-8
+
+time zone: America/Chicago
+tzcode source: internal
+
+attached base packages:
+[1] stats     graphics  grDevices
+[4] utils     methods   base     
+
+other attached packages:
+[1] BiocParallel_1.40.0
+[2] parallelly_1.40.1  
+[3] colorout_1.3-0.2   
+[4] gridExtra_2.3      
+[5] ggtext_0.1.2       
+[6] ggplot2_3.5.1      
+[7] data.table_1.16.4  
+[8] rlang_1.1.4        
+
+loaded via a namespace (and not attached):
+ [1] vctrs_0.6.5      
+ [2] cli_3.6.3        
+ [3] knitr_1.49       
+ [4] xfun_0.49        
+ [5] generics_0.1.3   
+ [6] labeling_0.4.3   
+ [7] glue_1.8.0       
+ [8] colorspace_2.1-1 
+ [9] rprojroot_2.0.4  
+[10] gridtext_0.1.5   
+[11] scales_1.3.0     
+[12] grid_4.4.1       
+[13] munsell_0.5.1    
+[14] evaluate_1.0.1   
+[15] tibble_3.2.1     
+[16] lifecycle_1.0.4  
+[17] compiler_4.4.1   
+[18] codetools_0.2-20 
+[19] dplyr_1.1.4      
+[20] Rcpp_1.0.14      
+[21] pkgconfig_2.0.3  
+[22] here_1.0.1       
+[23] farver_2.1.2     
+[24] viridisLite_0.4.2
+[25] R6_2.5.1         
+[26] tidyselect_1.2.1 
+[27] parallel_4.4.1   
+[28] pillar_1.10.1    
+[29] magrittr_2.0.3   
+[30] tools_4.4.1      
+[31] withr_3.0.2      
+[32] gtable_0.3.6     
+[33] xml2_1.3.6       
+> sessioninfo::session_info()
+─ Session info ────────────────────
+ setting  value
+ version  R version 4.4.1 RC (2024-06-06 r86719)
+ os       macOS Sonoma 14.7.1
+ system   aarch64, darwin20
+ ui       X11
+ language (EN)
+ collate  en_US.UTF-8
+ ctype    en_US.UTF-8
+ tz       America/Chicago
+ date     2025-01-31
+ pandoc   NA
+
+─ Packages ────────────────────────
+ !  package      * version date (UTC) lib source
+    BiocParallel * 1.40.0  2024-11-23 [1] Bioconductor 3.20 (R 4.4.2)
+ P  cli            3.6.3   2024-06-21 [2] CRAN (R 4.4.0)
+    codetools      0.2-20  2024-03-31 [1] CRAN (R 4.4.1)
+    colorout     * 1.3-0.2 2024-05-01 [1] Github (jalvesaq/colorout@c6113a2)
+    colorspace     2.1-1   2024-07-26 [1] CRAN (R 4.4.0)
+    data.table   * 1.16.4  2024-12-06 [1] CRAN (R 4.4.1)
+    dplyr          1.1.4   2023-11-17 [1] CRAN (R 4.4.0)
+    evaluate       1.0.1   2024-10-10 [1] CRAN (R 4.4.1)
+    farver         2.1.2   2024-05-13 [1] CRAN (R 4.4.0)
+    generics       0.1.3   2022-07-05 [1] CRAN (R 4.4.0)
+    ggplot2      * 3.5.1   2024-04-23 [1] CRAN (R 4.4.0)
+    ggtext       * 0.1.2   2022-09-16 [1] CRAN (R 4.4.0)
+    glue           1.8.0   2024-09-30 [1] CRAN (R 4.4.1)
+    gridExtra    * 2.3     2017-09-09 [1] CRAN (R 4.4.0)
+    gridtext       0.1.5   2022-09-16 [1] CRAN (R 4.4.0)
+    gtable         0.3.6   2024-10-25 [1] CRAN (R 4.4.1)
+    here           1.0.1   2020-12-13 [1] CRAN (R 4.4.0)
+    knitr          1.49    2024-11-08 [1] CRAN (R 4.4.1)
+    labeling       0.4.3   2023-08-29 [1] CRAN (R 4.4.0)
+    lifecycle      1.0.4   2023-11-07 [1] CRAN (R 4.4.0)
+    magrittr       2.0.3   2022-03-30 [1] CRAN (R 4.4.0)
+    munsell        0.5.1   2024-04-01 [1] CRAN (R 4.4.0)
+    parallelly   * 1.40.1  2024-12-04 [1] CRAN (R 4.4.1)
+    pillar         1.10.1  2025-01-07 [1] CRAN (R 4.4.1)
+    pkgconfig      2.0.3   2019-09-22 [1] CRAN (R 4.4.0)
+    R6             2.5.1   2021-08-19 [1] CRAN (R 4.4.0)
+    Rcpp           1.0.14  2025-01-12 [1] CRAN (R 4.4.1)
+ VP rlang        * 1.1.4   2025-01-17 [2] CRAN (R 4.4.1) (on disk 1.1.5)
+    rprojroot      2.0.4   2023-11-05 [1] CRAN (R 4.4.0)
+    scales         1.3.0   2023-11-28 [1] CRAN (R 4.4.0)
+    sessioninfo    1.2.2   2021-12-06 [1] CRAN (R 4.4.0)
+    tibble         3.2.1   2023-03-20 [1] CRAN (R 4.4.0)
+    tidyselect     1.2.1   2024-03-11 [1] CRAN (R 4.4.0)
+    vctrs          0.6.5   2023-12-01 [1] CRAN (R 4.4.0)
+    viridisLite    0.4.2   2023-05-02 [1] CRAN (R 4.4.0)
+    withr          3.0.2   2024-10-28 [1] CRAN (R 4.4.1)
+    xfun           0.49    2024-10-31 [1] CRAN (R 4.4.1)
+    xml2           1.3.6   2023-12-04 [1] CRAN (R 4.4.0)
+
+ [1] /Library/Frameworks/R.framework/Versions/4.4-arm64/Resources/library
+ [2] /Users/bmulvey/Library/R/arm64/4.4/library
+
+ V ── Loaded and on-disk version mismatch.
+ P ── Loaded and on-disk path mismatch.
+
+───────────────────────────────────
