@@ -528,7 +528,7 @@ for (i in c(1:length(res_list))){
 
 lcsvgranks[,nasamps:=rowSums(is.na(lcsvgranks[,c(3:ncol(lcsvgranks)),with=F]))]
 #
-lcsvgranks[,nsigsamps:=length(caps)-nasamps]
+lcsvgranks[,nsigsamps:=(ncol(lcsvgranks)-3)-nasamps]
 lcsvgranks[,meanrank:=rowMeans(lcsvgranks[,c(3:(ncol(lcsvgranks)-2)),with=F],na.rm=T)]
 lcsvgranks[,nasamps:=NULL]
 

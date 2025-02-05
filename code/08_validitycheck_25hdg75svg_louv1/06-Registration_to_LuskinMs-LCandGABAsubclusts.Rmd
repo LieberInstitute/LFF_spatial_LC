@@ -1,0 +1,474 @@
+---
+title: "06-Registration_to_LuskinMs-LCandGABAsubclusts"
+author: "Bernie Mulvey"
+date: "2025-01-28"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(fig.height = 10,fig.width = 7,include = FALSE)
+#### sets tab autocompletion for directories to begin from the directory containing the .Rproj session, instead of the script's directory if different
+knitr::opts_knit$set(root.dir = here::here())
+
+library(data.table)
+library(ggplot2)
+library(ggtext)
+library(gridExtra)
+library(SingleCellExperiment)
+library(Seurat)
+library(readxl)
+# library(SpatialFeatureExperiment)
+
+## rstudio GUI tweaks
+require(colorout)
+ColorOut()
+options("styler.addins_style_transformer" = "biocthis::bioc_style()")
+##
+
+## enable forked parallel processing with BiocParallel::multicoreParam, future::, etc. seemed to need this a couple times, but otherwise havent so its here as a preventative measure. part of this is adding the line 
+# OBJC_DISABLE_INITIALIZE_FORK_SAFETY=YES
+# to Renviron.site. see e.g. top response on https://stackoverflow.com/questions/73638290/python-on-mac-is-it-safe-to-set-objc-disable-initialize-fork-safety-yes-globall 
+library(parallelly)
+options(parallelly.supportsMulticore.disableOn="")
+options(parallelly.fork.enable=TRUE)
+library(BiocParallel)
+options(bphost="localhost")
+
+
+## ggplot defaults
+theme_set(theme_bw()+theme(axis.text.x = element_text(size = 9), axis.title.x = element_text(size = 8), axis.text.y = element_text(size = 8), axis.title.y = element_text(size =9), plot.title = element_markdown(size = 11,hjust=0.5), strip.text = element_text(size=11), legend.text = element_text(size=8), legend.title = element_text(size=9,hjust=0.5)))
+
+## last of all, unload the base package datasets, whose data keep getting in the way of autocompletions (e.g., Theoph is priortized over TRUE)
+unloadNamespace("datasets")
+```
+
+load the LC subclustering and GABA subclustering seurat objects, which has the problematic female sample already removed as it was in the manuscript. the assigned subclusters are in the Idents (seurat) / ident colData column (singlecellexperiment). only 18 GABA subclusters (GABA_1-GABA_18) are described in their supplemental tables, though there are 26 clusters in the GABA subclustering Ident at the clustering resolution the manuscript specifies. Assuming that GABA_19+ as labeled were dropped and that numerical clusters 0-17 were retained.
+```{r}
+lcsub <- readRDS("/Users/bmulvey/Desktop/KM Lab/Other Groups\' Published Data/Luskin Bruchas mouse periLC snseq publication RDSes/All_DBH_or_TH_subclustering.rds")
+
+gabasub <- readRDS("/Users/bmulvey/Desktop/KM Lab/Other Groups\' Published Data/Luskin Bruchas mouse periLC snseq publication RDSes/All_GABA_subclustering.rds")
+
+
+## convert to singlecellexperiment
+lcsub <- as.SingleCellExperiment(lcsub)
+# the idents in lcsub are just numerical, not the NE_1..11 used in their suptabs so fix this
+lcsub$ident <- paste0("NE_",lcsub$ident)
+
+### convert GABA
+gabasub <- as.SingleCellExperiment(gabasub)
+### subset to GABA_1 - GABA_18
+gabasub <- gabasub[,gabasub$ident %in% paste0("GABA_",c(1:18))]
+
+
+## there also isn't an actual sample_id column here (though the sample ids are appended to the cell barcodes), so we can split a sample id column off
+subs <- list(lcsub,gabasub)
+subs <- lapply(subs,function(x){
+  tmpcd <- as.data.table(colData(x),keep.rownames=T)
+  tmpcd[,sample_id:=gsub(rn,pattern="^.*(LC.*$)",replacement="\\1")]
+  # there should be three samples (2 male one female)
+  stopifnot(length(unique(tmpcd$sample_id))==3)
+  tmpcd <- DataFrame(tmpcd,row.names=tmpcd$rn)[colnames(x),]
+  colData(x) <- tmpcd
+  return(x)
+})
+
+## also make a third SCE of the two cell sets combined for joint regist; there's different coldata colnames in the two so subset to shared columns (misc metadata and ident)
+keepn <- colnames(colData(subs[[1]]))[colnames(colData(subs[[1]])) %in% colnames(colData(subs[[2]]))]
+colData(subs[[1]]) <- colData(subs[[1]])[,keepn]
+colData(subs[[2]]) <- colData(subs[[2]])[,keepn]
+
+subs[[3]] <- cbind(subs[[1]],subs[[2]])
+stopifnot(length(unique(subs[[3]]$sample_id))==3)
+## the sample_ids are also different here--all caps vs. not
+subs[[3]]$sample_id <- toupper(subs[[3]]$sample_id)
+stopifnot(length(unique(subs[[3]]$sample_id))==3)
+
+rm(lcsub,gabasub)
+
+names(subs) <- c("lcsub","gabasub","jointsub")
+```
+
+## load the LFF data, apply the HDGSVG 2575 cluster labels
+```{r}
+lff <- readRDS("~/Desktop/KM Lab/local_lffLC/LFF_spatial_LC/processed-data/06-countsOnly_noImgData_QCed_SPE_split_to_tissSections.RDS")
+
+louvs <- readRDS("~/Desktop/KM Lab/local_lffLC/LFF_spatial_LC/processed-data/07_featureSelection_dimred_harmony_clustering/04-Initial_louvLeid_res0.5-1-2_clusterings.RDS")
+louvs <- louvs$HARMONYlmbna_HDG_SVG_2575[,.(rn,snnHARMONYlmbna_HDG_SVG_2575_louv_res1)]
+setnames(louvs,2,"clusid")
+
+autoan <- readRDS("~/Desktop/KM Lab/local_lffLC/LFF_spatial_LC/processed-data/07_featureSelection_dimred_harmony_clustering/05b-init_clusterings_autoannoLCrapheAndGABAergic.RDS")
+autoan <- autoan$snnHARMONYlmbna_HDG_SVG_2575_louv_res1
+
+louvs <- merge.data.table(louvs,autoan,by="clusid")
+# change 5HT labels to not have a leading digit
+louvs[autoanno %in% c("5HT.1","5HT.2"),autoanno:=paste0("x",autoanno)]
+
+louvs <- DataFrame(louvs,row.names=louvs$rn)[colnames(lff),]
+
+colLabels(lff) <- louvs$autoanno
+```
+
+### grab genes with 1-1 orthologs between the two datasets, subset to those genes for marker analysis
+```{r}
+## map mouse genes in lcareg to human orthologs
+# gprofiler web service is down -- error 301 on queries both from my machine and using JHPCE. manually queried via https://biit.cs.ut.ee/gprofiler_beta/orth
+mhorth <- fread("~/Desktop/KM Lab/Other Groups\' Published Data/Luskin Bruchas mouse periLC snseq publication RDSes/gProfiler_mmusculus_hsapiens_1-28-2025_4-42-13 PM.csv",header=T)
+
+# ^ this converted the mouse symbols supplied ("initial") to all caps so convert lca accordingly
+## need some rowdata, which there isn't--just symbols as the rownames.
+subs <- lapply(subs,function(x){
+  rowData(x)$gene_name <- rownames(x)
+  rowData(x)$gene_id <- rownames(x)
+  
+  ## now append an allupper version that we'll use here to filter before switching back to the appropriate case convention
+  rowData(x)$gene_name_allupper <- toupper(rowData(x)$gene_name)
+  rownames(x) <- rowData(x)$gene_name_allupper
+  
+  return(x)
+})
+
+# drop rows where human ortholog not found
+mhorth <- mhorth[ortholog_ensg!="N/A",]
+# drop non 1-to-1 mappings
+mhorth <- unique(mhorth[,.(initial_alias,ortholog_ensg)])
+dropginit <- mhorth[,.N,by="initial_alias"][N>1,initial_alias]
+dropgorth <- mhorth[,.N,by="ortholog_ensg"][N>1,ortholog_ensg]
+
+
+mhorth <- mhorth[!(ortholog_ensg %in% dropgorth)&!(initial_alias %in% dropginit)]
+# filter to genes with orthologs represented in both datasets
+mhorth <- mhorth[initial_alias %in% unlist(lapply(subs,rownames)) & ortholog_ensg %in% rownames(lff),]
+
+## filter LFF to the remaining orthologous ENSGs and filt mouse by their allupper names 
+lff <- lff[rownames(lff) %in% mhorth$ortholog_ensg,]
+subs <- lapply(subs,function(x){
+  x <- x[rownames(x) %in% mhorth$initial_alias,]
+  return(x)
+})
+
+## DO NOT restore original mouse SCEs' rownames so we can map back to orthologs after marker analysis
+```
+
+## run registration wrapper for neuron subtypes (with everything else in a blanket "other" cluster), or using all annots including nonneuronal clusters
+```{r}
+library(spatialLIBD)
+
+# provide the allupper gene symbols as the 'ensembl' gene so that it is carried thru for ortholog mapping
+subsreg <- lapply(subs,function(x){
+  y <- registration_wrapper(x,var_registration = "ident",var_sample_id = "sample_id",gene_name = "gene_name",gene_ensembl = "gene_name_allupper")
+  return(y)
+})
+
+names(subsreg) <-names(subs)
+## a quick glance at this sorting by t stat for each cluster checks out (misc neuronal markers and peptides in the top enriched for GABAs, dbh slc6a2 in the top for NE, Chat in the top for ACH). doubt the GABAergic cluster number-gaba annotations are all matched up correctly but still useful for mapping out whether any of those GABA clusters are represented in the lff data.
+```
+
+## lff registration wrapper, register
+```{r}
+lffreg <- registration_wrapper(lff,var_registration = "label",var_sample_id = "sample_id",gene_name = "gene_name",gene_ensembl = "gene_id",min_ncells = 5)
+
+## reformat for rewritten registration function
+### for lc3:
+lff.mk <- as.data.table(lffreg$enrichment)
+keepcols <- c("ensembl",grep(names(lff.mk),pattern="^t_stat_",value=T))
+lff.mk <- lff.mk[,..keepcols]
+    
+setnames(lff.mk,c(2:ncol(lff.mk)),gsub(names(lff.mk)[c(2:ncol(lff.mk))],pattern="^t_stat_",replacement=""))
+
+## reformat subregs the same way
+subregs2 <- lapply(subsreg,function(x){
+    lcareg.mk <- as.data.table(x$enrichment)
+    keepcols <- c("ensembl",grep(names(lcareg.mk),pattern="^t_stat_",value=T))
+    lcareg.mk <- lcareg.mk[,..keepcols]
+
+    ## switch out the mouse symbols ("ensembl") with human ENSGs to map the stats across results; put the human ensg in the first col and drop the mouse symbol col
+    lcareg.mk <- merge.data.table(lcareg.mk,mhorth[,.(initial_alias,ortholog_ensg)],by.x="ensembl",by.y="initial_alias",all.x=T)
+    lcareg.mk[,ensembl:=NULL]
+    reonames <- c("ortholog_ensg",setdiff(names(lcareg.mk),"ortholog_ensg"))
+    rettab <- lcareg.mk[,..reonames]
+    setnames(rettab,1,"ensembl")
+
+    setnames(rettab,c(2:ncol(rettab)),gsub(names(rettab)[c(2:ncol(rettab))],pattern="^t_stat_",replacement=""))
+    return(rettab)
+})
+```
+
+registration fxn
+```{r}
+lcaregs.out <- lapply(X=subregs2,FUN=function(s){
+    # s is the query dataset
+    # iterator for top number of genes to use for correlation
+    j<-c(seq(10,50,10),seq(75,250,25),seq(300,1000,100))
+
+    m <- copy(lff.mk) # m is the active dataset
+
+    ans <- mclapply(c(1:(length(j)+1)),mc.cores=8,function(i){
+        if(i<length(j)){
+            cortab<-merge.data.table(m,s,by.y="ensembl",by.x="ensembl")
+            ngene <- j[i]
+        }
+        else{
+            # no value for top_n --> all genes used
+            cortab<-merge.data.table(m,s,by.y="ensembl",by.x="ensembl")
+            ngene <- nrow(cortab)
+        }
+        # initialize cormat
+        nclaba <- ncol(s)
+        nclhyp <- ncol(m)
+        cormat <- as.data.frame(matrix(nrow=(nclhyp-1),ncol=(nclaba-1)))
+        k <- 2
+        for (k in c(2:nclhyp)){
+            rownames(cormat)[(k-1)] <- colnames(m)[k]
+            l <- 2
+            for (l in c(2:nclaba)){
+                colnames(cormat)[(l-1)] <- colnames(s)[l]
+                
+                curhyp <- colnames(m)[k]
+                curaba <- colnames(s)[l]
+                setorderv(cortab,curaba,-1)
+                
+                cormat[(k-1),(l-1)] <- cor(cortab[c(1:ngene),..curhyp],cortab[c(1:ngene),..curaba],use="pairwise.complete.obs",method = "spearman")
+            }
+        }
+        plttab <- as.data.table(cormat,keep.rownames=T)
+        setnames(plttab,"rn","LFFclus")
+        plttab[,topNmsmk:=ngene]
+        plttab <- melt(plttab,id.vars=c("LFFclus","topNmsmk"))
+        setnames(plttab,"variable","msAnnot")
+        return(plttab)
+    })
+    return(ans)
+})
+
+## concat
+lcaregs.out <- lapply(lcaregs.out,rbindlist)
+# save
+saveRDS(lcaregs.out,file="processed-data/08_validitycheck_25hdg75svg_louv1/06-Registrations_to_LuskinMs2024_LCandGABA_subclusterings.RDS")
+```
+
+reprod inf
+```{r}
+sessionInfo()
+sessioninfo::session_info()
+```
+─ Session info ─────────────────────────────────────────────────────────────────────
+ setting  value
+ version  R version 4.4.1 RC (2024-06-06 r86719)
+ os       macOS Sonoma 14.7.1
+ system   aarch64, darwin20
+ ui       RStudio
+ language (EN)
+ collate  en_US.UTF-8
+ ctype    en_US.UTF-8
+ tz       America/Chicago
+ date     2025-02-04
+ rstudio  2024.07.0-daily+219 Cranberry Hibiscus (desktop)
+ pandoc   3.1.11 @ /Applications/RStudio.app/Contents/Resources/app/quarto/bin/tools/aarch64/ (via rmarkdown)
+
+─ Packages ─────────────────────────────────────────────────────────────────────────
+ !  package              * version    date (UTC) lib source
+    abind                  1.4-8      2024-09-12 [1] CRAN (R 4.4.1)
+    AnnotationDbi          1.68.0     2024-11-08 [1] Bioconductor 3.20 (R 4.4.1)
+    AnnotationHub          3.14.0     2024-11-08 [1] Bioconductor 3.20 (R 4.4.1)
+    attempt                0.3.1      2020-05-03 [1] CRAN (R 4.4.0)
+    beachmat               2.22.0     2024-11-08 [1] Bioconductor 3.20 (R 4.4.1)
+    beeswarm               0.4.0      2021-06-01 [1] CRAN (R 4.4.0)
+    benchmarkme            1.0.8      2022-06-12 [1] CRAN (R 4.4.0)
+    benchmarkmeData        1.0.4      2020-04-23 [1] CRAN (R 4.4.0)
+    Biobase              * 2.66.0     2024-11-08 [1] Bioconductor 3.20 (R 4.4.1)
+    BiocFileCache          2.14.0     2024-11-08 [1] Bioconductor 3.20 (R 4.4.1)
+    BiocGenerics         * 0.52.0     2024-11-08 [1] Bioconductor 3.20 (R 4.4.1)
+    BiocIO                 1.16.0     2024-12-12 [1] Github (Bioconductor/BiocIO@8e80624)
+    BiocManager            1.30.25    2024-08-28 [1] CRAN (R 4.4.1)
+    BiocNeighbors          2.0.1      2024-11-28 [1] Bioconductor 3.20 (R 4.4.2)
+    BiocParallel         * 1.40.0     2024-11-23 [1] Bioconductor 3.20 (R 4.4.2)
+    BiocSingular           1.22.0     2024-11-08 [1] Bioconductor 3.20 (R 4.4.1)
+    BiocVersion            3.20.0     2024-05-04 [1] Bioconductor 3.20 (R 4.4.0)
+    Biostrings             2.74.0     2024-11-08 [1] Bioconductor 3.20 (R 4.4.1)
+    bit                    4.5.0.1    2024-12-03 [1] CRAN (R 4.4.1)
+    bit64                  4.5.2      2024-09-22 [1] CRAN (R 4.4.1)
+    bitops                 1.0-9      2024-10-03 [1] CRAN (R 4.4.1)
+    blob                   1.2.4      2023-03-17 [1] CRAN (R 4.4.0)
+    bslib                  0.9.0      2025-01-30 [1] CRAN (R 4.4.1)
+    cachem                 1.1.0      2024-05-16 [1] CRAN (R 4.4.0)
+    cellranger             1.1.0      2016-07-27 [1] CRAN (R 4.4.0)
+ P  cli                    3.6.3      2024-06-21 [2] CRAN (R 4.4.0)
+    cluster                2.1.8      2024-12-11 [1] CRAN (R 4.4.1)
+    codetools              0.2-20     2024-03-31 [1] CRAN (R 4.4.1)
+    colorout             * 1.3-0.2    2024-05-01 [1] Github (jalvesaq/colorout@c6113a2)
+    colorspace             2.1-1      2024-07-26 [1] CRAN (R 4.4.0)
+    config                 0.3.2      2023-08-30 [1] CRAN (R 4.4.0)
+    cowplot                1.1.3      2024-01-22 [1] CRAN (R 4.4.0)
+    crayon                 1.5.3      2024-06-20 [1] CRAN (R 4.4.0)
+    curl                   6.2.0      2025-01-23 [1] CRAN (R 4.4.1)
+    data.table           * 1.16.4     2024-12-06 [1] CRAN (R 4.4.1)
+    DBI                    1.2.3      2024-06-02 [1] CRAN (R 4.4.0)
+    dbplyr                 2.5.0      2024-03-19 [1] CRAN (R 4.4.0)
+    DelayedArray           0.32.0     2024-11-08 [1] Bioconductor 3.20 (R 4.4.1)
+    deldir                 2.0-4      2024-02-28 [1] CRAN (R 4.4.0)
+    digest                 0.6.37     2024-08-19 [1] CRAN (R 4.4.1)
+    doParallel             1.0.17     2022-02-07 [1] CRAN (R 4.4.1)
+    dotCall64              1.2        2024-10-04 [1] CRAN (R 4.4.1)
+    dplyr                  1.1.4      2023-11-17 [1] CRAN (R 4.4.0)
+    DT                     0.33       2024-04-04 [1] CRAN (R 4.4.0)
+    edgeR                  4.4.1      2024-12-02 [1] Bioconductor 3.20 (R 4.4.2)
+    evaluate               1.0.3      2025-01-10 [1] CRAN (R 4.4.1)
+    ExperimentHub          2.14.0     2024-11-08 [1] Bioconductor 3.20 (R 4.4.1)
+    farver                 2.1.2      2024-05-13 [1] CRAN (R 4.4.0)
+    fastDummies            1.7.5      2025-01-20 [1] CRAN (R 4.4.1)
+    fastmap                1.2.0      2024-05-15 [1] CRAN (R 4.4.0)
+    fields                 16.3       2024-09-30 [1] CRAN (R 4.4.1)
+    filelock               1.0.3      2023-12-11 [1] CRAN (R 4.4.0)
+    fitdistrplus           1.2-2      2025-01-07 [1] CRAN (R 4.4.1)
+    foreach                1.5.2      2022-02-02 [1] CRAN (R 4.4.0)
+    future                 1.34.0     2024-07-29 [1] CRAN (R 4.4.0)
+    future.apply           1.11.3     2024-10-27 [1] CRAN (R 4.4.1)
+    generics               0.1.3      2022-07-05 [1] CRAN (R 4.4.0)
+    GenomeInfoDb         * 1.42.1     2024-11-28 [1] Bioconductor 3.20 (R 4.4.2)
+    GenomeInfoDbData       1.2.13     2024-12-12 [1] Bioconductor
+    GenomicAlignments      1.42.0     2024-11-08 [1] Bioconductor 3.20 (R 4.4.1)
+    GenomicRanges        * 1.58.0     2024-11-08 [1] Bioconductor 3.20 (R 4.4.1)
+    ggbeeswarm             0.7.2      2023-04-29 [1] CRAN (R 4.4.0)
+    ggplot2              * 3.5.1      2024-04-23 [1] CRAN (R 4.4.0)
+    ggrepel                0.9.6      2024-09-07 [1] CRAN (R 4.4.1)
+    ggridges               0.5.6      2024-01-23 [1] CRAN (R 4.4.0)
+    ggtext               * 0.1.2      2022-09-16 [1] CRAN (R 4.4.0)
+    globals                0.16.3     2024-03-08 [1] CRAN (R 4.4.0)
+    glue                   1.8.0      2024-09-30 [1] CRAN (R 4.4.1)
+    goftest                1.2-3      2021-10-07 [1] CRAN (R 4.4.0)
+    golem                  0.5.1      2024-08-27 [1] CRAN (R 4.4.1)
+    gridExtra            * 2.3        2017-09-09 [1] CRAN (R 4.4.0)
+    gridtext               0.1.5      2022-09-16 [1] CRAN (R 4.4.0)
+    gtable                 0.3.6      2024-10-25 [1] CRAN (R 4.4.1)
+    here                   1.0.1      2020-12-13 [1] CRAN (R 4.4.0)
+    htmltools              0.5.8.1    2024-04-04 [1] CRAN (R 4.4.0)
+    htmlwidgets            1.6.4      2023-12-06 [1] CRAN (R 4.4.0)
+    httpuv                 1.6.15     2024-03-26 [1] CRAN (R 4.4.0)
+    httr                   1.4.7      2023-08-15 [1] CRAN (R 4.4.0)
+    ica                    1.0-3      2022-07-08 [1] CRAN (R 4.4.0)
+    igraph                 2.1.4      2025-01-23 [1] CRAN (R 4.4.1)
+    IRanges              * 2.40.1     2024-12-05 [1] Bioconductor 3.20 (R 4.4.2)
+    irlba                  2.3.5.1    2022-10-03 [1] CRAN (R 4.4.0)
+    iterators              1.0.14     2022-02-05 [1] CRAN (R 4.4.0)
+    jquerylib              0.1.4      2021-04-26 [1] CRAN (R 4.4.0)
+    jsonlite               1.8.9      2024-09-20 [1] CRAN (R 4.4.1)
+    KEGGREST               1.46.0     2024-11-08 [1] Bioconductor 3.20 (R 4.4.1)
+    KernSmooth             2.23-24    2024-05-17 [1] CRAN (R 4.4.1)
+    knitr                  1.49       2024-11-08 [1] CRAN (R 4.4.1)
+    later                  1.4.1      2024-11-27 [1] CRAN (R 4.4.1)
+    lattice                0.22-6     2024-03-20 [1] CRAN (R 4.4.1)
+    lazyeval               0.2.2      2019-03-15 [1] CRAN (R 4.4.0)
+    lifecycle              1.0.4      2023-11-07 [1] CRAN (R 4.4.0)
+    limma                  3.62.1     2024-11-08 [1] Bioconductor 3.20 (R 4.4.1)
+    listenv                0.9.1      2024-01-29 [1] CRAN (R 4.4.0)
+    lmtest                 0.9-40     2022-03-21 [1] CRAN (R 4.4.0)
+    locfit                 1.5-9.10   2024-06-24 [1] CRAN (R 4.4.0)
+    magick                 2.8.5      2024-09-20 [1] CRAN (R 4.4.1)
+    magrittr               2.0.3      2022-03-30 [1] CRAN (R 4.4.0)
+    maps                   3.4.2.1    2024-11-10 [1] CRAN (R 4.4.1)
+    MASS                   7.3-61     2024-06-13 [1] CRAN (R 4.4.0)
+    Matrix                 1.7-2      2025-01-23 [1] CRAN (R 4.4.1)
+    MatrixGenerics       * 1.18.0     2024-11-08 [1] Bioconductor 3.20 (R 4.4.1)
+    matrixStats          * 1.5.0      2025-01-07 [1] CRAN (R 4.4.1)
+    memoise                2.0.1      2021-11-26 [1] CRAN (R 4.4.0)
+    mime                   0.12       2021-09-28 [1] CRAN (R 4.4.0)
+    miniUI                 0.1.1.1    2018-05-18 [1] CRAN (R 4.4.0)
+    munsell                0.5.1      2024-04-01 [1] CRAN (R 4.4.0)
+    nlme                   3.1-166    2024-08-14 [1] CRAN (R 4.4.0)
+    paletteer              1.6.0      2024-01-21 [1] CRAN (R 4.4.0)
+    parallelly           * 1.42.0     2025-01-30 [1] CRAN (R 4.4.1)
+    patchwork              1.3.0      2024-09-16 [1] CRAN (R 4.4.1)
+    pbapply                1.7-2      2023-06-27 [1] CRAN (R 4.4.0)
+    pillar                 1.10.1     2025-01-07 [1] CRAN (R 4.4.1)
+    pkgconfig              2.0.3      2019-09-22 [1] CRAN (R 4.4.0)
+    plotly                 4.10.4     2024-01-13 [1] CRAN (R 4.4.0)
+    plyr                   1.8.9      2023-10-02 [1] CRAN (R 4.4.0)
+    png                    0.1-8      2022-11-29 [1] CRAN (R 4.4.0)
+    polyclip               1.10-7     2024-07-23 [1] CRAN (R 4.4.0)
+    progressr              0.15.1     2024-11-22 [1] CRAN (R 4.4.1)
+    promises               1.3.2      2024-11-28 [1] CRAN (R 4.4.1)
+    purrr                  1.0.2      2023-08-10 [1] CRAN (R 4.4.0)
+    R6                     2.5.1      2021-08-19 [1] CRAN (R 4.4.0)
+    RANN                   2.6.2      2024-08-25 [1] CRAN (R 4.4.1)
+    rappdirs               0.3.3      2021-01-31 [1] CRAN (R 4.4.0)
+    RColorBrewer           1.1-3      2022-04-03 [1] CRAN (R 4.4.0)
+    Rcpp                   1.0.14     2025-01-12 [1] CRAN (R 4.4.1)
+    RcppAnnoy              0.0.22     2024-01-23 [1] CRAN (R 4.4.0)
+    RcppHNSW               0.6.0      2024-02-04 [1] CRAN (R 4.4.0)
+    RCurl                  1.98-1.16  2024-07-11 [1] CRAN (R 4.4.0)
+    readxl               * 1.4.3.9000 2024-08-04 [1] Github (tidyverse/readxl@866eff6)
+    rematch2               2.1.2      2020-05-01 [1] CRAN (R 4.4.0)
+    reshape2               1.4.4      2020-04-09 [1] CRAN (R 4.4.0)
+    restfulr               0.0.15     2022-06-16 [1] CRAN (R 4.4.0)
+    reticulate             1.40.0     2024-11-15 [1] CRAN (R 4.4.1)
+    rjson                  0.2.23     2024-09-16 [1] CRAN (R 4.4.1)
+ VP rlang                * 1.1.4      2025-01-17 [2] CRAN (R 4.4.1) (on disk 1.1.5)
+    rmarkdown              2.29       2024-11-04 [1] CRAN (R 4.4.1)
+    ROCR                   1.0-11     2020-05-02 [1] CRAN (R 4.4.0)
+    rprojroot              2.0.4      2023-11-05 [1] CRAN (R 4.4.0)
+    Rsamtools              2.22.0     2024-11-08 [1] Bioconductor 3.20 (R 4.4.1)
+    RSpectra               0.16-2     2024-07-18 [1] CRAN (R 4.4.0)
+    RSQLite                2.3.9      2024-12-03 [1] CRAN (R 4.4.1)
+    rstudioapi             0.17.1     2024-10-22 [1] CRAN (R 4.4.1)
+    rsvd                   1.0.5      2021-04-16 [1] CRAN (R 4.4.0)
+    rtracklayer            1.66.0     2024-11-08 [1] Bioconductor 3.20 (R 4.4.1)
+    Rtsne                  0.17       2023-12-07 [1] CRAN (R 4.4.0)
+    S4Arrays               1.6.0      2024-11-08 [1] Bioconductor 3.20 (R 4.4.1)
+    S4Vectors            * 0.44.0     2024-11-08 [1] Bioconductor 3.20 (R 4.4.1)
+    sass                   0.4.9      2024-03-15 [1] CRAN (R 4.4.0)
+    ScaledMatrix           1.14.0     2024-11-08 [1] Bioconductor 3.20 (R 4.4.1)
+    scales                 1.3.0      2023-11-28 [1] CRAN (R 4.4.0)
+    scater                 1.34.0     2024-10-29 [1] Bioconductor 3.20 (R 4.4.1)
+    scattermore            1.2        2023-06-12 [1] CRAN (R 4.4.0)
+    sctransform            0.4.1      2023-10-19 [1] CRAN (R 4.4.0)
+    scuttle                1.16.0     2024-11-08 [1] Bioconductor 3.20 (R 4.4.1)
+    sessioninfo            1.2.2      2021-12-06 [1] CRAN (R 4.4.0)
+    Seurat               * 5.2.1      2025-01-24 [1] CRAN (R 4.4.1)
+    SeuratObject         * 5.0.2      2024-05-08 [1] CRAN (R 4.4.0)
+    shiny                  1.10.0     2024-12-14 [1] CRAN (R 4.4.1)
+    shinyWidgets           0.8.7      2024-09-23 [1] CRAN (R 4.4.1)
+    SingleCellExperiment * 1.28.1     2024-11-23 [1] Bioconductor 3.20 (R 4.4.2)
+    sp                   * 2.1-4      2024-04-30 [1] CRAN (R 4.4.0)
+    spam                   2.11-1     2025-01-20 [1] CRAN (R 4.4.1)
+    SparseArray            1.6.0      2024-11-08 [1] Bioconductor 3.20 (R 4.4.1)
+    SpatialExperiment    * 1.16.0     2024-11-08 [1] Bioconductor 3.20 (R 4.4.1)
+    spatialLIBD          * 1.18.0     2024-11-07 [1] Bioconductor 3.20 (R 4.4.1)
+    spatstat.data          3.1-4      2024-11-15 [1] CRAN (R 4.4.1)
+    spatstat.explore       3.3-4      2025-01-08 [1] CRAN (R 4.4.1)
+    spatstat.geom          3.3-5      2025-01-18 [1] CRAN (R 4.4.1)
+    spatstat.random        3.3-2      2024-09-18 [1] CRAN (R 4.4.1)
+    spatstat.sparse        3.1-0      2024-06-21 [1] CRAN (R 4.4.0)
+    spatstat.univar        3.1-1      2024-11-05 [1] CRAN (R 4.4.1)
+    spatstat.utils         3.1-2      2025-01-08 [1] CRAN (R 4.4.1)
+    statmod                1.5.0      2023-01-06 [1] CRAN (R 4.4.0)
+    stringi                1.8.4      2024-05-06 [1] CRAN (R 4.4.0)
+    stringr                1.5.1      2023-11-14 [1] CRAN (R 4.4.0)
+    SummarizedExperiment * 1.36.0     2024-11-08 [1] Bioconductor 3.20 (R 4.4.1)
+    survival               3.7-0      2024-06-05 [1] CRAN (R 4.4.0)
+    tensor                 1.5        2012-05-05 [1] CRAN (R 4.4.0)
+    tibble                 3.2.1      2023-03-20 [1] CRAN (R 4.4.0)
+    tidyr                  1.3.1      2024-01-24 [1] CRAN (R 4.4.0)
+    tidyselect             1.2.1      2024-03-11 [1] CRAN (R 4.4.0)
+    UCSC.utils             1.2.0      2024-11-08 [1] Bioconductor 3.20 (R 4.4.1)
+    uwot                   0.2.2      2024-04-21 [1] CRAN (R 4.4.0)
+    vctrs                  0.6.5      2023-12-01 [1] CRAN (R 4.4.0)
+    vipor                  0.4.7      2023-12-18 [1] CRAN (R 4.4.0)
+    viridis                0.6.5      2024-01-29 [1] CRAN (R 4.4.0)
+    viridisLite            0.4.2      2023-05-02 [1] CRAN (R 4.4.0)
+    withr                  3.0.2      2024-10-28 [1] CRAN (R 4.4.1)
+    xfun                   0.50       2025-01-07 [1] CRAN (R 4.4.1)
+    XML                    3.99-0.17  2024-06-25 [1] CRAN (R 4.3.3)
+    xml2                   1.3.6      2023-12-04 [1] CRAN (R 4.4.0)
+    xtable                 1.8-4      2019-04-21 [1] CRAN (R 4.4.0)
+    XVector                0.46.0     2024-11-08 [1] Bioconductor 3.20 (R 4.4.1)
+    yaml                   2.3.10     2024-07-26 [1] CRAN (R 4.4.0)
+    zlibbioc               1.52.0     2024-11-08 [1] Bioconductor 3.20 (R 4.4.1)
+    zoo                    1.8-12     2023-04-13 [1] CRAN (R 4.4.0)
+
+ [1] /Library/Frameworks/R.framework/Versions/4.4-arm64/Resources/library
+ [2] /Users/bmulvey/Library/R/arm64/4.4/library
+
+ V ── Loaded and on-disk version mismatch.
+ P ── Loaded and on-disk path mismatch.
+
+────────────────────────────────────────────────────────────────────────────────────
