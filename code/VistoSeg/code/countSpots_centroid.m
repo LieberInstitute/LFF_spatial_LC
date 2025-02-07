@@ -1,8 +1,9 @@
-function [count,prop,countC] = countSpots_centroid(BW, R, tbl, posPath)
+function [count,prop,countC, inten] = countSpots_centroid(BW, img, R, tbl, posPath)
   
 count = [];
 prop = [];
 countC = [];
+inten = [];
 
 O = fieldnames(BW);
 
@@ -23,6 +24,7 @@ for C = 1:numel(O)
     count.(O{C}) = zeros(nSpots, 1);
     prop.(O{C}) = zeros(nSpots, 1);
     countC.(O{C}) = zeros(nSpots, 1);
+    inten.(O{C}) = zeros(nSpots, 1);
 end
 
 tic
@@ -33,7 +35,7 @@ points = struct2table(regionprops(BW.(O{C}), 'Centroid')).Centroid;
     for i = 1:nSpots 
         idx = mask(crow(i), ccol(i));
         spot = regionprops(mask==idx);
-        signal = struct2table(regionprops(mask==idx & BW.(O{C})>0));
+        signal = struct2table(regionprops(mask==idx & BW.(O{C})>0, img.(O{C}), 'Area', 'MeanIntensity'));
         isincircle = sum((points - [ccol(i) crow(i)]).^2,2)<= R^2;
         %check
 %         [tempx,tempy] = find(mask == idx);
@@ -42,6 +44,7 @@ points = struct2table(regionprops(BW.(O{C}), 'Centroid')).Centroid;
 %         viscircles(size(temp)/2, repelem(R, 1), 'Color', 'r');
         count.(O{C})(i) = length([signal.Area]);
         prop.(O{C})(i) = sum([signal.Area])/spot.Area;
+        inten.(O{C})(i) = mean([signal.MeanIntensity]);
         countC.(O{C})(i) = length(find(isincircle));
         if mod(i,100) == 0
         disp([num2str(i),' spots finished in time ', num2str(toc),'s'])
@@ -52,8 +55,8 @@ points = struct2table(regionprops(BW.(O{C}), 'Centroid')).Centroid;
 end
 
 for C = 1:numel(O)
- temp = [count.(O{C}) prop.(O{C}) countC.(O{C})];  
- tbl = [tbl array2table(temp, 'VariableNames', {['N',O{C}],['P',O{C}],['CN',O{C}]})];        
+ temp = [count.(O{C}) prop.(O{C}) inten.(O{C}) countC.(O{C})];  
+ tbl = [tbl array2table(temp, 'VariableNames', {['N',O{C}],['P',O{C}],['I',O{C}],['CN',O{C}]})];        
 end
 
 if ~exist(posPath, 'dir')
