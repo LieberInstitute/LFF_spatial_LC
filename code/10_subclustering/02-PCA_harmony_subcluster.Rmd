@@ -1,0 +1,146 @@
+---
+title: "02-PCA_harmony_subcluster"
+author: "Bernie Mulvey"
+date: "2025-02-06"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(fig.height = 10,fig.width = 7,include = FALSE)
+#### sets tab autocompletion for directories to begin from the directory containing the .Rproj session, instead of the script's directory if different
+knitr::opts_knit$set(root.dir = here::here())
+
+library(data.table)
+library(SpatialExperiment)
+library(scater)
+library(scran)
+library(bluster)
+library(Matrix)
+library(harmony)
+
+## rstudio GUI tweaks
+require(colorout)
+ColorOut()
+# options("styler.addins_style_transformer" = "biocthis::bioc_style()")
+##
+
+## enable forked parallel processing with BiocParallel::multicoreParam, future::, etc. seemed to need this a couple times, but otherwise havent so its here as a preventative measure. part of this is adding the line 
+# OBJC_DISABLE_INITIALIZE_FORK_SAFETY=YES
+# to Renviron.site. see e.g. top response on https://stackoverflow.com/questions/73638290/python-on-mac-is-it-safe-to-set-objc-disable-initialize-fork-safety-yes-globall 
+library(parallelly)
+options(parallelly.supportsMulticore.disableOn="")
+options(parallelly.fork.enable=TRUE)
+library(BiocParallel)
+options(bphost="localhost")
+library(parallel)
+
+## last of all, unload the base package datasets, whose data keep getting in the way of autocompletions (e.g., Theoph is priortized over TRUE)
+unloadNamespace("datasets")
+```
+
+# repeated from script 01: load sectionwise, filtered, lognormed SPE; append the initial cluster labels (25HDG-75SVG louvain res 1)
+```{r}
+lc3 <- readRDS("processed-data/06-countsOnly_noImgData_QCed_SPE_split_to_tissSections.RDS")
+
+louvs <- readRDS("processed-data/07_featureSelection_dimred_harmony_clustering/04-Initial_louvLeid_res0.5-1-2_clusterings.RDS")
+louvs <- louvs <- louvs$HARMONYlmbna_HDG_SVG_2575[,.(rn,snnHARMONYlmbna_HDG_SVG_2575_louv_res1)]
+setnames(louvs,2,"clusid")
+
+autoan <- readRDS("processed-data/07_featureSelection_dimred_harmony_clustering/05b-init_clusterings_autoannoLCrapheAndGABAergic.RDS")
+autoan <- autoan$snnHARMONYlmbna_HDG_SVG_2575_louv_res1
+
+louvs <- merge.data.table(louvs,autoan,by="clusid",all.x=T)
+louvs <- DataFrame(louvs,row.names=louvs$rn)[colnames(lc3),]
+
+colLabels(lc3) <- louvs$autoanno
+```
+
+## repeated from script 01: make an SPE for each cluster individually
+```{r}
+clussub <- lapply(unique(colLabels(lc3)),function(x){ 
+    sub <- lc3[,colLabels(lc3)==x]
+    
+    # drop genes that have 0 counts for the cluster in question
+    sub <- sub[rowSums(counts(sub))>0,]
+
+    # calculate the lognorm counts
+    sub <- computeLibraryFactors(sub)
+    sub <- logNormCounts(sub)
+    return(sub)
+})
+names(clussub) <- unique(colLabels(lc3))
+
+## we don't need the full spe now
+rm(lc3,louvs,autoan)
+gc(full=T)
+```
+
+## now load HVG sets for each cluster
+```{r}
+subhvgsets <- readRDS("processed-data/10_subclustering/01-HVG5-10-20_sets_per_cluster.RDS")
+```
+
+now for each cluster-feature set, run PCA, HARMONY and return the dimensionality reduction matrices
+
+## WARNING: THIS IS SLOW AS HELL--dimensionality reduction steps need to be serialized for some reason. none of the parallelization packages seem to cooperate even though this all works with serial apply functions. ##
+
+```{r}
+
+## keep data.table from multithreading and thus overcommiting CPUs
+setDTthreads(1,restore_after_fork = FALSE) # prevents reloading of data.table in default multithreaded mode
+
+subdrs <- mapply(subclus=clussub,n=names(clussub),SIMPLIFY=FALSE,FUN=function(subclus,n){
+    # get the HVG sets for the cluster
+    hvgsets <- subhvgsets[[n]]
+    
+    dimrspes <- lapply(hvgsets,function(x){
+        spe <- copy(subclus[x$gene_id,])
+        return(spe)
+    })
+    names(dimrspes) <- paste0(n,"_",names(hvgsets)) # eg X1_hvg5
+    
+    # psockcl <- makeClusterPSOCK(c("localhost","localhost","localhost"))
+    drtabs <- mapply(subspe=dimrspes,drn=names(dimrspes),SIMPLIFY=FALSE,FUN=function(subspe,drn){
+
+        # standard PCAs
+        set.seed(42)
+        subspe <- scater::runPCA(subspe,name=paste0("PCA_",drn)) # eg PCA_X1_hvg5
+
+        # standard UMAPs (which require PCA first)
+        set.seed(42)
+        subspe <- scater::runUMAP(subspe,dimred=paste0("PCA_",drn),name=paste0("UMAP_",drn))
+
+        # harmony runs -- we need to temporarily rename the PCA for the feature set to "PCA" for runharmony to accept it
+        reducedDimNames(subspe)[which(reducedDimNames(subspe)==paste0("PCA_",drn))] <- "PCA"
+        
+        # data-based initialization of lambda (development ver of Harmony; requires explicit lambda=NULL)
+        set.seed(42)
+        subspe <- RunHarmony(subspe,lambda=NULL,group.by.vars="sample_id",reduction.save=paste0("HARMONYlmbna_",drn))
+
+        # restore the feature-set-specific name for the uncorrected PCA
+        reducedDimNames(subspe)[which(reducedDimNames(subspe)=="PCA")] <- paste0("PCA_",drn)
+
+        # UMAP of data-based initialization of lambda
+        set.seed(42)
+        subspe <- scater::runUMAP(subspe,dimred=paste0("HARMONYlmbna_",drn),name=paste0("HARMONYlmbna_",drn,"_UMAP"))
+
+        ## grab the produced dimreds, drop the 10x-auto-dimreds if they're still in there, and return them in a list
+        rdm <- reducedDims(subspe)
+        rdm <- as.list(rdm)
+        rdm <- rdm[grep(names(rdm),pattern="^10x",value=T,invert=T)]
+
+        return(rdm)
+    })
+    
+    names(drtabs) <- names(dimrspes)
+    return(drtabs)
+})
+names(subdrs) <- names(clussub)
+```
+
+## save
+```{r}
+saveRDS(subdrs,"processed-data/10_subclustering/02a-subclustering_HVG5-10-20_PCA_harmony_umap_dimredmats.RDS")
+```
+
+now run SNN k10 --> louvain at resolutions seq(0.2,1,0.2) on each of the HARMONY dimreds. this part really truly should parallelize without issue and i will scream if it doesn't

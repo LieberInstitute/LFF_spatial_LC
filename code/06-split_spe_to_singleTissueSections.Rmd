@@ -213,6 +213,25 @@ lc2split@int_metadata$imgData@elementMetadata <- NULL
 lc2split@int_metadata$imgData@rownames <- NULL
 ```
 
+## append chromosome information to rowData
+```{r}
+tmprd <- as.data.table(rowData(lc2split),keep.rownames=T)
+
+enslut <- fread("raw-data/USEFOR10X_ensg_lut_hg38_fromEns98_111123.txt")
+
+enslut <- unique(enslut[,.(ensembl_gene_id,chromosome_name)])
+setnames(enslut,c("ens","chr"))
+
+enslut <- enslut[ens %in% rownames(lc2split)]
+enslut[chr %in% paste0(c(1:22,"X","Y","MT")),chr:=paste0("chr",chr)]
+
+tmprd <- merge.data.table(tmprd,enslut,by.x="gene_id",by.y="ens",all.x=TRUE)
+tmprd <- DataFrame(tmprd,row.names=tmprd$rn)[rownames(lc2split),]
+
+rowData(lc2split) <- tmprd
+```
+
+
 boom save it
 ```{r}
 saveRDS(lc2split,"processed-data/06-QCed_SPE_split_to_tissSections.RDS")
