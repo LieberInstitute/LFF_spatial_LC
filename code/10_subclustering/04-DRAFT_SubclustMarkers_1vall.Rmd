@@ -1,0 +1,91 @@
+---
+title: "Untitled"
+author: "Bernie Mulvey"
+date: "2025-02-07"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(fig.height = 10,fig.width = 7,include = FALSE)
+#### sets tab autocompletion for directories to begin from the directory containing the .Rproj session, instead of the script's directory if different
+knitr::opts_knit$set(root.dir = here::here())
+
+library(data.table)
+library(ggplot2)
+library(ggtext)
+library(gridExtra)
+library(SpatialExperiment)
+# library(SpatialFeatureExperiment)
+
+## rstudio GUI tweaks
+require(colorout)
+ColorOut()
+options("styler.addins_style_transformer" = "biocthis::bioc_style()")
+##
+
+## enable forked parallel processing with BiocParallel::multicoreParam, future::, etc. seemed to need this a couple times, but otherwise havent so its here as a preventative measure. part of this is adding the line 
+# OBJC_DISABLE_INITIALIZE_FORK_SAFETY=YES
+# to Renviron.site. see e.g. top response on https://stackoverflow.com/questions/73638290/python-on-mac-is-it-safe-to-set-objc-disable-initialize-fork-safety-yes-globall 
+library(parallelly)
+options(parallelly.supportsMulticore.disableOn="")
+options(parallelly.fork.enable=TRUE)
+library(BiocParallel)
+options(bphost="localhost")
+
+
+## ggplot defaults
+theme_set(theme_bw()+theme(axis.text.x = element_text(size = 9), axis.title.x = element_text(size = 8), axis.text.y = element_text(size = 8), axis.title.y = element_text(size =9), plot.title = element_markdown(size = 11,hjust=0.5), strip.text = element_text(size=11), legend.text = element_text(size=8), legend.title = element_text(size=9,hjust=0.5)))
+
+## last of all, unload the base package datasets, whose data keep getting in the way of autocompletions (e.g., Theoph is priortized over TRUE)
+unloadNamespace("datasets")
+```
+
+## load minimal SPE and clustering results
+```{r}
+lc3 <- readRDS("processed-data/06-countsOnly_noImgData_QCed_SPE_split_to_tissSections.RDS")
+
+multiressubclus <- readRDS("processed-data/10_subclustering/02b-subclustering_HVG5-10-20_HARMONY_louv_res0.2-1.RDS")
+## concatenate to one megatable
+i <- 1
+for (i in c(1:length(multiressubclus))){
+    if(i==1){allclus <- copy(multiressubclus[[1]])} else{
+        allclus <- merge.data.table(allclus,
+                                    multiressubclus[[i]],
+                                    by="rn",
+                                    all.x=T,
+                                    all.y=T)
+    }
+}
+
+## append all that stuff to coldata
+tmpcd <- as.data.table(colData(lc3),keep.rownames=T)
+tmpcd <- merge.data.table(tmpcd,multiressubclus,by="rn")
+tmpcd <- DataFrame(tmpcd,row.names=tmpcd$rn)[colnames(lc3),]
+tmpcd$rn <- NULL
+```
+
+```{r}
+slibdmk <- mclapply(colnames(colData(lc3))[37:51],mc.cores=3,FUN=function(x){
+    mk <- registration_wrapper(lc3,var_registration = x,var_sample_id = "sample_id",gene_ensembl = "gene_id",gene_name = "gene_name",min_ncells = 5)
+    
+    mk <- as.data.table(mk$enrichment)
+    keepn <- c("ensembl","gene",grep(names(mk),pattern="fdr",value=T),grep(names(mk),pattern="logFC",value=T))
+    mk <- mk[,..keepn]
+    mk <- melt.data.table(mk,id.vars = c("ensembl","gene"))
+    mk[,stat:=gsub(variable,pattern="^(.*)_X.*$",replacement="\\1")]
+    mk[,tmpsubclus:=gsub(variable,pattern="^.*_(X.*)$",replacement="\\1")]
+    mk[,subclus:=paste0(x,"_",tmpsubclus)]
+    mk[,tmpsubclus:=NULL]
+    
+    mkl <- mk[stat=="logFC",.(ensembl,gene,value,subclus)]
+    setnames(mkl,"value","lfc")
+    
+    mkf <- mk[stat=="fdr",.(ensembl,gene,value,subclus)]
+    setnames(mkf,"value","fdr")
+    
+    mk2 <- merge.data.table(mkl,mkf,by=c("subclus","ensembl","gene"))
+    mk2 <- mk2[fdr<0.1&lfc>0]
+    
+    return(mk2)
+})
+```
