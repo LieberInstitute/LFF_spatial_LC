@@ -205,7 +205,7 @@ names(fulldgelres.anc.rin) <- names(dgels)
 
 concatres <- list(noAncestry_noRin=fulldgelres.norin,noAncestry_wRin=fulldgelres.rin,wAncestry_noRin=fulldgelres.anc.norin,wAncestry_wRin=fulldgelres.anc.rin)
 
-saveRDS(concatres,"processed-data/11_DEanalyses/02-DEtoptabs_testsWithandWithout_RINandorAncestry.RDS")
+saveRDS(concatres,"processed-data/11_DEanalyses/02a-DEtoptabs_testsWithandWithout_RINandorAncestry.RDS")
 ```
 
 ## if big wide tables of reuslts across all models are desired for APO in a cluster, e.g.:
@@ -244,14 +244,18 @@ saveRDS(concatres,"processed-data/11_DEanalyses/02-DEtoptabs_testsWithandWithout
 
 ```
 
+```{r}
+i <- 4
+b=fulldgelres.norin[[i]]
+br=fulldgelres.rin[[i]]
+a=fulldgelres.anc.norin[[i]]
+ar=fulldgelres.anc.rin[[i]]
+```
+
+
 ## tabulate how many sex models and how many apo models picked up DE per cluster at FDR<0.2
 ```{r}
 tabres <- mapply(b=fulldgelres.norin,br=fulldgelres.rin,a=fulldgelres.anc.norin,ar=fulldgelres.anc.rin,SIMPLIFY=FALSE,FUN=function(b,br,a,ar){
-    b <- copy(fulldgelres.norin[[i]])
-    br <- copy(fulldgelres.rin[[i]])
-    a <- copy(fulldgelres.anc.norin[[i]])
-    ar <- copy(fulldgelres.anc.rin[[i]])
-    
 
     apos <- list(b$apo,br$apo,a$apo,ar$apo)
     names(apos) <- c("E4_noAncestry_noRin","E4_noAncestry_wRin", "E4_wAncestry_noRin","E4_wAncestry_wRin")
@@ -270,6 +274,11 @@ tabres <- mapply(b=fulldgelres.norin,br=fulldgelres.rin,a=fulldgelres.anc.norin,
         }
     })
     aposf <- rbindlist(aposf,fill=T)
+    # account for cases where no fdr sig genes in any of the models:
+    if(nrow(aposf)==0){
+        aposf <- as.data.table(cbind(gene_name=NA,DEtest_FDRunder0.2=NA))
+    } 
+    # 
     aposf[,Nsigmodels:=.N,by="gene_name"]
 
     aposnom <- mapply(x=apos,n=names(apos),SIMPLIFY=FALSE,FUN=function(x,n){
@@ -305,6 +314,11 @@ tabres <- mapply(b=fulldgelres.norin,br=fulldgelres.rin,a=fulldgelres.anc.norin,
         }
     })
     sexsf <- rbindlist(sexsf,fill=T)
+    # account for cases where no fdr sig genes in any of the models:
+    if(nrow(sexsf)==0){
+        sexsf <- as.data.table(cbind(gene_name=NA,DEtest_FDRunder0.2=NA))
+    } 
+    # 
     sexsf[,Nsigmodels:=.N,by="gene_name"]
     
     sexsnom <- mapply(x=sexs,n=names(sexs),SIMPLIFY=FALSE,FUN=function(x,n){
@@ -393,9 +407,9 @@ other attached packages:
 loaded via a namespace (and not attached):
  [1] digest_0.6.37     codetools_0.2-20  fastmap_1.2.0     xfun_0.50        
  [5] lattice_0.22-6    knitr_1.49        htmltools_0.5.8.1 rmarkdown_2.29   
- [9] cli_3.6.3         sessioninfo_1.2.2 grid_4.4.2        statmod_1.5.0    
-[13] compiler_4.4.2    rprojroot_2.0.4   here_1.0.1        rstudioapi_0.17.1
-[17] tools_4.4.2       evaluate_1.0.3    yaml_2.3.10       locfit_1.5-9.10  
+ [9] cli_3.6.3         grid_4.4.2        statmod_1.5.0     compiler_4.4.2   
+[13] rprojroot_2.0.4   here_1.0.1        rstudioapi_0.17.1 tools_4.4.2      
+[17] evaluate_1.0.3    yaml_2.3.10       locfit_1.5-9.10  
 > sessioninfo::session_info()
 ─ Session info ─────────────────────────────────────────────────────────────────────
  setting  value
@@ -407,7 +421,7 @@ loaded via a namespace (and not attached):
  collate  en_US.UTF-8
  ctype    en_US.UTF-8
  tz       America/Chicago
- date     2025-02-10
+ date     2025-02-11
  rstudio  2024.07.0-daily+219 Cranberry Hibiscus (desktop)
  pandoc   3.1.11 @ /Applications/RStudio.app/Contents/Resources/app/quarto/bin/tools/aarch64/ (via rmarkdown)
 

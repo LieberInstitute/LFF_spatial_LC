@@ -1,0 +1,107 @@
+---
+title: "02-Boxplot_spotplot_top_APOE_andor_sex_DEGs"
+author: "Bernie Mulvey"
+date: "2025-02-11"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(fig.height = 10,fig.width = 7,include = FALSE)
+#### sets tab autocompletion for directories to begin from the directory containing the .Rproj session, instead of the script's directory if different
+knitr::opts_knit$set(root.dir = here::here())
+
+library(data.table)
+library(ggplot2)
+library(ggtext)
+library(gridExtra)
+library(limma)
+library(edgeR)
+# library(SpatialFeatureExperiment)
+
+## rstudio GUI tweaks
+require(colorout)
+ColorOut()
+options("styler.addins_style_transformer" = "biocthis::bioc_style()")
+##
+
+## enable forked parallel processing with BiocParallel::multicoreParam, future::, etc. seemed to need this a couple times, but otherwise havent so its here as a preventative measure. part of this is adding the line 
+# OBJC_DISABLE_INITIALIZE_FORK_SAFETY=YES
+# to Renviron.site. see e.g. top response on https://stackoverflow.com/questions/73638290/python-on-mac-is-it-safe-to-set-objc-disable-initialize-fork-safety-yes-globall 
+library(parallelly)
+options(parallelly.supportsMulticore.disableOn="")
+options(parallelly.fork.enable=TRUE)
+library(BiocParallel)
+options(bphost="localhost")
+
+
+## ggplot defaults
+theme_set(theme_bw()+theme(axis.text.x = element_text(size = 9), axis.title.x = element_text(size = 8), axis.text.y = element_text(size = 8), axis.title.y = element_text(size =9), plot.title = element_markdown(size = 10,hjust=0.5), strip.text = element_text(size=11), legend.text = element_text(size=8), legend.title = element_text(size=9,hjust=0.5)))
+
+## last of all, unload the base package datasets, whose data keep getting in the way of autocompletions (e.g., Theoph is priortized over TRUE)
+unloadNamespace("datasets")
+```
+
+load the tabulations of number of DE models wherein a gene hits as DE for sex or APO
+```{r}
+# number of signif models tabulations
+dgehittabs <- list()
+dgehittabs[[1]] <- fread("processed-data/11_DEanalyses/02b-APOE4_DE_FDRunder0.2_byGene_byNmodelsOf4max_byCluster.txt")
+dgehittabs[[2]] <- fread("processed-data/11_DEanalyses/02c-APOE4_DE_unadjP.05_byGene_byNmodelsOf4max_byCluster.txt")
+dgehittabs[[3]] <- fread("processed-data/11_DEanalyses/02d-Sex_DE_FDRunder0.2_byGene_byNmodelsOf4max_byCluster.txt")
+dgehittabs[[4]] <- fread("processed-data/11_DEanalyses/02e-Sex_DE_unadjP.05_byGene_byNmodelsOf4max_byCluster.txt")
+
+names(dgehittabs) <- c("E4_FDRpt2","E4_nom","sex_FDRpt2","sex_nom")
+
+### DGEList objects as used for the DE testing ###
+
+dgels <- readRDS("processed-data/11_DEanalyses/01-DGElist_per_25HDG75SVGlouv1_cluster_normFilt.RDS")
+
+# append global genetic ancestry proportion estimates, which we used as a covar in some models (FLARE, 3-component CEU ancestry--the other two being YRI and CHB). this source file is intentionally not included in in github but is on JHPCE. just in case we want to make plots by ancestry prop
+
+flares <- fread("raw-data/ancestryAndHaplotypes/FLARE/global_ancestry_estimates.txt")
+
+dgels <- lapply(dgels,FUN=function(d){
+    tmpsamp <- as.data.table(d$samples,keep.rownames=T)
+    # fix Br6119(re-dis) to be Br6119
+    tmpsamp[brnum=="Br6119(re-dis)",brnum:="Br6119"]
+    tmpsamp <- merge.data.table(tmpsamp,flares,by.x="brnum",by.y="ID")
+    tmpsamp <- as.data.frame(tmpsamp,row.names=tmpsamp$rn)[rownames(d$samples),]
+    tmpsamp$rn <- NULL
+    d$samples <- tmpsamp
+    return(d)
+})
+rm(flares)
+# convert to cpm, melt to long form for plotting, and append metadata vars of interest
+
+dgels.logcpm <- lapply(dgels,FUN = function(x){
+    # get logcpm
+    y <- as.data.table(cpm(x,log=T),keep.rownames=T)
+    setnames(y,"rn","gene_id")
+    
+    # append gene symbols and chromosome (so we can e.g. plot sex DE without skewing by X/Y genes)
+    y <- merge.data.table(y,as.data.table(x$genes)[,.(gene_id,gene_name,chr)],by="gene_id")
+    
+    # long format
+    z <- melt(y,id.vars=c("gene_id","gene_name","chr"))
+    setnames(z,c("variable","value"),c("sample_id","logCPM"))
+    
+    # grab metadata vars of interest
+    s <- as.data.table(x$samples,keep.rownames=T)[,.(rn,Sex,Age,CEU,Rin,e4)]
+    setnames(s,"rn","sample_id")
+    
+    # merge
+    z <- merge.data.table(z,s,by="sample_id")
+    
+    # spit back
+    return(z)
+})
+```
+
+### now, get genes that we actually want to plot from this table.
+### filter 1: cell type 
+DROP X9 
+DROP X7
+X9 is best marked by hemoglobins so that's probably blood etc. vascular could be interesting; blood less so
+X7 has oligo markers -- WM is glial type of least interest here for now
+
+```{r}
