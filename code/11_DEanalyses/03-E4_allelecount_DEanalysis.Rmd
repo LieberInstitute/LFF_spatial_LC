@@ -1,5 +1,5 @@
 ---
-title: "02-DEanalysis"
+title: "03-E4_allelecount_DEanalysis"
 author: "Bernie Mulvey"
 date: "2025-02-11"
 output: html_document
@@ -37,12 +37,21 @@ library(parallel)
 unloadNamespace("datasets")
 ```
 
+This is almost the same as script 11/02, but with E4 as 0, 1, 2 (number of E4 alleles)
+
 ```{r}
 dgels <- readRDS("processed-data/11_DEanalyses/01-DGElist_per_25HDG75SVGlouv1_cluster_normFilt.RDS")
 
 ### to avoid any issues, replace "Br6119(re-dis)" with "Br6119" in the samples tables
 dgels <- lapply(dgels,FUN=function(d){
     d$samples$brnum[d$samples$brnum=="Br6119(re-dis)"] <- "Br6119"
+    
+    ## convert APOE genotype to E4 copy number
+    
+    d$samples$e4copies <- 0
+    d$samples$e4copies[d$samples$APOE=="E4/ E4"] <- 2
+    d$samples$e4copies[d$samples$APOE=="E3/ E4"] <- 1 # all hets are E4/E3
+    
     return(d)
 })
 ```
@@ -75,13 +84,13 @@ fulldgelres.norin <- parallel::clusterApply(x=dgels,cl = clus,fun=function(X){
     # prevent resource competition, though we aren't explicitly using DT at all here:
 
     dge <- X
-    des <- model.matrix(~0+e4+Sex+Age, data = dge$samples)
+    des <- model.matrix(~0+e4copies+Sex+Age, data = dge$samples)
     
     # INITIALIZE the voomwithqualityweights model, equivalent to pseudobulkDGE(method="voom",qualities=T)
     
     # run voomLmFit for the pseudobulked data, referring donor to duplicateCorrelation; using an adaptive span (number of genes, based on the number of genes in the dge) for smoothing the mean-variance trend
     v.swt <- voomLmFit(dge,design = des,block = as.factor(dge$samples$brnum),adaptive.span = T,sample.weights = T)
-    cont <- makeContrasts(apoe=e4carrier-e4negative,Sex=SexM,levels=des)
+    cont <- makeContrasts(apoe=e4copies,Sex=SexM-SexF,levels=des)
     v.swt.fit <- contrasts.fit(v.swt,contrasts=cont)
     v.swt.fit.e <- eBayes(v.swt.fit)
     v.swt.e.tt.apo <- topTable(v.swt.fit.e,coef = 1,number=Inf,adjust.method = "BH")
@@ -108,13 +117,13 @@ fulldgelres.rin <- parallel::clusterApply(x=dgels,cl = clus,fun=function(X){
     # prevent resource competition, though we aren't explicitly using DT at all here:
 
     dge <- X
-    des <- model.matrix(~0+e4+Sex+Age+Rin, data = dge$samples)
+    des <- model.matrix(~0+e4copies+Sex+Age+Rin, data = dge$samples)
     
     # INITIALIZE the voomwithqualityweights model, equivalent to pseudobulkDGE(method="voom",qualities=T)
     
     # run voomLmFit for the pseudobulked data, referring donor to duplicateCorrelation; using an adaptive span (number of genes, based on the number of genes in the dge) for smoothing the mean-variance trend
     v.swt <- voomLmFit(dge,design = des,block = as.factor(dge$samples$brnum),adaptive.span = T,sample.weights = T)
-    cont <- makeContrasts(apoe=e4carrier-e4negative,Sex=SexM,levels=des)
+    cont <- makeContrasts(apoe=e4copies,Sex=SexM-SexF,levels=des)
     v.swt.fit <- contrasts.fit(v.swt,contrasts=cont)
     v.swt.fit.e <- eBayes(v.swt.fit)
     v.swt.e.tt.apo <- topTable(v.swt.fit.e,coef = 1,number=Inf,adjust.method = "BH")
@@ -142,13 +151,13 @@ fulldgelres.anc.norin <- parallel::clusterApply(x=dgels,cl = clus,fun=function(X
     # prevent resource competition, though we aren't explicitly using DT at all here:
 
     dge <- X
-    des <- model.matrix(~0+e4+Sex+CEU+Age, data = dge$samples)
+    des <- model.matrix(~0+e4copies+Sex+CEU+Age, data = dge$samples)
     
     # INITIALIZE the voomwithqualityweights model, equivalent to pseudobulkDGE(method="voom",qualities=T)
     
     # run voomLmFit for the pseudobulked data, referring donor to duplicateCorrelation; using an adaptive span (number of genes, based on the number of genes in the dge) for smoothing the mean-variance trend
     v.swt <- voomLmFit(dge,design = des,block = as.factor(dge$samples$brnum),adaptive.span = T,sample.weights = T)
-    cont <- makeContrasts(apoe=e4carrier-e4negative,Sex=SexM,levels=des)
+    cont <- makeContrasts(apoe=e4copies,Sex=SexM-SexF,levels=des)
     v.swt.fit <- contrasts.fit(v.swt,contrasts=cont)
     v.swt.fit.e <- eBayes(v.swt.fit)
     v.swt.e.tt.apo <- topTable(v.swt.fit.e,coef = 1,number=Inf,adjust.method = "BH")
@@ -175,13 +184,13 @@ fulldgelres.anc.rin <- parallel::clusterApply(x=dgels,cl = clus,fun=function(X){
     # prevent resource competition, though we aren't explicitly using DT at all here:
 
     dge <- X
-    des <- model.matrix(~0+e4+Sex+CEU+Age+Rin, data = dge$samples)
+    des <- model.matrix(~0+e4copies+Sex+CEU+Age+Rin, data = dge$samples)
     
     # INITIALIZE the voomwithqualityweights model, equivalent to pseudobulkDGE(method="voom",qualities=T)
     
     # run voomLmFit for the pseudobulked data, referring donor to duplicateCorrelation; using an adaptive span (number of genes, based on the number of genes in the dge) for smoothing the mean-variance trend
     v.swt <- voomLmFit(dge,design = des,block = as.factor(dge$samples$brnum),adaptive.span = T,sample.weights = T)
-    cont <- makeContrasts(apoe=e4carrier-e4negative,Sex=SexM,levels=des)
+    cont <- makeContrasts(apoe=e4copies,Sex=SexM-SexF,levels=des)
     v.swt.fit <- contrasts.fit(v.swt,contrasts=cont)
     v.swt.fit.e <- eBayes(v.swt.fit)
     v.swt.e.tt.apo <- topTable(v.swt.fit.e,coef = 1,number=Inf,adjust.method = "BH")
@@ -205,7 +214,7 @@ names(fulldgelres.anc.rin) <- names(dgels)
 
 concatres <- list(noAncestry_noRin=fulldgelres.norin,noAncestry_wRin=fulldgelres.rin,wAncestry_noRin=fulldgelres.anc.norin,wAncestry_wRin=fulldgelres.anc.rin)
 
-saveRDS(concatres,"processed-data/11_DEanalyses/03a-E4andSexDE_with_e4alleleCountModel_toptabs_testsWithandWithout_RINandorAncestry.RDS")
+saveRDS(concatres,"processed-data/11_DEanalyses/02a-DEtoptabs_testsWithandWithout_RINandorAncestry.RDS")
 ```
 
 ## if big wide tables of reuslts across all models are desired for APO in a cluster, e.g.:
@@ -243,6 +252,15 @@ saveRDS(concatres,"processed-data/11_DEanalyses/03a-E4andSexDE_with_e4alleleCoun
 # 
 
 ```
+
+```{r}
+i <- 4
+b=fulldgelres.norin[[i]]
+br=fulldgelres.rin[[i]]
+a=fulldgelres.anc.norin[[i]]
+ar=fulldgelres.anc.rin[[i]]
+```
+
 
 ## tabulate how many sex models and how many apo models picked up DE per cluster at FDR<0.2
 ```{r}
@@ -355,13 +373,13 @@ sexunadjs <- sexunadjs[,.(gene_name,louvCluster,DEtest_unadjP.05_forCluster,Nsig
 
 save these last four tables
 ```{r}
-fwrite(apofdrs,"processed-data/11_DEanalyses/03b-E4alleleCount_DE_FDRunder0.2_byGene_byNmodelsOf4max_byCluster.txt",sep='\t',quote=F,row.names=F,col.names=T)
+fwrite(apofdrs,"processed-data/11_DEanalyses/02b-APOE4_DE_FDRunder0.2_byGene_byNmodelsOf4max_byCluster.txt",sep='\t',quote=F,row.names=F,col.names=T)
 
-fwrite(apounadjs,"processed-data/11_DEanalyses/03c-E4alleleCount_DE_unadjP.05_byGene_byNmodelsOf4max_byCluster.txt",sep='\t',quote=F,row.names=F,col.names=T)
+fwrite(apounadjs,"processed-data/11_DEanalyses/02c-APOE4_DE_unadjP.05_byGene_byNmodelsOf4max_byCluster.txt",sep='\t',quote=F,row.names=F,col.names=T)
 
-fwrite(sexfdrs,"processed-data/11_DEanalyses/03d-Sex_DE_E4alleleCountCovar_FDRunder0.2_byGene_byNmodelsOf4max_byCluster.txt",sep='\t',quote=F,row.names=F,col.names=T)
+fwrite(sexfdrs,"processed-data/11_DEanalyses/02d-Sex_DE_FDRunder0.2_byGene_byNmodelsOf4max_byCluster.txt",sep='\t',quote=F,row.names=F,col.names=T)
 
-fwrite(sexunadjs,"processed-data/11_DEanalyses/03e-Sex_DE_E4alleleCountCovar_unadjP.05_byGene_byNmodelsOf4max_byCluster.txt",sep='\t',quote=F,row.names=F,col.names=T)
+fwrite(sexunadjs,"processed-data/11_DEanalyses/02e-Sex_DE_unadjP.05_byGene_byNmodelsOf4max_byCluster.txt",sep='\t',quote=F,row.names=F,col.names=T)
 ```
 
 ```{r}
@@ -374,6 +392,10 @@ reprod inf
 sessionInfo()
 sessioninfo::session_info()
 ```
+          used (Mb) gc trigger  (Mb) limit (Mb) max used  (Mb)
+Ncells 1810244 96.7    2823357 150.8         NA  2823357 150.8
+Vcells 4133571 31.6   21444384 163.7     512000 26805472 204.6
+> sessionInfo()
 R version 4.4.2 (2024-10-31)
 Platform: aarch64-apple-darwin20
 Running under: macOS Sonoma 14.7.1

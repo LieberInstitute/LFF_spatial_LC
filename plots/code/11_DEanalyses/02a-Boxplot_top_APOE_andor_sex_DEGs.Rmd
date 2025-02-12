@@ -127,7 +127,7 @@ apoplot <- mcmapply(ct=apofg$louvCluster,g=apofg$gene_name,nsig=apofg$Nsigmodels
     return(p)
 })
 
-pdf("plots/11_DEanalyses/02_geneplots/E4_DE_3plusmodels_FDR0.2_boxplots.pdf",height=length(apoplot)*4,width=9)
+pdf("plots/11_DEanalyses/02a_gene_boxplots/E4_DE_3plusmodels_FDR0.2_boxplots.pdf",height=length(apoplot)*4,width=9)
 do.call("grid.arrange",c(apoplot,list(ncol=2)))
 dev.off()
 
@@ -169,7 +169,7 @@ names(sexplots) <- unique(sexfg$louvCluster)
 # save a plot grid per louvclust
 i<-1
 for (i in c(1:length(sexplots))){
-    pdf(paste0("plots/11_DEanalyses/02_geneplots/",names(sexplots)[i],"_Sex_DE_FDR0.2_boxplots.pdf"),height=length(sexplots[[i]])*4,width=9)
+    pdf(paste0("plots/11_DEanalyses/02a_gene_boxplots/",names(sexplots)[i],"_Sex_DE_FDR0.2_boxplots.pdf"),height=length(sexplots[[i]])*4,width=9)
     do.call("grid.arrange",c(sexplots[[i]],list(ncol=2)))
     dev.off()
 }
