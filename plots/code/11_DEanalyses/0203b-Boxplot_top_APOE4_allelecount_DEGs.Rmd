@@ -1,5 +1,5 @@
 ---
-title: "02a-Boxplot_top_APOE_andor_sex_DEGs"
+title: "0203a-Boxplot_top_APOE4_allelecount_DEGs"
 author: "Bernie Mulvey"
 date: "2025-02-11"
 output: html_document
@@ -42,16 +42,14 @@ theme_set(theme_bw()+theme(axis.text.x = element_text(size = 9), axis.title.x = 
 unloadNamespace("datasets")
 ```
 
-load the tabulations of number of DE models wherein a gene hits as DE for sex or APO
+load the tabulations of number of DE models wherein a gene hits as DE for APOE4 allele count # only
 ```{r}
 # number of signif models tabulations
 dgehittabs <- list()
-dgehittabs[[1]] <- fread("processed-data/11_DEanalyses/02b-APOE4_DE_FDRunder0.2_byGene_byNmodelsOf4max_byCluster.txt")
-dgehittabs[[2]] <- fread("processed-data/11_DEanalyses/02c-APOE4_DE_unadjP.05_byGene_byNmodelsOf4max_byCluster.txt")
-dgehittabs[[3]] <- fread("processed-data/11_DEanalyses/02d-Sex_DE_FDRunder0.2_byGene_byNmodelsOf4max_byCluster.txt")
-dgehittabs[[4]] <- fread("processed-data/11_DEanalyses/02e-Sex_DE_unadjP.05_byGene_byNmodelsOf4max_byCluster.txt")
+dgehittabs[[1]] <- fread("processed-data/11_DEanalyses/03b-E4alleleCount_DE_FDRunder0.2_byGene_byNmodelsOf4max_byCluster.txt")
+dgehittabs[[2]] <- fread("processed-data/11_DEanalyses/03c-E4alleleCount_DE_unadjP.05_byGene_byNmodelsOf4max_byCluster.txt")
 
-names(dgehittabs) <- c("E4_FDRpt2","E4_nom","sex_FDRpt2","sex_nom")
+names(dgehittabs) <- c("E4count_FDRpt2","E4count_nom")
 
 ### DGEList objects as used for the DE testing ###
 
@@ -65,6 +63,13 @@ dgels <- lapply(dgels,FUN=function(d){
     tmpsamp <- as.data.table(d$samples,keep.rownames=T)
     # fix Br6119(re-dis) to be Br6119
     tmpsamp[brnum=="Br6119(re-dis)",brnum:="Br6119"]
+    
+    ## convert APOE genotype to E4 copy number
+    d$samples$e4copies <- 0
+    d$samples$e4copies[d$samples$APOE=="E4/ E4"] <- 2
+    d$samples$e4copies[d$samples$APOE=="E3/ E4"] <- 1 # all hets are E4/E3
+    
+    # append ancestry estimates
     tmpsamp <- merge.data.table(tmpsamp,flares,by.x="brnum",by.y="ID")
     tmpsamp <- as.data.frame(tmpsamp,row.names=tmpsamp$rn)[rownames(d$samples),]
     tmpsamp$rn <- NULL
@@ -110,7 +115,7 @@ X7 has oligo markers -- WM is glial type of least interest here for now
 # nrow(unique(dgehittabs$E4_FDRpt2[Nsigmodels_forCluster>=3,.(gene_name,louvCluster)]))
 # nrow(unique(dgehittabs$E4_FDRpt2[Nsigmodels_forCluster==4,.(gene_name,louvCluster)]))
 # 52 gene-cluster pairs that were FDR<0.2 in 3+ models for e4 de; 26 that were FDR<0.2 in all 4 models
-apofg <- unique(dgehittabs$E4_FDRpt2[Nsigmodels_forCluster>=3,.(gene_name,louvCluster,Nsigmodels_forCluster)])
+apofg <- unique(dgehittabs$E4count_FDRpt2[Nsigmodels_forCluster>=3,.(gene_name,louvCluster,Nsigmodels_forCluster)])
 
 setDTthreads(1,restore_after_fork=FALSE)
 
