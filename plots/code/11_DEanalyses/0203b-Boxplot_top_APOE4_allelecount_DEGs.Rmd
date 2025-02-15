@@ -65,9 +65,9 @@ dgels <- lapply(dgels,FUN=function(d){
     tmpsamp[brnum=="Br6119(re-dis)",brnum:="Br6119"]
     
     ## convert APOE genotype to E4 copy number
-    d$samples$e4copies <- 0
-    d$samples$e4copies[d$samples$APOE=="E4/ E4"] <- 2
-    d$samples$e4copies[d$samples$APOE=="E3/ E4"] <- 1 # all hets are E4/E3
+    tmpsamp$e4copies <- 0
+    tmpsamp[APOE=="E4/ E4",e4copies:=2]
+    tmpsamp[APOE=="E3/ E4",e4copies:=1] # all hets are E4/E3
     
     # append ancestry estimates
     tmpsamp <- merge.data.table(tmpsamp,flares,by.x="brnum",by.y="ID")
@@ -92,7 +92,7 @@ dgels.logcpm <- lapply(dgels,FUN = function(x){
     setnames(z,c("variable","value"),c("sample_id","logCPM"))
     
     # grab metadata vars of interest
-    s <- as.data.table(x$samples,keep.rownames=T)[,.(rn,Sex,Age,CEU,Rin,e4)]
+    s <- as.data.table(x$samples,keep.rownames=T)[,.(rn,Sex,Age,CEU,Rin,e4copies)]
     setnames(s,"rn","sample_id")
     
     # merge
@@ -107,14 +107,11 @@ rm(dgels)
 gc(full=T)
 ```
 
-### now, get genes that we actually want to plot from this table; recurrent FDR 0.2 hits for APOE4 DE first. (max possible for a cluster is all 4 DE models used).
-### if we have too many genes, drop certain clusters: X9, X7
-X9 is best marked by hemoglobins so that's probably blood etc. vascular could be interesting; blood less so
-X7 has oligo markers -- WM is glial type of least interest here for now
+### now, get genes that we actually want to plot from this table; recurrent FDR 0.2 hits for APOE4 copy # DE.
 ```{r}
-# nrow(unique(dgehittabs$E4_FDRpt2[Nsigmodels_forCluster>=3,.(gene_name,louvCluster)]))
-# nrow(unique(dgehittabs$E4_FDRpt2[Nsigmodels_forCluster==4,.(gene_name,louvCluster)]))
-# 52 gene-cluster pairs that were FDR<0.2 in 3+ models for e4 de; 26 that were FDR<0.2 in all 4 models
+# nrow(unique(dgehittabs$E4count_FDRpt2[Nsigmodels_forCluster>=3,.(gene_name,louvCluster)]))
+# nrow(unique(dgehittabs$E4count_FDRpt2[Nsigmodels_forCluster==4,.(gene_name,louvCluster)]))
+# 51 gene-cluster pairs that were FDR<0.2 in 3+ models for e4 de; 25 that were FDR<0.2 in all 4 models
 apofg <- unique(dgehittabs$E4count_FDRpt2[Nsigmodels_forCluster>=3,.(gene_name,louvCluster,Nsigmodels_forCluster)])
 
 setDTthreads(1,restore_after_fork=FALSE)
@@ -124,7 +121,7 @@ apoplot <- mcmapply(ct=apofg$louvCluster,g=apofg$gene_name,nsig=apofg$Nsigmodels
     tmp <- copy(dgels.logcpm[[ct]][gene_name==g])
     
     # make the boxplot
-    p <- ggplot(tmp,aes(x=e4,y=logCPM,col=e4))+
+    p <- ggplot(tmp,aes(x=as.factor(e4copies),y=logCPM,col=e4copies))+
         geom_boxplot(outliers = FALSE)+
         geom_point()+
         guides(color="none")+
@@ -132,52 +129,11 @@ apoplot <- mcmapply(ct=apofg$louvCluster,g=apofg$gene_name,nsig=apofg$Nsigmodels
     return(p)
 })
 
-pdf("plots/11_DEanalyses/02a_gene_boxplots/E4_DE_3plusmodels_FDR0.2_boxplots.pdf",height=length(apoplot)*4,width=9)
+pdf("plots/11_DEanalyses/0203_gene_boxplots/E4alleleCount_DE_3plusmodels_FDR0.2_boxplots.pdf",height=length(apoplot)*4,width=9)
 do.call("grid.arrange",c(apoplot,list(ncol=2)))
 dev.off()
 
 
-```
-
-### next, do the same for sex DE tests.
-```{r}
-# nrow(unique(dgehittabs$sex_FDRpt2[Nsigmodels_forCluster>=3,.(gene_name,louvCluster)]))
-# 2563 gene cluster pairs-yowza
-# nrow(unique(dgehittabs$sex_FDRpt2[Nsigmodels_forCluster==4,.(gene_name,louvCluster)]))
-# 1446 gene cluster pairs-still yowza
-# what about excluding X7, X9
-# nrow(unique(dgehittabs$sex_FDRpt2[Nsigmodels_forCluster==4 & !(louvCluster %in% c("X7","X9")),.(gene_name,louvCluster)]))
-# 1389. still a lot. we'll start with boxplots here
-
-sexfg <- unique(dgehittabs$sex_FDRpt2[Nsigmodels_forCluster==4 & !(louvCluster %in% c("X7","X9")),.(gene_name,louvCluster,Nsigmodels_forCluster)])
-
-setDTthreads(1,restore_after_fork=FALSE)
-
-## to make more manageable plot grids, split out by cluster for this one
-sexplots <- lapply(unique(sexfg$louvCluster),function(ct){
-    clustplots <- mcmapply(ct=ct,g=sexfg[louvCluster==ct,gene_name],SIMPLIFY=FALSE,mc.cores=8,FUN=function(ct,g){
-    # get the logcpm data for this gene
-        tmp <- copy(dgels.logcpm[[ct]][gene_name==g])
-        
-        # make the boxplot
-        p <- ggplot(tmp,aes(x=Sex,y=logCPM,col=Sex))+
-            geom_boxplot(outliers = FALSE)+
-            geom_point()+
-            guides(color="none")+
-            ggtitle(paste0(g," in ", ct,"<br>FDR<0.2 in 4/4 models"))
-        return(p)
-    })
-    return(clustplots)
-})
-names(sexplots) <- unique(sexfg$louvCluster)
-
-# save a plot grid per louvclust
-i<-1
-for (i in c(1:length(sexplots))){
-    pdf(paste0("plots/11_DEanalyses/02a_gene_boxplots/",names(sexplots)[i],"_Sex_DE_FDR0.2_boxplots.pdf"),height=length(sexplots[[i]])*4,width=9)
-    do.call("grid.arrange",c(sexplots[[i]],list(ncol=2)))
-    dev.off()
-}
 ```
 
 Now, inspect these boxplots offline to prioritize genes to further examine by spatial expression plots. back after these messages.
@@ -208,18 +164,17 @@ other attached packages:
  [9] data.table_1.16.4   rlang_1.1.4        
 
 loaded via a namespace (and not attached):
- [1] generics_0.1.3    xml2_1.3.6        stringi_1.8.4     lattice_0.22-6   
- [5] digest_0.6.37     magrittr_2.0.3    evaluate_1.0.3    grid_4.4.2       
- [9] fastmap_1.2.0     rprojroot_2.0.4   sessioninfo_1.2.2 scales_1.3.0     
-[13] codetools_0.2-20  cli_3.6.3         munsell_0.5.1     commonmark_1.9.2 
-[17] withr_3.0.2       yaml_2.3.10       tools_4.4.2       dplyr_1.1.4      
-[21] colorspace_2.1-1  locfit_1.5-9.10   here_1.0.1        vctrs_0.6.5      
-[25] R6_2.5.1          lifecycle_1.0.4   stringr_1.5.1     pkgconfig_2.0.3  
-[29] pillar_1.10.1     gtable_0.3.6      glue_1.8.0        Rcpp_1.0.14      
-[33] statmod_1.5.0     xfun_0.50         tibble_3.2.1      tidyselect_1.2.1 
-[37] rstudioapi_0.17.1 knitr_1.49        farver_2.1.2      htmltools_0.5.8.1
-[41] rmarkdown_2.29    labeling_0.4.3    compiler_4.4.2    markdown_1.13    
-[45] gridtext_0.1.5   
+ [1] gtable_0.3.6      dplyr_1.1.4       compiler_4.4.2    tidyselect_1.2.1 
+ [5] Rcpp_1.0.14       stringr_1.5.1     xml2_1.3.6        scales_1.3.0     
+ [9] yaml_2.3.10       fastmap_1.2.0     statmod_1.5.0     lattice_0.22-6   
+[13] here_1.0.1        R6_2.5.1          commonmark_1.9.2  labeling_0.4.3   
+[17] generics_0.1.3    knitr_1.49        tibble_3.2.1      munsell_0.5.1    
+[21] rprojroot_2.0.4   pillar_1.10.1     stringi_1.8.4     xfun_0.50        
+[25] cli_3.6.3         withr_3.0.2       magrittr_2.0.3    digest_0.6.37    
+[29] grid_4.4.2        gridtext_0.1.5    locfit_1.5-9.10   rstudioapi_0.17.1
+[33] markdown_1.13     lifecycle_1.0.4   vctrs_0.6.5       evaluate_1.0.3   
+[37] glue_1.8.0        farver_2.1.2      codetools_0.2-20  colorspace_2.1-1 
+[41] rmarkdown_2.29    htmltools_0.5.8.1 tools_4.4.2       pkgconfig_2.0.3  
 > sessioninfo::session_info()
 ─ Session info ─────────────────────────────────────────────────────────────────────
  setting  value

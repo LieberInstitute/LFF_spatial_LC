@@ -142,10 +142,34 @@ dev.off()
 # 1446 gene cluster pairs-still yowza
 # what about excluding X7, X9
 # nrow(unique(dgehittabs$sex_FDRpt2[Nsigmodels_forCluster==4 & !(louvCluster %in% c("X7","X9")),.(gene_name,louvCluster)]))
-# 1389. still a lot. we'll start with boxplots here
+```
 
-sexfg <- unique(dgehittabs$sex_FDRpt2[Nsigmodels_forCluster==4 & !(louvCluster %in% c("X7","X9")),.(gene_name,louvCluster,Nsigmodels_forCluster)])
+# 1389. still a lot. also set a threshold of log2FC 0.75 in at least one of the tests
+# load the DE result object to get the log2FC values
+```{r}
+deres <- readRDS("processed-data/11_DEanalyses/02a-DEtoptabs_testsWithandWithout_RINandorAncestry.RDS")
 
+# get genes passing the log2FC threshold
+hilfc <- lapply(deres,FUN=function(x){
+    z <- unlist(lapply(x,FUN=function(y){
+        s <- as.data.table(y$sex)
+        s <- s[abs(logFC)>0.75 & adj.P.Val<0.2,gene_name]
+        return(s)
+    }))
+    return(z)
+})
+
+hilfc <- unique(unlist(hilfc)) # this gives us a gene that had logFC 0.75 in any model, which is sufficient for this purpose. this is 514 genes total.
+
+# nrow(unique(dgehittabs$sex_FDRpt2[Nsigmodels_forCluster==4 &gene_name %in% hilfc,.(gene_name,louvCluster)]))
+# 663 genes-cluster pairs, and we don't have to drop any clusters.
+
+sexfg <- unique(
+    dgehittabs$sex_FDRpt2[Nsigmodels_forCluster==4 & gene_name %in% hilfc,
+                          .(gene_name, louvCluster, Nsigmodels_forCluster)])
+```
+
+```{r}
 setDTthreads(1,restore_after_fork=FALSE)
 
 ## to make more manageable plot grids, split out by cluster for this one

@@ -15,6 +15,8 @@ library(SpatialExperiment)
 library(dreamlet)
 library(limma)
 library(edgeR)
+library(gridExtra)
+library(ggplot2)
 
 ## rstudio GUI tweaks
 require(colorout)
@@ -86,11 +88,12 @@ agcd$e4 <- ifelse(agcd$APOE %in% c("E4/ E4","E3/ E4"),yes="carrier",no="negative
 ```
 
 ## make the DGELists per remaining cluster:
+## ADDED 02/14/25: store plots of the entire count distribution with the low-expression cutoff marked to check that this is working as expected.
 ```{r}
 ## get rowData as a data.table from the SPE to append to the DGElist--namely so we can make MDS plots of the pseudobulks while excluding mitochondrial and sex chromosomal genes
 tmprd <- as.data.table(rowData(lc3)) # rownames are the same as $gene_id
 
-dgels <- lapply(ag,FUN=function(a){
+dgels <- mapply(a=ag,n=names(ag),SIMPLIFY=FALSE,FUN=function(a,n){
     X <- a[,colSums(a)>0]
     s <- copy(agcd)[colnames(X),]
     if(length(unique(s$Sex))<2){return()} else 
@@ -117,6 +120,19 @@ dgels <- lapply(ag,FUN=function(a){
         ## and convert that smallest count to the logcpm value in said smallest library to use as a low-expression threshold
         cpmthresh <- log2(countthresh/(as.numeric(smollib)*10^-6))
         
+        ## 2/14/25: make a plot to also return
+        mnplt <- as.data.table(rowmn.m)
+        setnames(mnplt,1,"V1")
+        
+        ## exclude genes with a mean logcpm under 0.1
+        mnplt <- mnplt[V1>0.1]
+        
+        plt <- ggplot(mnplt,aes(x=V1))+
+          geom_histogram(bins = 100)+
+          geom_vline(xintercept=cpmthresh,col="red")+
+          guides(color="none")+
+          ggtitle(paste0(n," genewise mean logCPM in\nlower n sex (",smolgrp,")"))
+        
         ## filter for genes with at least thresh counts in at least (smaller sex group size) samples
         keep <- rowSums(cpm(dge,log=T)>cpmthresh) >= as.numeric(smolgrp)
         
@@ -124,9 +140,20 @@ dgels <- lapply(ag,FUN=function(a){
         dge <- dge[keep,,keep.lib.sizes=FALSE]
         dge <- calcNormFactors(dge,method = "TMM")
         
-        return(dge)
+        retlist <- list(dge,plt)
+        names(retlist) <- c(n,"plt")
+        return(retlist)
     }
 })
+
+## get and arrange plots
+plts <- lapply(dgels,function(x){x$plt})
+
+pdf("plots/11_DEanalyses/01-logCPM_cutoff_checks.pdf",height=10,width=10)
+do.call("grid.arrange",c(plts,ncol=3))
+dev.off()
+
+dgels <- lapply(dgels,function(x){x[[1]]})
 ```
 
 ## save
@@ -184,17 +211,17 @@ attached base packages:
 [1] parallel  stats4    stats     graphics  grDevices utils     methods   base     
 
 other attached packages:
- [1] parallelly_1.42.0           colorout_1.3-0.2           
- [3] edgeR_4.4.1                 dreamlet_1.4.1             
- [5] variancePartition_1.36.2    BiocParallel_1.40.0        
- [7] limma_3.62.1                ggplot2_3.5.1              
- [9] SpatialExperiment_1.16.0    SingleCellExperiment_1.28.1
-[11] SummarizedExperiment_1.36.0 Biobase_2.66.0             
-[13] GenomicRanges_1.58.0        GenomeInfoDb_1.42.1        
-[15] IRanges_2.40.1              S4Vectors_0.44.0           
-[17] BiocGenerics_0.52.0         MatrixGenerics_1.18.0      
-[19] matrixStats_1.5.0           data.table_1.16.4          
-[21] rlang_1.1.4                
+ [1] gridExtra_2.3               parallelly_1.42.0          
+ [3] colorout_1.3-0.2            edgeR_4.4.1                
+ [5] dreamlet_1.4.1              variancePartition_1.36.2   
+ [7] BiocParallel_1.40.0         limma_3.62.1               
+ [9] ggplot2_3.5.1               SpatialExperiment_1.16.0   
+[11] SingleCellExperiment_1.28.1 SummarizedExperiment_1.36.0
+[13] Biobase_2.66.0              GenomicRanges_1.58.0       
+[15] GenomeInfoDb_1.42.1         IRanges_2.40.1             
+[17] S4Vectors_0.44.0            BiocGenerics_0.52.0        
+[19] MatrixGenerics_1.18.0       matrixStats_1.5.0          
+[21] data.table_1.16.4           rlang_1.1.4                
 
 loaded via a namespace (and not attached):
   [1] splines_4.4.2             bitops_1.0-9              tibble_3.2.1             
@@ -208,39 +235,40 @@ loaded via a namespace (and not attached):
  [25] RCurl_1.98-1.16           GenomeInfoDbData_1.2.13   ggrepel_0.9.6            
  [28] pbkrtest_0.5.3            irlba_2.3.5.1             annotate_1.84.0          
  [31] DelayedMatrixStats_1.28.0 codetools_0.2-20          DelayedArray_0.32.0      
- [34] tidyselect_1.2.1          UCSC.utils_1.2.0          lme4_1.1-35.5            
- [37] mathjaxr_1.6-0            jsonlite_1.8.9            iterators_1.0.14         
- [40] tools_4.4.2               progress_1.2.3            Rcpp_1.0.14              
- [43] zenith_1.8.0              glue_1.8.0                SparseArray_1.6.0        
- [46] xfun_0.50                 here_1.0.1                dplyr_1.1.4              
- [49] withr_3.0.2               numDeriv_2016.8-1.1       fastmap_1.2.0            
- [52] boot_1.3-31               caTools_1.18.3            digest_0.6.37            
- [55] truncnorm_1.0-9           R6_2.5.1                  colorspace_2.1-1         
- [58] scattermore_1.2           gtools_3.9.5              RSQLite_2.3.9            
- [61] RhpcBLASctl_0.23-42       tidyr_1.3.1               generics_0.1.3           
- [64] corpcor_1.6.10            prettyunits_1.2.0         httr_1.4.7               
- [67] S4Arrays_1.6.0            pkgconfig_2.0.3           gtable_0.3.6             
- [70] blob_1.2.4                XVector_0.46.0            remaCor_0.0.18           
- [73] htmltools_0.5.8.1         GSEABase_1.68.0           scales_1.3.0             
- [76] png_0.1-8                 fANCOVA_0.6-1             ashr_2.2-63              
- [79] knitr_1.49                rstudioapi_0.17.1         reshape2_1.4.4           
- [82] rjson_0.2.23              nlme_3.1-166              nloptr_2.1.1             
- [85] cachem_1.1.0              stringr_1.5.1             KernSmooth_2.23-24       
- [88] vipor_0.4.7               metadat_1.2-0             RcppZiggurat_0.1.6       
- [91] AnnotationDbi_1.68.0      pillar_1.10.1             grid_4.4.2               
- [94] vctrs_0.6.5               gplots_3.2.0              mashr_0.2.79             
- [97] xtable_1.8-4              beeswarm_0.4.0            Rgraphviz_2.50.0         
-[100] evaluate_1.0.3            KEGGgraph_1.66.0          invgamma_1.1             
-[103] magick_2.8.5              mvtnorm_1.3-2             cli_3.6.3                
-[106] locfit_1.5-9.10           compiler_4.4.2            crayon_1.5.3             
-[109] SQUAREM_2021.1            plyr_1.8.9                ggbeeswarm_0.7.2         
-[112] stringi_1.8.4             assertthat_0.2.1          babelgene_22.9           
-[115] lmerTest_3.1-3            munsell_0.5.1             Biostrings_2.74.0        
-[118] aod_1.3.3                 Matrix_1.7-1              hms_1.1.3                
-[121] sparseMatrixStats_1.18.0  bit64_4.5.2               KEGGREST_1.46.0          
-[124] statmod_1.5.0             rbibutils_2.3             Rfast_2.1.0              
-[127] broom_1.0.7               memoise_2.0.1             RcppParallel_5.1.9       
-[130] bit_4.5.0.1               EnrichmentBrowser_2.36.0 
+ [34] tidyselect_1.2.1          farver_2.1.2              UCSC.utils_1.2.0         
+ [37] lme4_1.1-35.5             mathjaxr_1.6-0            jsonlite_1.8.9           
+ [40] iterators_1.0.14          tools_4.4.2               progress_1.2.3           
+ [43] Rcpp_1.0.14               zenith_1.8.0              glue_1.8.0               
+ [46] SparseArray_1.6.0         xfun_0.50                 here_1.0.1               
+ [49] dplyr_1.1.4               withr_3.0.2               numDeriv_2016.8-1.1      
+ [52] fastmap_1.2.0             boot_1.3-31               caTools_1.18.3           
+ [55] digest_0.6.37             truncnorm_1.0-9           R6_2.5.1                 
+ [58] colorspace_2.1-1          scattermore_1.2           gtools_3.9.5             
+ [61] RSQLite_2.3.9             RhpcBLASctl_0.23-42       tidyr_1.3.1              
+ [64] generics_0.1.3            corpcor_1.6.10            prettyunits_1.2.0        
+ [67] httr_1.4.7                S4Arrays_1.6.0            pkgconfig_2.0.3          
+ [70] gtable_0.3.6              blob_1.2.4                XVector_0.46.0           
+ [73] remaCor_0.0.18            htmltools_0.5.8.1         GSEABase_1.68.0          
+ [76] scales_1.3.0              png_0.1-8                 fANCOVA_0.6-1            
+ [79] ashr_2.2-63               knitr_1.49                rstudioapi_0.17.1        
+ [82] reshape2_1.4.4            rjson_0.2.23              nlme_3.1-166             
+ [85] nloptr_2.1.1              cachem_1.1.0              stringr_1.5.1            
+ [88] KernSmooth_2.23-24        vipor_0.4.7               metadat_1.2-0            
+ [91] RcppZiggurat_0.1.6        AnnotationDbi_1.68.0      pillar_1.10.1            
+ [94] grid_4.4.2                vctrs_0.6.5               gplots_3.2.0             
+ [97] mashr_0.2.79              xtable_1.8-4              beeswarm_0.4.0           
+[100] Rgraphviz_2.50.0          evaluate_1.0.3            KEGGgraph_1.66.0         
+[103] invgamma_1.1              magick_2.8.5              mvtnorm_1.3-2            
+[106] cli_3.6.3                 locfit_1.5-9.10           compiler_4.4.2           
+[109] crayon_1.5.3              SQUAREM_2021.1            labeling_0.4.3           
+[112] plyr_1.8.9                ggbeeswarm_0.7.2          stringi_1.8.4            
+[115] assertthat_0.2.1          babelgene_22.9            lmerTest_3.1-3           
+[118] munsell_0.5.1             Biostrings_2.74.0         aod_1.3.3                
+[121] Matrix_1.7-1              hms_1.1.3                 sparseMatrixStats_1.18.0 
+[124] bit64_4.5.2               KEGGREST_1.46.0           statmod_1.5.0            
+[127] rbibutils_2.3             Rfast_2.1.0               broom_1.0.7              
+[130] memoise_2.0.1             RcppParallel_5.1.9        bit_4.5.0.1              
+[133] EnrichmentBrowser_2.36.0 
 > sessioninfo::session_info()
 ─ Session info ─────────────────────────────────────────────────────────────────────
  setting  value
@@ -252,7 +280,7 @@ loaded via a namespace (and not attached):
  collate  en_US.UTF-8
  ctype    en_US.UTF-8
  tz       America/Chicago
- date     2025-02-08
+ date     2025-02-14
  rstudio  2024.07.0-daily+219 Cranberry Hibiscus (desktop)
  pandoc   3.1.11 @ /Applications/RStudio.app/Contents/Resources/app/quarto/bin/tools/aarch64/ (via rmarkdown)
 
@@ -297,6 +325,7 @@ loaded via a namespace (and not attached):
     EnvStats               3.0.0      2024-08-24 [1] CRAN (R 4.4.1)
     evaluate               1.0.3      2025-01-10 [1] CRAN (R 4.4.1)
     fANCOVA                0.6-1      2020-11-13 [1] CRAN (R 4.4.0)
+    farver                 2.1.2      2024-05-13 [1] CRAN (R 4.4.0)
     fastmap                1.2.0      2024-05-15 [1] CRAN (R 4.4.0)
     generics               0.1.3      2022-07-05 [1] CRAN (R 4.4.0)
     GenomeInfoDb         * 1.42.1     2024-11-28 [1] Bioconductor 3.20 (R 4.4.2)
@@ -308,6 +337,7 @@ loaded via a namespace (and not attached):
     glue                   1.8.0      2024-09-30 [1] CRAN (R 4.4.1)
     gplots                 3.2.0      2024-10-05 [1] CRAN (R 4.4.1)
     graph                  1.84.0     2024-11-08 [1] Bioconductor 3.20 (R 4.4.1)
+    gridExtra            * 2.3        2017-09-09 [1] CRAN (R 4.4.0)
     GSEABase               1.68.0     2024-11-08 [1] Bioconductor 3.20 (R 4.4.1)
     gtable                 0.3.6      2024-10-25 [1] CRAN (R 4.4.1)
     gtools                 3.9.5      2023-11-20 [1] CRAN (R 4.4.0)
@@ -324,6 +354,7 @@ loaded via a namespace (and not attached):
     KEGGREST               1.46.0     2024-11-08 [1] Bioconductor 3.20 (R 4.4.1)
     KernSmooth             2.23-24    2024-05-17 [1] CRAN (R 4.4.2)
     knitr                  1.49       2024-11-08 [1] CRAN (R 4.4.1)
+    labeling               0.4.3      2023-08-29 [1] CRAN (R 4.4.0)
     lattice                0.22-6     2024-03-20 [1] CRAN (R 4.4.2)
     lifecycle              1.0.4      2023-11-07 [1] CRAN (R 4.4.0)
     limma                * 3.62.1     2024-11-08 [1] Bioconductor 3.20 (R 4.4.1)
