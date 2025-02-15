@@ -3,7 +3,7 @@
 #SBATCH --job-name=countNuclei
 #SBATCH -o logs/countNuclei_%a.txt 
 #SBATCH -e logs/countNuclei_%a.txt
-#SBATCH --array=2-43%10
+#SBATCH --array=7-7%10
 
 
 echo "**** Job starts ****"
@@ -35,8 +35,8 @@ fileName=$(basename "$filePath" NMseg_clean.mat)
 echo "Processing sample ${fileName}"
 
 ## Read inputs
-jsonname=/dcs05/lieber/marmaypag/LFF_spatialLC_LIBD4140/LFF_spatial_LC/processed-data/01_spaceranger/${fileName}/outs/spatial/scalefactors_json.json
-posname=/dcs05/lieber/marmaypag/LFF_spatialLC_LIBD4140/LFF_spatial_LC/processed-data/01_spaceranger/${fileName}/outs/spatial/tissue_positions.csv
+jsonname=/dcs05/lieber/marmaypag/LFF_spatialLC_LIBD4140/LFF_spatial_LC/processed-data/01_spaceranger/${fileName}_untrimmed/outs/spatial/scalefactors_json.json
+posname=/dcs05/lieber/marmaypag/LFF_spatialLC_LIBD4140/LFF_spatial_LC/processed-data/01_spaceranger/${fileName}_untrimmed/outs/spatial/tissue_positions.csv
 imgname=/dcs05/lieber/marmaypag/LFF_spatialLC_LIBD4140/LFF_spatial_LC/raw-data/Images/${fileName}.tif
 
 matlab -nodesktop -nosplash -nojvm -r "addpath(genpath('$toolbox')), countNuclei('$filePath','$imgname','$jsonname','$posname')" 
