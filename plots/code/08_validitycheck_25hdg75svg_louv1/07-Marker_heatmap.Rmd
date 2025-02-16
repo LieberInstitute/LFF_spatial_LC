@@ -43,7 +43,7 @@ theme_set(theme_bw()+theme(axis.text.x = element_text(size = 8), axis.title.x = 
 unloadNamespace("datasets")
 ```
 
-load xenium data, banksy clusters, one-v-all markers, intra-VMH marker analysis, intra-ARC marker analysis 
+load spe clusters, get top FDR markers
 ```{r}
 lc3 <- readRDS("processed-data/06-countsOnly_noImgData_QCed_SPE_split_to_tissSections.RDS")
 
