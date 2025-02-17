@@ -40,7 +40,7 @@ theme_set(theme_bw()+theme(axis.text.x = element_text(size = 9), axis.title.x = 
 unloadNamespace("datasets")
 ```
 
-## load SPE (NM segmentation results are already embedded); set (prop_NM<=0.003 and prop_NM>0) to 0. values in the 0.002-0.003 range are the most frequent spot value for prop_NM in all clusters, so anything at or below this is noise or background.
+## load SPE (NM segmentation results are already embedded); set (prop_NM<=0.003 & prop_NM>0) to 0. values in the 0.002-0.003 range are the most frequent spot value for prop_NM in all clusters, so anything at or below this is noise or background.
 
 ```{r}
 lc3 <- readRDS("processed-data/06-countsOnly_noImgData_QCed_SPE_split_to_tissSections.RDS")
@@ -88,7 +88,7 @@ rm(tmpcd)
 ```
 
 
-for putative astrocyte and microglia clusters (X2 , X4; for lack of an outright mglia cluster, let's do X9, likely blood-vasc) make NM-adjacent and non-adjacent and LC adjacent/nonadjacent label sets; all others NA. 
+for non-LC clusters--astrocyte and microglia clusters (X2 , X4; for lack of an outright mglia cluster, let's do X9, likely blood-vasc) especially--make NM-adjacent and non-adjacent and LC adjacent/nonadjacent label sets.
 ### adapt a block from Michael Totty's spotsweeper package to identify immediately neighboring spots in glial clusters. this uses spatial coordinates in full pixel resolution, so append those to the coldata so we can do this without lugging around the whole SPE.
 ```{r}
 unique_sample_ids <- unique(lc3$sample_id)
@@ -113,27 +113,27 @@ newcds <- lapply(unique_sample_ids,function(s){
 
     neighborhoods[,centerspot_type:=colData(spe_subset)[neighborhoods$centerspot_rn,"NMseg_subclus"]]
     
-    ## annotate any form of LC-adjacency
-    neighborhoods[label %in% c("X2","X4","X9") & centerspot_type %in% c("LC.1_NMpos","LC.1_NMneg"),LCadjacent:=paste0(label,"_LCadj")]
+    ## annotate any form of LC-adjacency for the non-LC spots
+    neighborhoods[label!="LC.1" & centerspot_type %in% c("LC.1_NMpos","LC.1_NMneg"),LCadjacent:=paste0(label,"_LCadj")]
     
-    neighborhoods[label %in% c("X2","X4","X9") & !(centerspot_type %in% c("LC.1_NMpos","LC.1_NMneg")),LCadjacent:=paste0(label,"_LCnonadj")]
+    neighborhoods[label!="LC.1" & !(centerspot_type %in% c("LC.1_NMpos","LC.1_NMneg")),LCadjacent:=paste0(label,"_LCnonadj")]
     
     ## further annotate NM+ LC adjacency/nonadjacency 
     neighborhoods[!is.na(LCadjacent) & centerspot_type=="LC.1_NMpos",nonLC_NMseg_subclus:=paste0(label,"_LCNMadj")]
-    neighborhoods[!is.na(LCadjacent) & centerspot_type=="LC.1_NMneg",nonLC_NMseg_subclus:=paste0(label,"_LCNMnonadj")]
+    neighborhoods[!is.na(LCadjacent) & centerspot_type=="LC.1_NMneg",nonLC_NMseg_subclus:=paste0(label,"_LCnonNMadj")]
     
     ## among spots with >1 LC neighbor, there could be NM+ and NM- neighbors. if all are NM-, keep that label. if there are both, keep the NM+ label.
     
     newcdout <- unique(
-        neighborhoods[LCadjacent %in% paste0(c("X2","X4","X9"),"_LCadj") &
-                          NMseg_subclus %in% paste0(c("X2","X4","X9"),"_LCNMadj"),
+        neighborhoods[LCadjacent %in% grep(LCadjacent,pattern="_LCadj",value=T) &
+                          nonLC_NMseg_subclus %in% grep(nonLC_NMseg_subclus,pattern="_LCNMadj",value=T),
                       .(rn,LCadjacent,nonLC_NMseg_subclus)])
     
     stopifnot(nrow(newcdout)==length(unique(newcdout$rn)))
     
     ## get remaining lc adjacents
     newcdout <- rbind(newcdout,
-                      unique(neighborhoods[LCadjacent %in% paste0(c("X2","X4","X9"),"_LCadj") & !(rn %in% newcdout$rn),
+                      unique(neighborhoods[LCadjacent %in% grep(LCadjacent,pattern="_LCadj",value=T) & !(rn %in% newcdout$rn),
                                            .(rn,LCadjacent,nonLC_NMseg_subclus)]))
     
     stopifnot(nrow(newcdout)==length(unique(newcdout$rn)))
@@ -143,6 +143,9 @@ newcds <- lapply(unique_sample_ids,function(s){
     newcdout <- rbind(newcdout,
                       unique(neighborhoods[!(rn %in% newcdout$rn),
                                            .(rn,LCadjacent,nonLC_NMseg_subclus)]))
+    
+    ## finally, set the nonLC_NMseg_subclus to be blah_LCnonadj for totally LC-non-neighboring spots
+    newcdout[is.na(nonLC_NMseg_subclus),nonLC_NMseg_subclus:=LCadjacent]
     
     stopifnot(nrow(newcdout)==length(unique(newcdout$rn)))
 
@@ -158,7 +161,9 @@ stopifnot(nrow(newcdout)==ncol(lc3))
 tmpcd <- as.data.table(colData(lc3))
 
 tmpcd <- merge.data.table(tmpcd,newcdout,by="rn",all.x=T)
+stopifnot(all(colnames(lc3) %in% tmpcd$rn))
 
+rm(newcdout,newcds)
 ## make the NMseg subclusters for LC and nonLC into one joint column
 tmpcd[!is.na(NMseg_subclus),NMseg_subclus2:=NMseg_subclus]
 tmpcd[!is.na(nonLC_NMseg_subclus),NMseg_subclus2:=nonLC_NMseg_subclus]
@@ -167,34 +172,66 @@ tmpcd[,NMseg_subclus:=NULL]
 tmpcd[,nonLC_NMseg_subclus:=NULL]
 setnames(tmpcd,"NMseg_subclus2","NMseg_subclus")
 
+### 
+
 stopifnot(length(unique(tmpcd$rn))==ncol(lc3))
 stopifnot(all(tmpcd$rn %in% colnames(lc3)))
 ```
 
-## save a spot id / NM seg / LCadjacency labels table
+## save a spot id / main cluster / NM seg / LCadjacency labels table
 ```{r}
-# how many spots are in each LCadjacent group and each LCNMadjacent group?
+# how many spots are in each LCadjacent group and each LCNMadjacent group for the astrocytic clusters and vascular cluster?
 
-cdout <- tmpcd[,.(rn,LCadjacent,NMseg_subclus)]
+cdout <- tmpcd[,.(rn,label,LCadjacent,NMseg_subclus)]
 # cdout[,.N,by="LCadjacent"]
-# 5:    X4_LCadj  3171
-# 6:    X2_LCadj  1010
-# 7:    X9_LCadj   296
+# 5HT.1_LCadj  2787
+# 5HT.2_LCadj  1712
+# X7_LCadj   751
+# X4_LCadj  3171
+# X2_LCadj  1010
+# X9_LCadj   296
+# X1_LCadj  1665
+# X8_LCadj   250
 
 # cdout[,.N,by="NMseg_subclus"]
-# LC.1_NMneg   4763
-# LC.1_NMpos   3152
-# 
-# X4_LCNMnonadj   1697
-# X4_LCNMadj   1474
-# 
-# X2_LCNMadj    467
-# X2_LCNMnonadj    543
-# 
-# X9_LCNMadj    153
-# X9_LCNMnonadj    143
+#  2:    5HT.1_LCNMadj  1208
+#  3: 5HT.1_LCnonNMadj  1579
+#  4:   5HT.1_LCnonadj 11494
 
-fwrite(cdout,"processed-data/10_subclustering/04-LCsubclus-by-NM_astroAndBlood-LCadjacency-and-NMseg-based_subclusts.txt",sep='\t',quote=F,row.names=F,col.names=T)
+#  5:    5HT.2_LCNMadj   893
+#  6: 5HT.2_LCnonNMadj   819
+#  7:   5HT.2_LCnonadj  8444
+
+#  8:       LC.1_NMneg  4763
+#  9:       LC.1_NMpos  3152
+
+# 10:       X1_LCNMadj   789
+# 11:    X1_LCnonNMadj   876
+# 12:      X1_LCnonadj 36181
+
+# 13:       X2_LCNMadj   467
+# 14:    X2_LCnonNMadj   543
+# 15:      X2_LCnonadj  9801
+
+# 16:       X4_LCNMadj  1474
+# 17:    X4_LCnonNMadj  1697
+# 18:      X4_LCnonadj 20999
+
+# 19:       X7_LCNMadj   311
+# 20:    X7_LCnonNMadj   440
+# 21:      X7_LCnonadj 16127
+
+# 22:       X8_LCNMadj   116
+# 23:    X8_LCnonNMadj   134
+# 24:      X8_LCnonadj  5580
+
+# 25:       X9_LCNMadj   153
+# 26:    X9_LCnonNMadj   143
+# 27:      X9_LCnonadj  4296
+ 
+# 1:             <NA>     5 <-- spots without any immediate neighbors whatsoever
+
+fwrite(cdout,"processed-data/10_subclustering/04-LCsubclus-by-NM_otherclusts-by-LCorLCNMadjacency.txt",sep='\t',quote=F,row.names=F,col.names=T)
 ```
 
 rep inf
