@@ -1,7 +1,7 @@
 ---
 title: "01-Make_cluster_DGEs"
 author: "Bernie Mulvey"
-date: "2025-02-07"
+date: "2025-02-18"
 output: html_document
 ---
 
@@ -38,6 +38,9 @@ library(parallel) # use PSOCK clusters for best performance here
 unloadNamespace("datasets")
 ```
 
+## re-run on 02/18 to propagate NM segmentation information from coldata into DGElists and make an additional set of DGElists by NM segmentation-based subclusters.
+
+
 
 ## load SPE and assign hdg_svg_2575_louv_res1 clusterings as autoannotated
 ```{r}
@@ -60,6 +63,8 @@ colData(lc3)$Visium_slide <- gsub(colData(lc3)$Visium_slide,pattern="^(V.....-..
 
 rm(louvs,autoan)
 ```
+
+#### TOP LEVEL CLUSTER DGELists ####
 
 # make pseudobulk object (dreamlet is v. fast at this)
 ```{r}
@@ -158,7 +163,7 @@ dgels <- lapply(dgels,function(x){x[[1]]})
 
 ## save
 ```{r}
-saveRDS(dgels,"processed-data/11_DEanalyses/01-DGElist_per_25HDG75SVGlouv1_cluster_normFilt.RDS")
+saveRDS(dgels,"processed-data/11_DEanalyses/01a-DGElist_per_25HDG75SVGlouv1_cluster_normFilt.RDS")
 ```
 
 ## make MDS plots per pseudobulk cluster per potential variable of interest
@@ -170,22 +175,185 @@ clusterMap(d=dgels,n=names(dgels),SIMPLIFY=FALSE,cl=clus,fun=function(d,n){
     pal <- rainbow(n=length(unique(d$samples[,cov])))
     d$samples[,cov] <- as.factor(d$samples[,cov])
     
-    png(paste0("plots/11_DEanalyses/01_pseudobulk_cluster_MDSes/",n,"_",cov,"_1_2.png"),width=1000,height=800)
+    png(paste0("plots/11_DEanalyses/01_pseudobulk_cluster_MDSes/01a-",n,"_",cov,"_1_2.png"),width=1000,height=800)
     plotMDS(d,col=pal[factor(d$samples[,cov])], dim.plot = c(1,2),pch = 18)
     legend('bottomright', legend=levels(d$samples[,cov]), col=pal, cex=1, pch=18)
     dev.off()
     
-    png(paste0("plots/11_DEanalyses/01_pseudobulk_cluster_MDSes/",n,"_",cov,"_1_3.png"),width=1000,height=800)
+    png(paste0("plots/11_DEanalyses/01_pseudobulk_cluster_MDSes/01a-",n,"_",cov,"_1_3.png"),width=1000,height=800)
     plotMDS(d,col=pal[factor(d$samples[,cov])], dim.plot = c(1,3),pch = 18)
     legend('bottomright', legend=levels(d$samples[,cov]), col=pal, cex=1, pch=18)
     dev.off()
     
-    png(paste0("plots/11_DEanalyses/01_pseudobulk_cluster_MDSes/",n,"_",cov,"_2_3.png"),width=1000,height=800)
+    png(paste0("plots/11_DEanalyses/01_pseudobulk_cluster_MDSes/01a-",n,"_",cov,"_2_3.png"),width=1000,height=800)
     plotMDS(d,col=pal[factor(d$samples[,cov])], dim.plot = c(2,3),pch = 18)
     legend('bottomright', legend=levels(d$samples[,cov]), col=pal, cex=1, pch=18)
     dev.off()
   })
 })
+```
+
+# clean up
+```{r}
+rm(ag,agc,agcd,agsc,clus,dgels,plts)
+```
+
+#### NM-SEGMENTATION-SUBCLUSTER DGELists ####
+
+## load and appened the subcluster labels to spe
+```{r}
+nmseg <- fread("processed-data/10_subclustering/04-LCsubclus-by-NM_otherclusts-by-LCorLCNMadjacency.txt")
+
+nmseg <- DataFrame(nmseg,row.names=nmseg$rn)[colnames(lc3),c(3,4)]
+colData(lc3) <- cbind(colData(lc3),nmseg)
+
+rm(nmseg)
+```
+
+## # make pseudobulk objectS (lcadjacency and adjacency-by-NM) (dreamlet is v. fast at this)
+```{r}
+LCadj.ag <- dreamlet::aggregateToPseudoBulk(lc3[,lc3$LCadjacent!=""],sample_id="sample_id",cluster_id = "LCadjacent",BPPARAM = MulticoreParam(6))
+
+LCNMadj.ag <- dreamlet::aggregateToPseudoBulk(lc3[,lc3$NMseg_subclus!=""],sample_id="sample_id",cluster_id = "NMseg_subclus",BPPARAM = MulticoreParam(6))
+
+# extract colData to feed into DGEList as the "samples" data
+adj.agcd <- as.data.frame(colData(LCadj.ag))
+nm.agcd <- as.data.frame(colData(LCNMadj.ag))
+
+## only retain clusters for which at least 43 samples (of 85 total, i.e over half) are available after pseudobulking+filtering through dreamlet:  
+LCadj.ag <- as.list(assays(LCadj.ag))
+LCadj.agc <- lapply(LCadj.ag,FUN=function(a){ncol(a[,colSums(a)>0])})
+LCadj.ag <- LCadj.ag[!(LCadj.agc<43)]
+
+LCNMadj.ag <- as.list(assays(LCNMadj.ag))
+LCNMadj.agc <- lapply(LCNMadj.ag,FUN=function(a){ncol(a[,colSums(a)>0])})
+LCNMadj.ag <- LCNMadj.ag[!(LCNMadj.agc<43)]
+
+## drop clusters where there are 20+ samples, but under 18 samples for one of the sexes (i.e., < half of the samples from the smaller group--females w 35 sections total):
+agscs <- mapply(list(LCadj.ag,LCNMadj.ag),list(adj.agcd,nm.agcd),SIMPLIFY=FALSE,FUN=function(ag,agcd){
+    agsc <- lapply(ag,FUN=function(a){
+        cn <- colnames(a[,colSums(a)>0])
+        tmp <- as.data.table(agcd[cn,])
+        if(nrow(tmp[,.N,by="Sex"][N<18])>0){
+          return(0)
+        } else {return(1)}
+    })
+    return(agsc)
+})
+
+LCadj.ag <- LCadj.ag[agscs[[1]]==1]
+LCNMadj.ag <- LCNMadj.ag[agscs[[2]]==1]
+
+rm(agscs,LCadj.agc,LCNMadj.agc)
+
+# stratify by APOE4 positive / negative  
+adj.agcd$e4 <- ifelse(adj.agcd$APOE %in% c("E4/ E4","E3/ E4"),yes="carrier",no="negative")
+
+nm.agcd$e4 <- ifelse(nm.agcd$APOE %in% c("E4/ E4","E3/ E4"),yes="carrier",no="negative")
+
+```
+
+## make the DGELists per retained subcluster:
+```{r}
+## get rowData as a data.table from the SPE to append to the DGElist--namely so we can make MDS plots of the pseudobulks while excluding mitochondrial and sex chromosomal genes
+tmprd <- as.data.table(rowData(lc3)) # rownames are the same as $gene_id
+
+agcds <- list(adj.agcd,nm.agcd)
+names(agcds) <- c("LCadj","LCNMadj")
+
+sub.dgels <- mapply(list(LCadj.ag,LCNMadj.ag),names(agcds),SIMPLIFY=FALSE,FUN=function(ag,agcd.n){
+  
+  # get the appropriate metadata sheet
+  if(agcd.n=="LCadj"){
+    agcd <- copy(agcds$LCadj)
+  } else {
+    agcd <- copy(agcds$LCNMadj)
+  }
+  
+  retdgels <- mapply(a=ag,n=names(ag),SIMPLIFY=FALSE,FUN=function(a,n){
+    X <- a[,colSums(a)>0]
+    s <- copy(agcd)[colnames(X),]
+    if(length(unique(s$Sex))<2){return()} else {
+
+        dge <- DGEList(counts=as.matrix(X),samples=s,genes=as.data.frame(tmprd,row.names = tmprd$rn)[rownames(X),])
+        dge <- normLibSizes(dge,method = "TMM")
+        
+        ## find the smaller group for this cluster
+        smolgrp <- table(dge$samples$Sex)[which.min(table(dge$samples$Sex))]
+        
+        ## for the smallest group, determine low expression cutoff
+        rowmn.m <- as.numeric(rowMeans(cpm(dge[,(dge$samples$Sex==names(smolgrp)[1])],log=TRUE)))
+        
+        ## get histogram distribution with 10 bins at the low end of the logcpm space
+        h <- hist(rowmn.m[which(rowmn.m>min(rowmn.m)&rowmn.m<(4+min(rowmn.m)))],breaks=10,plot=FALSE)
+        ## get the minimum in this low logcpm range and its corresponding bin (x axis value, i.e. log cpm)
+        minc <- h$breaks[which(h$counts==min(h$counts))]
+        
+        # if there's multiple points meeting this^ minimum, take the larger
+        if(length(minc)>1){minc <- max(minc)}
+        
+        ## get the corresponding smallest-library count value for this minimum^
+        smollib <- min(dge$samples[(dge$samples$Sex==names(smolgrp)[1]),"lib.size"])
+        countthresh <- (minc^2)*(as.numeric(smollib)/10^6)
+        
+        ## and convert that smallest count to the logcpm value in said smallest library to use as a low-expression threshold
+        cpmthresh <- log2(countthresh/(as.numeric(smollib)*10^-6))
+        
+        ## 2/14/25: make a plot to also return
+        mnplt <- as.data.table(rowmn.m)
+        setnames(mnplt,1,"V1")
+        
+        ## exclude genes with a mean logcpm under 0.1
+        mnplt <- mnplt[V1>0.1]
+        
+        plt <- ggplot(mnplt,aes(x=V1))+
+          geom_histogram(bins = 100)+
+          guides(color="none")+
+          ggtitle(paste0(n," genewise mean logCPM in\nlower n sex (",smolgrp,")"))
+        
+        ## only draw the threshold line if it's within the rowmn.m range
+        if(cpmthresh>min(rowmn.m)&cpmthresh<max(rowmn.m)){
+          plt <- plt + geom_vline(xintercept=cpmthresh,col="red")
+        }
+        
+        ## filter for genes with at least thresh counts in at least (smaller sex group size) samples
+        keep <- rowSums(cpm(dge,log=T)>cpmthresh) >= as.numeric(smolgrp)
+        
+        ## recalc lib factors after dropping low-expressed genes
+        dge <- dge[keep,,keep.lib.sizes=FALSE]
+        dge <- calcNormFactors(dge,method = "TMM")
+        
+        retlist <- list(dge,plt)
+        names(retlist) <- c(n,"plt")
+        return(retlist)
+    }
+    return(retdgels)
+  })
+})
+names(sub.dgels) <- c("LCadj_subclusts","LCNMadj_subclusts")
+```
+
+## get and arrange low-expression-cutoff plots
+```{r}
+mapply(sub.dgels,names(sub.dgels),SIMPLIFY=FALSE,FUN=function(x,n){
+  plts <- lapply(x,FUN=function(y){
+    y$plt
+  })
+  pdf(paste0("plots/11_DEanalyses/01b-logCPM_cutoff_checks_",n,".pdf"),height=3.33*ceiling(length(plts)/3),width=10)
+  do.call("grid.arrange",c(plts,ncol=3))
+  dev.off()
+})
+```
+
+## get the dgelists themselves to save
+```{r}
+LCadj.dgels <- lapply(sub.dgels$LCadj_subclusts,function(x){x[[1]]})
+nmadj.dgels <- lapply(sub.dgels$LCNMadj_subclusts,function(x){x[[1]]})
+
+## save separate RDSes for each subclustering
+saveRDS(LCadj.dgels,"processed-data/11_DEanalyses/01b-DGElist_per_LCadj_subcluster_normFilt.RDS")
+saveRDS(nmadj.dgels,"processed-data/11_DEanalyses/01b-DGElist_per_LCNMadj_subcluster_normFilt.RDS")
+
 ```
 
 reprod info
@@ -211,8 +379,8 @@ attached base packages:
 [1] parallel  stats4    stats     graphics  grDevices utils     methods   base     
 
 other attached packages:
- [1] gridExtra_2.3               parallelly_1.42.0          
- [3] colorout_1.3-0.2            edgeR_4.4.1                
+ [1] parallelly_1.42.0           colorout_1.3-0.2           
+ [3] gridExtra_2.3               edgeR_4.4.1                
  [5] dreamlet_1.4.1              variancePartition_1.36.2   
  [7] BiocParallel_1.40.0         limma_3.62.1               
  [9] ggplot2_3.5.1               SpatialExperiment_1.16.0   
@@ -280,7 +448,7 @@ loaded via a namespace (and not attached):
  collate  en_US.UTF-8
  ctype    en_US.UTF-8
  tz       America/Chicago
- date     2025-02-14
+ date     2025-02-18
  rstudio  2024.07.0-daily+219 Cranberry Hibiscus (desktop)
  pandoc   3.1.11 @ /Applications/RStudio.app/Contents/Resources/app/quarto/bin/tools/aarch64/ (via rmarkdown)
 
