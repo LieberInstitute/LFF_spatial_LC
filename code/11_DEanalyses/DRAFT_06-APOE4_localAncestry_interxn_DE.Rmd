@@ -1,0 +1,175 @@
+---
+title: "APOE4_localAncestry_interxn_DE"
+author: "Bernie Mulvey"
+date: "2025-02-22"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(fig.height = 10,fig.width = 7,include = FALSE)
+#### sets tab autocompletion for directories to begin from the directory containing the .Rproj session, instead of the script's directory if different
+knitr::opts_knit$set(root.dir = here::here())
+
+library(data.table)
+library(edgeR)
+library(limma)
+
+# library(SpatialFeatureExperiment)
+
+## rstudio GUI tweaks
+require(colorout)
+ColorOut()
+options("styler.addins_style_transformer" = "biocthis::bioc_style()")
+##
+
+## enable forked parallel processing with BiocParallel::multicoreParam, future::, etc. seemed to need this a couple times, but otherwise havent so its here as a preventative measure. part of this is adding the line 
+# OBJC_DISABLE_INITIALIZE_FORK_SAFETY=YES
+# to Renviron.site. see e.g. top response on https://stackoverflow.com/questions/73638290/python-on-mac-is-it-safe-to-set-objc-disable-initialize-fork-safety-yes-globall 
+library(parallelly)
+options(parallelly.supportsMulticore.disableOn="")
+options(parallelly.fork.enable=TRUE)
+library(BiocParallel)
+options(bphost="localhost")
+library(parallel)
+
+
+## last of all, unload the base package datasets, whose data keep getting in the way of autocompletions (e.g., Theoph is priortized over TRUE)
+unloadNamespace("datasets")
+```
+
+## load DGElist objects
+```{r}
+dgels <- readRDS("processed-data/11_DEanalyses/01-DGElist_per_25HDG75SVGlouv1_cluster_normFilt.RDS")
+
+## append DGElist for LC NM+ and NM- fractions
+
+nmdgels <- readRDS("processed-data/11_DEanalyses/01b-DGElist_per_LCNMadj_subcluster_normFilt.RDS")
+
+dgels <- c(dgels,list(nmdgels$LC.1_NMpos,nmdgels$LC.1_NMneg))
+names(dgels)[10:11] <- c("LC.1_NMpos","LC.1_NMneg")
+
+rm(nmdgels)
+### to avoid any issues, replace "Br6119(re-dis)" with "Br6119" in the samples tables
+dgels <- lapply(dgels,FUN=function(d){
+    d$samples$brnum[d$samples$brnum=="Br6119(re-dis)"] <- "Br6119"
+    return(d)
+})
+```
+
+
+
+append ±1MB apoe haplotype-level local ancestry estimates; to get a single locus measure (since we don't have phased seq data), set to 0 for E4 negative donors (interaction effect automatically is then 0), the E4 haplotype local ancestry for hets, and sum of local ancestries for homozygotes.
+
+```{r}
+la <- fread("raw-data/ancestryAndHaplotypes/FLARE/apoe_haplotypes_w_localYRI_est.txt")
+
+## 0 out non-E4 donors
+la[hap1gt!="E4"&hap2gt!="E4",E4LA:=0]
+la[hap1gt=="E4"&hap2gt!="E4",E4LA:=apoe_hap1_estPropYRI]
+la[hap1gt!="E4"&hap2gt=="E4",E4LA:=apoe_hap2_estPropYRI]
+la[hap1gt=="E4"&hap2gt=="E4",E4LA:=apoe_hap1_estPropYRI+apoe_hap2_estPropYRI]
+
+la[,e4copies:=apply(.SD,MARGIN=1,FUN=function(x){sum(x=="E4")}),.SDcols=c("hap1gt","hap2gt")]
+
+la <- la[,.(variable,E4LA,e4copies)]
+setnames(la,1,"brnum")
+
+dgels <- lapply(dgels,FUN=function(d){
+    tmpsamp <- as.data.table(d$samples,keep.rownames = T)
+    tmpsamp <- merge.data.table(tmpsamp,la,by="brnum")
+    d$samples <- as.data.frame(tmpsamp,row.names=tmpsamp$rn)[rownames(d$samples),]
+    d$samples$rn <- NULL
+    return(d)
+})
+```
+
+
+## append global genetic ancestry proportion estimates (FLARE, 3-component CEU ancestry--the other two being YRI and CHB). this source file is intentionally not included in in github but is on JHPCE. The CHB proportions range 0.0001 to 0.01--so CEU is effectively the proportion that is not YRI, and we can just use CEU as the variable here.
+
+```{r}
+flares <- fread("raw-data/ancestryAndHaplotypes/FLARE/global_ancestry_estimates.txt")
+
+dgels <- lapply(dgels,FUN=function(d){
+    tmpsamp <- as.data.table(d$samples,keep.rownames=T)
+    tmpsamp <- merge.data.table(tmpsamp,flares,by.x="brnum",by.y="ID")
+    tmpsamp <- as.data.frame(tmpsamp,row.names=tmpsamp$rn)[rownames(d$samples),]
+    tmpsamp$rn <- NULL
+    d$samples <- tmpsamp
+    #use YRI for global ancestry x2 for consistency w/ the local ancestry estimates and ranges
+    d$samples$YRI <- d$samples$YRI*2
+    return(d)
+})
+```
+
+### DE TEST 1 ### LA x E4copies, without best pfc rin as a covar. 
+```{r}
+setDTthreads(1,restore_after_fork = FALSE)
+clus <- parallel::makeCluster(8,type = "PSOCK")
+fulldgelres.norin <- parallel::clusterApply(x=dgels,cl = clus,fun=function(X){
+    
+    library(data.table)
+    library(limma)
+    library(edgeR)
+    
+    # prevent resource competition, though we aren't explicitly using DT at all here:
+
+    dge <- X
+    des <- model.matrix(~0+e4copies*E4LA+Sex+YRI+Age, data = dge$samples)
+    # make the interaction factor passable to limma by changing the name
+    colnames(des)[colnames(des)=="e4copies:E4LA"] <- "e4copies_by_LA"
+    
+    # INITIALIZE the voomwithqualityweights model, equivalent to pseudobulkDGE(method="voom",qualities=T)
+    
+    # run voomLmFit for the pseudobulked data, referring donor to duplicateCorrelation; using an adaptive span (number of genes, based on the number of genes in the dge) for smoothing the mean-variance trend
+    v.swt <- voomLmFit(dge,design = des,block = as.factor(dge$samples$brnum),adaptive.span = T,sample.weights = T)
+    cont <- makeContrasts(apoe=e4copies_by_LA,Sex=SexM-SexF,levels=des)
+    v.swt.fit <- contrasts.fit(v.swt,contrasts=cont)
+    v.swt.fit.e <- eBayes(v.swt.fit)
+    v.swt.e.tt.apo <- topTable(v.swt.fit.e,coef = 1,number=Inf,adjust.method = "BH")
+    
+    v.swt.e.tt.sex <- topTable(v.swt.fit.e,coef = 2,number=Inf,adjust.method = "BH")
+    
+    
+    retlist <- list(apo=v.swt.e.tt.apo,sex=v.swt.e.tt.sex)
+    return(retlist)
+})
+parallel::stopCluster(clus)
+
+names(fulldgelres.norin) <- names(dgels)
+```
+
+### DE TEST 2 ###  WITH best pfc RIN as a covar
+```{r}
+setDTthreads(1,restore_after_fork = FALSE)
+clus <- parallel::makeCluster(9,type = "PSOCK")
+fulldgelres.rin <- parallel::clusterApply(x=dgels,cl = clus,fun=function(X){
+    
+    library(data.table)
+    library(limma)
+    library(edgeR)
+    
+    # prevent resource competition, though we aren't explicitly using DT at all here:
+
+    dge <- X
+    des <- model.matrix(~0+e4copies*E4LA+Sex+YRI+Age+Rin, data = dge$samples)
+    colnames(des)[colnames(des)=="e4copies:E4LA"] <- "e4copies_by_LA"
+
+    # INITIALIZE the voomwithqualityweights model, equivalent to pseudobulkDGE(method="voom",qualities=T)
+    
+    # run voomLmFit for the pseudobulked data, referring donor to duplicateCorrelation; using an adaptive span (number of genes, based on the number of genes in the dge) for smoothing the mean-variance trend
+    v.swt <- voomLmFit(dge,design = des,block = as.factor(dge$samples$brnum),adaptive.span = T,sample.weights = T)
+    cont <- makeContrasts(apoe=e4copies_by_LA,Sex=SexM-SexF,levels=des)
+    v.swt.fit <- contrasts.fit(v.swt,contrasts=cont)
+    v.swt.fit.e <- eBayes(v.swt.fit)
+    v.swt.e.tt.apo <- topTable(v.swt.fit.e,coef = 1,number=Inf,adjust.method = "BH")
+    
+    v.swt.e.tt.sex <- topTable(v.swt.fit.e,coef = 2,number=Inf,adjust.method = "BH")
+    
+    
+    retlist <- list(apo=v.swt.e.tt.apo,sex=v.swt.e.tt.sex)
+    return(retlist)
+})
+parallel::stopCluster(clus)
+
+names(fulldgelres.rin) <- names(dgels)
+```
