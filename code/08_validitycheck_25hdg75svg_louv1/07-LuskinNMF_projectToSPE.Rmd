@@ -1,0 +1,446 @@
+---
+title: "07-LuskinNMF_projectToSPE"
+author: "Bernie Mulvey"
+date: "2025-02-23"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(fig.height = 10,fig.width = 7,include = FALSE)
+#### sets tab autocompletion for directories to begin from the directory containing the .Rproj session, instead of the script's directory if different
+knitr::opts_knit$set(root.dir = here::here())
+
+library(data.table)
+library(RcppML)
+library(Seurat)
+library(SingleCellExperiment)
+library(SpatialExperiment)
+library(Matrix) # otherwise rcppml gives error 'no item called "package:Matrix" on the search lis'
+# library(SpatialFeatureExperiment)
+
+## rstudio GUI tweaks
+require(colorout)
+ColorOut()
+options("styler.addins_style_transformer" = "biocthis::bioc_style()")
+##
+
+## last of all, unload the base package datasets, whose data keep getting in the way of autocompletions (e.g., Theoph is priortized over TRUE)
+unloadNamespace("datasets")
+```
+
+## load luskin preprint Seurat object with all cells, convert to SCE
+```{r}
+mslc <- readRDS("/Users/bmulvey/Desktop/KM Lab/Other Groups' Published Data/Luskin Bruchas mouse periLC snseq publication RDSes/LC_integrated_allcells.rds")
+
+mslc <- as.SingleCellExperiment(mslc)
+
+## load their cluster lookup table. clusters are 0 indexed in coldata but 1 indexed here, so add 1 to mslc$Ident for matching EXCLUDE the vglut1 cluster, which they confirmed was absent from the target dissection area via ish and/or immuno in the mscript
+clusts <- fread("/Users/bmulvey/Desktop/KM Lab/Other Groups' Published Data/Luskin Bruchas mouse periLC snseq publication RDSes/luskin_allcellsRDS_snnres03_cluster_lookuptable_013025.txt")
+clusts[,Index:=paste0("x",Index)]
+clusts[,lab:=cellType_label]
+clusts[neuronSubtype_label!="",lab:=neuronSubtype_label]
+clusts[,lab:=gsub(lab,pattern="\\/",replacement="_")]
+
+mslc$ident <- as.numeric(as.character(mslc$ident))+1
+mslc$ident <- paste0("x",mslc$ident)
+stopifnot(all(clusts$Index %in% mslc$ident))
+
+## append labels
+tmpcd <- as.data.table(colData(mslc),keep.rownames=T)
+# note that the column stim is actually just the sample.
+
+tmpcd <- merge.data.table(tmpcd,clusts[,.(Index,lab)],by.x="ident",by.y="Index",all.x=T)
+tmpcd <- DataFrame(tmpcd,row.names=tmpcd$rn)[colnames(mslc),]
+tmpcd$rn <- NULL
+## return to sce
+colData(mslc) <- tmpcd
+
+## drop vglut1
+mslc <- mslc[,mslc$lab!="vGLUT1_neurons"]
+```
+
+# cleanup
+```{r}
+rm(clusts)
+rm(tmpcd)
+gc(full=T)
+
+setDTthreads(1,restore_after_fork = FALSE)
+```
+
+## run NMF using Erik Nelson's final parameter set (100 factors, tol 1e-6, 1k max iters, L1 penalty 0.1, diag = T) https://github.com/LieberInstitute/spatial_hpc/blob/main/snRNAseq_hpc/code/nmf/nmf.R
+```{r}
+mslc.nmf <-RcppML::nmf(assay(mslc,'logcounts'),
+    k=100,
+    tol = 1e-06,
+    maxit = 1000,
+    verbose = T,
+    L1 = 0.1,
+    seed = 42,
+    mask_zeros = FALSE,
+    diag = TRUE,
+    nonneg = TRUE
+)
+```
+
+## Verbose output: ##
+iter |      tol 
+---------------
+   1 | 8.86e-01
+   2 | 1.13e-01
+   3 | 3.79e-02
+   4 | 1.97e-02
+   5 | 1.21e-02
+   6 | 8.89e-03
+   7 | 7.40e-03
+   8 | 6.49e-03
+   9 | 5.78e-03
+  10 | 5.46e-03
+  11 | 5.40e-03
+  12 | 5.11e-03
+  13 | 4.81e-03
+  14 | 4.66e-03
+  15 | 4.68e-03
+  16 | 4.72e-03
+  17 | 4.46e-03
+  18 | 3.81e-03
+  19 | 2.86e-03
+  20 | 1.97e-03
+  21 | 1.34e-03
+  22 | 9.64e-04
+  23 | 7.68e-04
+  24 | 6.46e-04
+  25 | 5.80e-04
+  26 | 5.40e-04
+  27 | 5.16e-04
+  28 | 5.13e-04
+  29 | 5.14e-04
+  30 | 5.18e-04
+  31 | 5.12e-04
+  32 | 5.17e-04
+  33 | 5.15e-04
+  34 | 5.03e-04
+  35 | 4.61e-04
+  36 | 3.50e-04
+  37 | 3.02e-04
+  38 | 2.59e-04
+  39 | 2.29e-04
+  40 | 2.05e-04
+  41 | 1.81e-04
+  42 | 1.62e-04
+  43 | 1.41e-04
+  44 | 1.20e-04
+  45 | 1.05e-04
+  46 | 9.68e-05
+  47 | 8.64e-05
+  48 | 7.94e-05
+  49 | 7.63e-05
+  50 | 7.66e-05
+  51 | 7.94e-05
+  52 | 8.09e-05
+  53 | 8.50e-05
+  54 | 8.82e-05
+  55 | 9.41e-05
+  56 | 9.69e-05
+  57 | 9.46e-05
+  58 | 8.55e-05
+  59 | 7.63e-05
+  60 | 6.73e-05
+  61 | 6.02e-05
+  62 | 5.13e-05
+  63 | 4.34e-05
+  64 | 3.93e-05
+  65 | 3.79e-05
+  66 | 3.83e-05
+  67 | 4.01e-05
+  68 | 4.20e-05
+  69 | 4.45e-05
+  70 | 4.73e-05
+  71 | 4.49e-05
+  72 | 4.25e-05
+  73 | 3.92e-05
+  74 | 3.61e-05
+  75 | 3.51e-05
+  76 | 3.48e-05
+  77 | 3.32e-05
+  78 | 3.17e-05
+  79 | 2.98e-05
+  80 | 2.92e-05
+  81 | 2.84e-05
+  82 | 2.77e-05
+  83 | 2.75e-05
+  84 | 2.73e-05
+  85 | 2.73e-05
+  86 | 2.62e-05
+  87 | 2.42e-05
+  88 | 2.34e-05
+  89 | 2.26e-05
+  90 | 2.15e-05
+  91 | 1.95e-05
+  92 | 1.87e-05
+  93 | 1.76e-05
+  94 | 1.69e-05
+  95 | 1.63e-05
+  96 | 1.57e-05
+  97 | 1.52e-05
+  98 | 1.49e-05
+  99 | 1.45e-05
+ 100 | 1.41e-05
+ 101 | 1.37e-05
+ 102 | 1.34e-05
+ 103 | 1.28e-05
+ 104 | 1.24e-05
+ 105 | 1.15e-05
+ 106 | 1.08e-05
+ 107 | 1.02e-05
+ 108 | 9.66e-06
+ 109 | 9.20e-06
+ 110 | 8.64e-06
+ 111 | 8.09e-06
+ 112 | 7.59e-06
+ 113 | 7.23e-06
+ 114 | 6.89e-06
+ 115 | 6.62e-06
+ 116 | 6.40e-06
+ 117 | 6.25e-06
+ 118 | 6.13e-06
+ 119 | 6.17e-06
+ 120 | 5.91e-06
+ 121 | 5.97e-06
+ 122 | 6.07e-06
+ 123 | 6.38e-06
+ 124 | 6.73e-06
+ 125 | 7.19e-06
+ 126 | 7.75e-06
+ 127 | 8.38e-06
+ 128 | 9.00e-06
+ 129 | 9.73e-06
+ 130 | 1.06e-05
+ 131 | 1.15e-05
+ 132 | 1.24e-05
+ 133 | 1.33e-05
+ 134 | 1.40e-05
+ 135 | 1.47e-05
+ 136 | 1.52e-05
+ 137 | 1.56e-05
+ 138 | 1.57e-05
+ 139 | 1.56e-05
+ 140 | 1.51e-05
+ 141 | 1.43e-05
+ 142 | 1.33e-05
+ 143 | 1.19e-05
+ 144 | 1.07e-05
+ 145 | 9.33e-06
+ 146 | 8.04e-06
+ 147 | 6.87e-06
+ 148 | 5.82e-06
+ 149 | 4.94e-06
+ 150 | 4.28e-06
+ 151 | 3.73e-06
+ 152 | 3.37e-06
+ 153 | 3.11e-06
+ 154 | 2.86e-06
+ 155 | 2.72e-06
+ 156 | 2.67e-06
+ 157 | 2.65e-06
+ 158 | 2.56e-06
+ 159 | 2.53e-06
+ 160 | 2.50e-06
+ 161 | 2.48e-06
+ 162 | 2.49e-06
+ 163 | 2.50e-06
+ 164 | 2.48e-06
+ 165 | 2.44e-06
+ 166 | 2.44e-06
+ 167 | 2.44e-06
+ 168 | 2.42e-06
+ 169 | 2.38e-06
+ 170 | 2.38e-06
+ 171 | 2.36e-06
+ 172 | 2.36e-06
+ 173 | 2.39e-06
+ 174 | 2.44e-06
+ 175 | 2.51e-06
+ 176 | 2.57e-06
+ 177 | 2.65e-06
+ 178 | 2.72e-06
+ 179 | 2.79e-06
+ 180 | 2.84e-06
+ 181 | 2.87e-06
+ 182 | 2.92e-06
+ 183 | 2.96e-06
+ 184 | 3.01e-06
+ 185 | 3.06e-06
+ 186 | 3.11e-06
+ 187 | 3.18e-06
+ 188 | 3.23e-06
+ 189 | 3.31e-06
+ 190 | 3.37e-06
+ 191 | 3.34e-06
+ 192 | 3.21e-06
+ 193 | 3.28e-06
+ 194 | 3.38e-06
+ 195 | 3.33e-06
+ 196 | 3.32e-06
+ 197 | 3.36e-06
+ 198 | 3.37e-06
+ 199 | 3.36e-06
+ 200 | 3.44e-06
+ 201 | 3.56e-06
+ 202 | 3.77e-06
+ 203 | 4.02e-06
+ 204 | 4.34e-06
+ 205 | 4.73e-06
+ 206 | 5.17e-06
+ 207 | 5.57e-06
+ 208 | 6.08e-06
+ 209 | 6.72e-06
+ 210 | 7.54e-06
+ 211 | 8.57e-06
+ 212 | 9.92e-06
+ 213 | 1.16e-05
+ 214 | 1.35e-05
+ 215 | 1.57e-05
+ 216 | 1.85e-05
+ 217 | 2.17e-05
+ 218 | 2.47e-05
+ 219 | 2.62e-05
+ 220 | 2.73e-05
+ 221 | 2.95e-05
+ 222 | 3.22e-05
+ 223 | 3.55e-05
+ 224 | 4.00e-05
+ 225 | 4.60e-05
+ 226 | 5.24e-05
+ 227 | 6.16e-05
+ 228 | 6.57e-05
+ 229 | 6.57e-05
+ 230 | 5.88e-05
+ 231 | 4.89e-05
+ 232 | 4.04e-05
+ 233 | 3.27e-05
+ 234 | 2.37e-05
+ 235 | 1.74e-05
+ 236 | 1.32e-05
+ 237 | 9.98e-06
+ 238 | 7.47e-06
+ 239 | 5.73e-06
+ 240 | 4.56e-06
+ 241 | 3.77e-06
+ 242 | 3.24e-06
+ 243 | 2.62e-06
+ 244 | 2.17e-06
+ 245 | 1.99e-06
+ 246 | 1.85e-06
+ 247 | 1.69e-06
+ 248 | 1.56e-06
+ 249 | 1.48e-06
+ 250 | 1.43e-06
+ 251 | 1.41e-06
+ 252 | 1.41e-06
+ 253 | 1.40e-06
+ 254 | 1.38e-06
+ 255 | 1.38e-06
+ 256 | 1.39e-06
+ 257 | 1.41e-06
+ 258 | 1.42e-06
+ 259 | 1.44e-06
+ 260 | 1.47e-06
+ 261 | 1.47e-06
+ 262 | 1.46e-06
+ 263 | 1.50e-06
+ 264 | 1.50e-06
+ 265 | 1.51e-06
+ 266 | 1.52e-06
+ 267 | 1.53e-06
+ 268 | 1.54e-06
+ 269 | 1.50e-06
+ 270 | 1.51e-06
+ 271 | 1.52e-06
+ 272 | 1.53e-06
+ 273 | 1.52e-06
+ 274 | 1.51e-06
+ 275 | 1.48e-06
+ 276 | 1.49e-06
+ 277 | 1.50e-06
+ 278 | 1.47e-06
+ 279 | 1.44e-06
+ 280 | 1.42e-06
+ 281 | 1.40e-06
+ 282 | 1.37e-06
+ 283 | 1.34e-06
+ 284 | 1.30e-06
+ 285 | 1.25e-06
+ 286 | 1.21e-06
+ 287 | 1.19e-06
+ 288 | 1.15e-06
+ 289 | 1.12e-06
+ 290 | 1.09e-06
+ 291 | 1.06e-06
+ 292 | 1.02e-06
+ 293 | 9.94e-07
+ 
+# append cell patterns (h, 100 row x 28046 col matrix) to sce 
+```{r}
+th <- t(mslc.nmf$h)
+colData(mslc)<-cbind(colData(mslc),th)
+
+saveRDS(mslc.nmf,"processed-data/08_validitycheck_25hdg75svg_louv1/07a-LuskinMs2024allCells_nmf100_out.RDS")
+saveRDS(mslc,"processed-data/08_validitycheck_25hdg75svg_louv1/07b-LuskinMs2024allCells_sce_w_nmf100.RDS")
+```
+
+## load SPE and assign hdg_svg_2575_louv_res1 clusterings as autoannotated
+```{r}
+lc3 <- readRDS("processed-data/06-countsOnly_noImgData_QCed_SPE_split_to_tissSections.RDS")
+
+louvs <- readRDS("processed-data/07_featureSelection_dimred_harmony_clustering/04-Initial_louvLeid_res0.5-1-2_clusterings.RDS")
+louvs <- louvs[["HARMONYlmbna_HDG_SVG_2575"]][,.(rn,snnHARMONYlmbna_HDG_SVG_2575_louv_res1)]
+setnames(louvs,2,"clusid")
+
+autoan <- readRDS("processed-data/07_featureSelection_dimred_harmony_clustering/05b-init_clusterings_autoannoLCrapheAndGABAergic.RDS")
+autoan <- autoan[["snnHARMONYlmbna_HDG_SVG_2575_louv_res1"]]
+
+louvs <- merge.data.table(louvs,autoan,by="clusid")
+louvs <- DataFrame(louvs,row.names=louvs$rn)[colnames(lc3),]
+
+colLabels(lc3) <- louvs$autoanno
+
+## calculate log counts
+lc3 <- scater::computeLibraryFactors(lc3)
+lc3 <- scater::logNormCounts(lc3)
+
+rm(louvs,autoan)
+```
+
+## get everything matched down to 1:1 orthologs between mouse and human
+```{r}
+# library(orthogene)
+# 
+# msg <- as.data.frame(rownames(mslc))
+# rownames(msg) <- msg$V1
+# gprofiler web service was down--again-- error 301 on queries both from my machine and using JHPCE. manually queried via https://biit.cs.ut.ee/gprofiler_beta/orth
+mhorth <- fread("~/Desktop/KM Lab/Other Groups\' Published Data/Luskin Bruchas mouse periLC snseq publication RDSes/gProfiler_mmusculus_hsapiens_1-28-2025_4-42-13 PM.csv",header=T)
+## drop multimatches
+dropg <- mhorth[,.N,by="initial_alias"][N>1,initial_alias]
+mhorth <- mhorth[!(initial_alias %in% dropg)]
+
+dropg <- mhorth[,.N,by="ortholog_ensg"][N>1,ortholog_ensg]
+mhorth <- mhorth[!(ortholog_ensg %in% dropg)]
+
+## mouse genes come back all caps there so caps the mslc rownames
+rownames(mslc) <- toupper(rownames(mslc))
+
+## subset to genes whose all caps mouse symbol is in mslc and ensg is in lc3
+mhorth <- mhorth[initial_alias %in% rownames(mslc) & ortholog_ensg %in% rownames(lc3)]
+
+## subset objects accordingly
+mslc <- mslc[mhorth$initial_alias,]
+lc3 <- lc3[mhorth$ortholog_ensg,]
+
+## swap mouse LC rownames to be the HUMAN ensg ortholog. since we just reordered both objects by paired mouse-human names, we can pass ortholog_ensg directly and have the appropriate ortholog mappings.
+rownames(mslc) <- mhorth$ortholog_ensg
+```
+
+## now to figure out what factor is what...uh see this maybe? https://github.com/LieberInstitute/spatial_hpc/blob/main/code/revision/plots_nmf-general-specific.R
+
+## use rcppml::project (pretty straightforward but erik's script for posterity and the penalty parameter used) https://github.com/LieberInstitute/spatial_hpc/blob/main/code/NMF/project_nmf_patterns.R

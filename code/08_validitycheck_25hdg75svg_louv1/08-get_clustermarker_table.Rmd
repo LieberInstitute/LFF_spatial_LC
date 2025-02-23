@@ -1,0 +1,96 @@
+---
+title: "08-get_marker_table"
+author: "Bernie Mulvey"
+date: "2025-02-23"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(fig.height = 10,fig.width = 7,include = FALSE)
+#### sets tab autocompletion for directories to begin from the directory containing the .Rproj session, instead of the script's directory if different
+knitr::opts_knit$set(root.dir = here::here())
+
+library(data.table)
+
+## rstudio GUI tweaks
+require(colorout)
+ColorOut()
+options("styler.addins_style_transformer" = "biocthis::bioc_style()")
+##
+
+## last of all, unload the base package datasets, whose data keep getting in the way of autocompletions (e.g., Theoph is priortized over TRUE)
+unloadNamespace("datasets")
+```
+
+### load the RDS wherein registration wrapper-calculated markers are present for all 50-some initial clusterings, make long-form table and sasve on its own
+```{r}
+mks <- readRDS("processed-data/07_featureSelection_dimred_harmony_clustering/05a-init_nonspat_marker_tables.RDS")
+mks <- as.data.table(mks$snnHARMONYlmbna_HDG_SVG_2575_louv_res1) 
+mks[,rn:=NULL]
+
+mks <- melt.data.table(mks,id.vars=c("ensembl","gene"))
+mks[,stat:=gsub(variable,pattern="^(.*)_X.*$",replacement="\\1")]
+mks[,clus:=gsub(variable,pattern="^.*_(X.*)$",replacement="\\1")]
+mks[,variable:=NULL]
+
+mks2 <- dcast(mks,ensembl+gene+clus~stat,value.var="value")
+
+fwrite(mks2,"processed-data/08_validitycheck_25hdg75svg_louv1/08-25hdg75svg_louv1_markers.txt",sep='\t',quote=F,row.names=F)
+```
+
+reprod inf
+```{r}
+sessionInfo()
+sessioninfo::session_info()
+```
+R version 4.4.2 (2024-10-31)
+Platform: aarch64-apple-darwin20
+Running under: macOS Sonoma 14.7.1
+
+Matrix products: default
+BLAS:   /System/Library/Frameworks/Accelerate.framework/Versions/A/Frameworks/vecLib.framework/Versions/A/libBLAS.dylib 
+LAPACK: /Library/Frameworks/R.framework/Versions/4.4-arm64/Resources/lib/libRlapack.dylib;  LAPACK version 3.12.0
+
+locale:
+[1] en_US.UTF-8/en_US.UTF-8/en_US.UTF-8/C/en_US.UTF-8/en_US.UTF-8
+
+time zone: America/Chicago
+tzcode source: internal
+
+attached base packages:
+[1] stats     graphics  grDevices utils     datasets  methods   base     
+
+other attached packages:
+[1] data.table_1.16.4 rlang_1.1.4      
+
+loaded via a namespace (and not attached):
+[1] compiler_4.4.2    cli_3.6.3         tools_4.4.2       sessioninfo_1.2.2
+
+> sessioninfo::session_info()
+─ Session info ───────────────────────────────────────────────────────────────────────────────────────────────────
+ setting  value
+ version  R version 4.4.2 (2024-10-31)
+ os       macOS Sonoma 14.7.1
+ system   aarch64, darwin20
+ ui       AQUA
+ language (EN)
+ collate  en_US.UTF-8
+ ctype    en_US.UTF-8
+ tz       America/Chicago
+ date     2025-02-22
+ pandoc   NA
+
+─ Packages ───────────────────────────────────────────────────────────────────────────────────────────────────────
+ !  package     * version date (UTC) lib source
+ P  cli           3.6.3   2024-06-21 [2] CRAN (R 4.4.0)
+    data.table  * 1.16.4  2024-12-06 [1] CRAN (R 4.4.1)
+ VP rlang       * 1.1.4   2025-01-17 [2] CRAN (R 4.4.1) (on disk 1.1.5)
+    sessioninfo   1.2.2   2021-12-06 [1] CRAN (R 4.4.0)
+
+ [1] /Library/Frameworks/R.framework/Versions/4.4-arm64/Resources/library
+ [2] /Users/bmulvey/Library/R/arm64/4.4/library
+
+ V ── Loaded and on-disk version mismatch.
+ P ── Loaded and on-disk path mismatch.
+
+──────────────────────────────────────────────────────────────────────────────────────────────────────────────────
