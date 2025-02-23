@@ -187,7 +187,7 @@ htmap <- ComplexHeatmap::Heatmap(
 ### save plot; add title 
 
 # unstack the legends in illustator; ital the gene names in illustrator.
-CairoPDF("plots/08_validitycheck_25hdg75svg_louv1/topFDRmarkers_heatmap.pdf", height = 12, width = 6)
+CairoPDF("plots/08_validitycheck_25hdg75svg_louv1/08-topFDRmarkers_heatmap.pdf", height = 12, width = 6)
 
 draw(htmap,
     annotation_legend_side = "bottom",

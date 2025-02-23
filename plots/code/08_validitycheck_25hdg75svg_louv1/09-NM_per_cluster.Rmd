@@ -62,7 +62,7 @@ lc3cd[,clustersimple:=cluster]
 lc3cd[,cluster:=paste0(cluster," (",propNMspots,"% spots\n>0 NM area)")]
 
 ### histogram
-pdf("plots/08_validitycheck_25hdg75svg_louv1/08a-NMarea_per_cluster_hist.pdf",width=9,height=9)
+pdf("plots/08_validitycheck_25hdg75svg_louv1/09a-NMarea_per_cluster_hist.pdf",width=9,height=9)
 ggplot(lc3cd[Prop_NM>0],aes(x=Prop_NM))+
     geom_histogram(bins=75)+
     facet_wrap(~cluster,scales="fixed",ncol=3)
@@ -82,7 +82,7 @@ lc3cd <- merge.data.table(lc3cd,ans,by="clustersimple",all.x=T)
 lc3cd[,cluster:=paste0(clustersimple," (",propNMspots,"% spots\n>0.3% NM area)")]
 
 
-pdf("plots/08_validitycheck_25hdg75svg_louv1/08b_NMarea_per_cluster_hist_above0.003.pdf",height=9,width=9)
+pdf("plots/08_validitycheck_25hdg75svg_louv1/09b-NMarea_per_cluster_hist_above0.003.pdf",height=9,width=9)
 ggplot(lc3cd[Prop_NM>0.003],aes(x=Prop_NM))+
     geom_histogram(bins=75)+
     facet_wrap(~cluster,scales="fixed",ncol=3)
@@ -107,7 +107,7 @@ densplt <- lapply(unique(lc3cd.dens[clustersimple!="LC.1",clustersimple]),functi
 
 
 
-pdf("plots/08_validitycheck_25hdg75svg_louv1/08c_NMarea_over0.3pct_per_cluster_densityplot_LC1_vs_others.pdf",height=9,width=9)
+pdf("plots/08_validitycheck_25hdg75svg_louv1/09c-NMarea_over0.3pct_per_cluster_densityplot_LC1_vs_others.pdf",height=9,width=9)
 do.call("grid.arrange",c(densplt,ncol=3))
 dev.off()
 
