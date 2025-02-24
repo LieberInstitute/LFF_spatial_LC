@@ -58,16 +58,16 @@ dgels <- lapply(dgels,FUN=function(d){
 
 
 
-append ±1MB apoe haplotype-level local ancestry estimates; to get a single locus measure (since we don't have phased seq data), set to 0 for E4 negative donors (interaction effect automatically is then 0), the E4 haplotype local ancestry for hets, and sum of local ancestries for homozygotes.
+append ±1MB apoe haplotype-level local ancestry estimates; to get a single locus measure (since we don't have phased seq data), set to 0 for E4 negative donors (interaction effect automatically is then 0), the E4 haplotype local ancestry for hets, and sum of local ancestries for homozygotes. the ancestries are proportion YRI; so to get the CEU (for consistency with other DE analyses) flip to 1-estimate first.
 
 ```{r}
 la <- fread("raw-data/ancestryAndHaplotypes/FLARE/apoe_haplotypes_w_localYRI_est.txt")
 
 ## 0 out non-E4 donors
 la[hap1gt!="E4"&hap2gt!="E4",E4LA:=0]
-la[hap1gt=="E4"&hap2gt!="E4",E4LA:=apoe_hap1_estPropYRI]
-la[hap1gt!="E4"&hap2gt=="E4",E4LA:=apoe_hap2_estPropYRI]
-la[hap1gt=="E4"&hap2gt=="E4",E4LA:=apoe_hap1_estPropYRI+apoe_hap2_estPropYRI]
+la[hap1gt=="E4"&hap2gt!="E4",E4LA:=1-apoe_hap1_estPropYRI]
+la[hap1gt!="E4"&hap2gt=="E4",E4LA:=1-apoe_hap2_estPropYRI]
+la[hap1gt=="E4"&hap2gt=="E4",E4LA:=(1-apoe_hap1_estPropYRI)+(1-apoe_hap2_estPropYRI)]
 
 la[,e4copies:=apply(.SD,MARGIN=1,FUN=function(x){sum(x=="E4")}),.SDcols=c("hap1gt","hap2gt")]
 
@@ -95,8 +95,8 @@ dgels <- lapply(dgels,FUN=function(d){
     tmpsamp <- as.data.frame(tmpsamp,row.names=tmpsamp$rn)[rownames(d$samples),]
     tmpsamp$rn <- NULL
     d$samples <- tmpsamp
-    #use YRI for global ancestry x2 for consistency w/ the local ancestry estimates and ranges
-    d$samples$YRI <- d$samples$YRI*2
+    #use CEU for global ancestry, take x2 for consistency w/ the local ancestry estimates and ranges
+    d$samples$CEU <- d$samples$CEU*2
     return(d)
 })
 ```
@@ -114,7 +114,7 @@ fulldgelres.norin <- parallel::clusterApply(x=dgels,cl = clus,fun=function(X){
     # prevent resource competition, though we aren't explicitly using DT at all here:
 
     dge <- X
-    des <- model.matrix(~0+e4copies*E4LA+Sex+YRI+Age, data = dge$samples)
+    des <- model.matrix(~0+e4copies*E4LA+Sex+CEU+Age, data = dge$samples)
     # make the interaction factor passable to limma by changing the name
     colnames(des)[colnames(des)=="e4copies:E4LA"] <- "e4copies_by_LA"
     
@@ -151,7 +151,7 @@ fulldgelres.rin <- parallel::clusterApply(x=dgels,cl = clus,fun=function(X){
     # prevent resource competition, though we aren't explicitly using DT at all here:
 
     dge <- X
-    des <- model.matrix(~0+e4copies*E4LA+Sex+YRI+Age+Rin, data = dge$samples)
+    des <- model.matrix(~0+e4copies*E4LA+Sex+CEU+Age+Rin, data = dge$samples)
     colnames(des)[colnames(des)=="e4copies:E4LA"] <- "e4copies_by_LA"
 
     # INITIALIZE the voomwithqualityweights model, equivalent to pseudobulkDGE(method="voom",qualities=T)
