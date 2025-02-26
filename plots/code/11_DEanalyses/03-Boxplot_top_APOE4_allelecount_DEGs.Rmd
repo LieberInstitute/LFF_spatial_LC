@@ -1,7 +1,7 @@
 ---
 title: "03-Boxplot_top_APOE4_allelecount_DEGs"
 author: "Bernie Mulvey"
-date: "2025-02-16"
+date: "2025-02-26"
 output: html_document
 ---
 
@@ -46,16 +46,16 @@ load the tabulations of number of DE models wherein a gene hits as DE for APOE4 
 ```{r}
 # number of signif models tabulations
 dgehittabs <- list()
-dgehittabs[[1]] <- fread("processed-data/11_DEanalyses/03b-E4alleleCount_DE_FDRunder0.2_byGene_byNmodelsOf4max_byCluster.txt")
-dgehittabs[[2]] <- fread("processed-data/11_DEanalyses/03c-E4alleleCount_DE_unadjP.05_byGene_byNmodelsOf4max_byCluster.txt")
-dgehittabs[[3]] <- fread("processed-data/11_DEanalyses/03d-Sex_DE_E4alleleCountCovar_FDRunder0.2_byGene_byNmodelsOf4max_byCluster.txt")
-dgehittabs[[4]] <- fread("processed-data/11_DEanalyses/03e-Sex_DE_E4alleleCountCovar_unadjP.05_byGene_byNmodelsOf4max_byCluster.txt")
+dgehittabs[[1]] <- fread("processed-data/11_DEanalyses/03b-E4alleleCount_DE_FDRunder0.2_byGene_byNmodelsOf4max_byCluster_10spotmin.txt")
+dgehittabs[[2]] <- fread("processed-data/11_DEanalyses/03c-E4alleleCount_DE_unadjP.05_byGene_byNmodelsOf4max_byCluster_10spotmin.txt")
+dgehittabs[[3]] <- fread("processed-data/11_DEanalyses/03d-Sex_DE_E4alleleCountCovar_FDRunder0.2_byGene_byNmodelsOf4max_byCluster_10spotmin.txt")
+dgehittabs[[4]] <- fread("processed-data/11_DEanalyses/03e-Sex_DE_E4alleleCountCovar_unadjP.05_byGene_byNmodelsOf4max_byCluster_10spotmin.txt")
 
 names(dgehittabs) <- c("E4count_FDRpt2","E4count_nom","sex_FDRpt2","sex_nom")
 
 ### DGEList objects as used for the DE testing ###
 
-dgels <- readRDS("processed-data/11_DEanalyses/01-DGElist_per_25HDG75SVGlouv1_cluster_normFilt.RDS")
+dgels <- readRDS("processed-data/11_DEanalyses/01a-DGElist_per_25HDG75SVGlouv1_cluster_normFilt_10spotmin.RDS")
 
 # append global genetic ancestry proportion estimates, which we used as a covar in some models (FLARE, 3-component CEU ancestry--the other two being YRI and CHB). this source file is intentionally not included in in github but is on JHPCE. just in case we want to make plots by ancestry prop
 
@@ -113,7 +113,7 @@ gc(full=T)
 ```{r}
 # nrow(unique(dgehittabs$E4count_FDRpt2[Nsigmodels_forCluster>=3,.(gene_name,louvCluster)]))
 # nrow(unique(dgehittabs$E4count_FDRpt2[Nsigmodels_forCluster==4,.(gene_name,louvCluster)]))
-# 51 gene-cluster pairs that were FDR<0.2 in 3+ models for e4 de; 25 that were FDR<0.2 in all 4 models
+# 55 gene-cluster pairs that were FDR<0.2 in 3+ models for e4 de; 30 that were FDR<0.2 in all 4 models
 apofg <- unique(dgehittabs$E4count_FDRpt2[Nsigmodels_forCluster>=3,.(gene_name,louvCluster,Nsigmodels_forCluster)])
 
 setDTthreads(1,restore_after_fork=FALSE)
@@ -141,7 +141,7 @@ dev.off()
 ### do the same for sex, except limit to 4/4 models and LFC 0.75+.
 # load the DE result object to get the log2FC values
 ```{r}
-deres <- readRDS("processed-data/11_DEanalyses/03a-E4andSexDE_with_e4alleleCountModel_toptabs_testsWithandWithout_RINandorAncestry.RDS")
+deres <- readRDS("processed-data/11_DEanalyses/03a-E4andSexDE_with_e4alleleCountModel_toptabs_testsWithandWithout_RINandorAncestry_10spotmin.RDS")
 
 # get genes passing the log2FC threshold
 hilfc <- lapply(deres,FUN=function(x){
@@ -156,7 +156,7 @@ hilfc <- lapply(deres,FUN=function(x){
 hilfc <- unique(unlist(hilfc)) # this gives us a gene that had logFC 0.75 in any model, which is sufficient for this purpose. this is 514 genes total.
 
 # nrow(unique(dgehittabs$sex_FDRpt2[Nsigmodels_forCluster==4 &gene_name %in% hilfc,.(gene_name,louvCluster)]))
-# 549 genes-cluster pairs, and we don't have to drop any clusters.
+# 553 genes-cluster pairs, and we don't have to drop any clusters.
 
 sexfg <- unique(
     dgehittabs$sex_FDRpt2[Nsigmodels_forCluster==4 & gene_name %in% hilfc,
@@ -243,7 +243,7 @@ loaded via a namespace (and not attached):
  collate  en_US.UTF-8
  ctype    en_US.UTF-8
  tz       America/Chicago
- date     2025-02-16
+ date     2025-02-26
  rstudio  2024.07.0-daily+219 Cranberry Hibiscus (desktop)
  pandoc   3.1.11 @ /Applications/RStudio.app/Contents/Resources/app/quarto/bin/tools/aarch64/ (via rmarkdown)
 
