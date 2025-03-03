@@ -30,7 +30,7 @@ options("styler.addins_style_transformer" = "biocthis::bioc_style()")
 unloadNamespace("datasets")
 ```
 
-## load luskin preprint Seurat object with all cells, convert to SCE
+## load luskin preprint Seurat object with all cells (obtained by request from authors), convert to SCE
 ```{r}
 mslc <- readRDS("/Users/bmulvey/Desktop/KM Lab/Other Groups' Published Data/Luskin Bruchas mouse periLC snseq publication RDSes/LC_integrated_allcells.rds")
 
@@ -537,7 +537,7 @@ nmf.w.rn <- rownames(mslc)
 # msg <- as.data.frame(rownames(mslc))
 # rownames(msg) <- msg$V1
 # gprofiler web service was down--again-- error 301 on queries both from my machine and using JHPCE. manually queried via https://biit.cs.ut.ee/gprofiler_beta/orth
-mhorth <- fread("~/Desktop/KM Lab/Other Groups\' Published Data/Luskin Bruchas mouse periLC snseq publication RDSes/gProfiler_mmusculus_hsapiens_1-28-2025_4-42-13 PM.csv",header=T)
+mhorth <- fread("raw-data/ref_data/gProfiler_mmusculus_hsapiens_1-28-2025_4-42-13 PM.csv",header=T)
 ## drop multimatches
 dropg <- mhorth[,.N,by="initial_alias"][N>1,initial_alias]
 mhorth <- mhorth[!(initial_alias %in% dropg)]

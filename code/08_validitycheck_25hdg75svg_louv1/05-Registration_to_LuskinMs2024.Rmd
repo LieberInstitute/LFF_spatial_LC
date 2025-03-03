@@ -111,7 +111,7 @@ colLabels(lff) <- louvs$autoanno
 ```{r}
 ## map mouse genes in lcareg to human orthologs
 # gprofiler web service is down -- error 301 on queries both from my machine and using JHPCE. manually queried via https://biit.cs.ut.ee/gprofiler_beta/orth
-mhorth <- fread("~/Desktop/KM Lab/Other Groups\' Published Data/Luskin Bruchas mouse periLC snseq publication RDSes/gProfiler_mmusculus_hsapiens_1-28-2025_4-42-13 PM.csv",header=T)
+mhorth <- fread("raw-data/ref_data/gProfiler_mmusculus_hsapiens_1-28-2025_4-42-13 PM.csv",header=T)
 
 # ^ this converted the mouse symbols supplied ("initial") to all caps so convert lca accordingly
 ## need some rowdata, which there isn't--just symbols as the rownames.

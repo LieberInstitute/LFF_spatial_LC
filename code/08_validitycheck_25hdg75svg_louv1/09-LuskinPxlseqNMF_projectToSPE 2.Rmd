@@ -1,0 +1,513 @@
+---
+title: "09-LuskinPixelSeqNMF_projectToSPE"
+author: "Bernie Mulvey"
+date: "2025-02-23"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(fig.height = 10,fig.width = 7,include = FALSE)
+#### sets tab autocompletion for directories to begin from the directory containing the .Rproj session, instead of the script's directory if different
+knitr::opts_knit$set(root.dir = here::here())
+
+library(data.table)
+library(RcppML)
+library(SpatialExperiment)
+library(Matrix) # otherwise rcppml gives error 'no item called "package:Matrix" on the search list'
+library(dplyr)
+library(ggplot2)
+# library(SpatialFeatureExperiment)
+
+## rstudio GUI tweaks
+require(colorout)
+ColorOut()
+options("styler.addins_style_transformer" = "biocthis::bioc_style()")
+##
+
+## last of all, unload the base package datasets, whose data keep getting in the way of autocompletions (e.g., Theoph is priortized over TRUE)
+unloadNamespace("datasets")
+```
+
+## load luskin preprint pixelseq data already converted to SPE from seurat (see code/Xenium_prioritization for info on source files)
+```{r}
+mslc <- readRDS("processed-data/Xenium_prioritization/06c-Luskin_pixelseq_spe.RDS")
+
+## we unfortunately don't have any info on what the 29 clusters in this dataset are. marker analyses indicated X3 and X21 were DBH-enriched clusters however.
+mslc$ident <- paste0("X",mslc$ident)
+```
+
+## run NMF using Erik Nelson's final parameter set for single cell - (100 factors, tol 1e-6, 1k max iters, L1 penalty 0.1, diag = T) https://github.com/LieberInstitute/spatial_hpc/blob/main/snRNAseq_hpc/code/nmf/nmf.R
+```{r}
+setRcppMLthreads(8)
+setDTthreads(1,restore_after_fork = FALSE)
+
+mslc.nmf <-RcppML::nmf(assay(mslc,'logcounts'),
+    k=100,
+    tol = 1e-06,
+    maxit = 1000,
+    verbose = T,
+    L1 = 0.1,
+    seed = 42,
+    mask_zeros = FALSE,
+    diag = TRUE,
+    nonneg = TRUE
+)
+```
+ 
+# append cell patterns (h, 100 row x ngene col matrix) to spe 
+```{r}
+th <- t(mslc.nmf$h)
+colData(mslc)<-cbind(colData(mslc),th)
+
+saveRDS(mslc.nmf,"processed-data/08_validitycheck_25hdg75svg_louv1/09a-LuskinMsPixelSeq2024_nmf100_out.RDS")
+saveRDS(mslc,"processed-data/08_validitycheck_25hdg75svg_louv1/09b-LuskinMsPixelSeq2024_spe_w_nmf100.RDS")
+```
+
+## now to figure out what factor is what in the source data. see jacqui's code at https://github.com/LieberInstitute/spatial_hpc/blob/main/code/revision/plots_nmf-general-specific.R
+```{r}
+seed1 = as.matrix(colData(mslc)[,paste0("V",1:100)])
+seed1 = seed1>0
+d1 = cbind.data.frame(authlabel=as.data.frame(colData(mslc))[,"ident"],
+                      seed1) %>% 
+  group_by(authlabel) %>% add_tally(name="total") %>%
+    group_by(authlabel, total) %>%
+  summarise_at(paste0("V",1:100), sum) %>%
+  tidyr::pivot_longer(paste0("V",1:100), values_to="n", names_to="nmf") %>%
+  mutate(prop=n/total)
+
+seed2 = as.matrix(colData(mslc)[,paste0("V",1:100)])
+seed2 = apply(seed2, 2, scale)
+d2 = cbind.data.frame(authlabel=as.data.frame(colData(mslc))[,"ident"],
+                      seed2) %>% 
+  group_by(authlabel) %>%
+  summarise_at(paste0("V",1:100), mean) %>% 
+  tidyr::pivot_longer(paste0("V",1:100), values_to="scaled.avg", names_to="nmf")
+
+pltdat <- left_join(d1[,c("authlabel","nmf","prop")], 
+                   d2[,c("authlabel","nmf","scaled.avg")])
+
+nmford <- c("V6",
+            "V11","V62", "V92", "V93", "V99",
+            "V66",
+            "V10",
+            "V37",
+            "V97","V98",
+            "V27","V28","V5","V8",
+            "V12",
+            "V1",
+            "V7",
+            "V51",
+            "V84",
+            "V24",
+            "V85",
+            "V14","V19","V9",
+            "V81",
+            "V23")
+
+authlabelord <- rev(c("X24","X1",
+                    "X11",
+                    "X12",
+                    "X13",
+                    "X21",
+                    "X14",
+                    "X16",
+                    "X17",
+                    "X15",
+                    "X2",
+                    "X4",
+                    "X3",
+                    "X22",
+                    "X25",
+                    "X28",
+                    "X5",
+                    "X7",
+                    "X8",
+                    "X9"))
+
+## make sure no repeats
+# stopifnot(length(nmford)!=length(unique(nmford)))
+
+nmfmisc <- paste0("V",c(1:100))
+nmford <- c(nmford,nmfmisc[!(nmfmisc %in% nmford)])
+
+
+## make sure all auth labels accounted for
+stopifnot(all(unique(mslc$ident) %in% authlabelord))
+labmisc <- paste0("X",c(0:28))
+authlabelord <- c(authlabelord,labmisc[!(labmisc %in% authlabelord)])
+stopifnot(all(unique(mslc$ident) %in% authlabelord))
+
+# data table-ize for ease of use -- jacqui's uses dplyr
+pltdat <- as.data.table(pltdat)
+
+pltdat[,authlabel:=factor(authlabel,levels=authlabelord)]
+pltdat[,nmf:=factor(nmf,levels=nmford)]
+
+
+## save plot
+png("plots/08_validitycheck_25hdg75svg_louv1/09a-msLCpixelseq_NMF100_scaledAvgs_and_props_by_msCluster.png",height=1000,width=1600)
+ggplot(pltdat, aes(x=nmf, y=authlabel, size=prop, color=scaled.avg))+
+  geom_count()+
+  theme_bw()+
+  scale_size(range=c(0,3))+
+  scale_color_viridis_c(option="F", direction=-1)+
+  labs(x="NMF Factor",y="Luskin Bruchas Pixelseq Label")+
+  theme(axis.text.x=element_text(angle=90,hjust=1,vjust=.5,size=10),
+        axis.text.y=element_text(size=10),
+        axis.title.x=element_text(size=12),
+        axis.title.y=element_text(size=12))
+dev.off()
+```
+
+## clean up
+```{r}
+rm(d1,d2,seed1,seed2,authlabelord,nmfmisc,pltdat)
+gc(full=T)
+```
+
+
+##############################################################
+###### PART 2: Project mouse single cell into LFF SPE ########
+##############################################################
+
+## load SPE and assign hdg_svg_2575_louv_res1 clusterings as annotated
+```{r}
+lc3 <- readRDS("processed-data/06-countsOnly_noImgData_QCed_SPE_split_to_tissSections.RDS")
+
+louvs <- readRDS("processed-data/07_featureSelection_dimred_harmony_clustering/04-Initial_louvLeid_res0.5-1-2_clusterings.RDS")
+louvs <- louvs[["HARMONYlmbna_HDG_SVG_2575"]][,.(rn,snnHARMONYlmbna_HDG_SVG_2575_louv_res1)]
+setnames(louvs,2,"clusid")
+
+anno <- fread("processed-data/08_validitycheck_25hdg75svg_louv1/10-25hdg75svg_louv1_annots.txt")
+
+louvs <- merge.data.table(louvs,anno,by="clusid")
+louvs <- DataFrame(louvs,row.names=louvs$rn)[colnames(lc3),]
+
+colLabels(lc3) <- louvs$anno
+
+## calculate log counts (needed for nmf projection)
+lc3 <- scater::computeLibraryFactors(lc3)
+lc3 <- scater::logNormCounts(lc3)
+
+rm(louvs,anno)
+```
+
+
+## get everything matched down to 1:1 orthologs between mouse and human. note that, contrary to erik's code cited below, there are NOT rownames on the NMF output w matrix, so we need to keep the pre-filtered rownames of the sce to know what the rows of the w matrix correspond to.
+```{r}
+nmf.w.rn <- rownames(mslc)
+
+# library(orthogene)
+# 
+# msg <- as.data.frame(rownames(mslc))
+# rownames(msg) <- msg$V1
+# gprofiler web service was down--again-- error 301 on queries both from my machine and using JHPCE. manually queried via https://biit.cs.ut.ee/gprofiler_beta/orth
+mhorth <- fread("raw-data/ref_data/gProfiler_mmusculus_hsapiens_1-28-2025_4-42-13 PM.csv",header=T)
+## drop multimatches
+dropg <- mhorth[,.N,by="initial_alias"][N>1,initial_alias]
+mhorth <- mhorth[!(initial_alias %in% dropg)]
+
+dropg <- mhorth[,.N,by="ortholog_ensg"][N>1,ortholog_ensg]
+mhorth <- mhorth[!(ortholog_ensg %in% dropg)]
+
+## mouse genes come back all caps there so caps the mslc rownames (and w mat rn vector)
+rownames(mslc) <- toupper(rownames(mslc))
+nmf.w.rn <- toupper(nmf.w.rn)
+
+## subset to genes whose all caps mouse symbol is in mslc and ensg is in lc3
+mhorth <- mhorth[initial_alias %in% rownames(mslc) & ortholog_ensg %in% rownames(lc3)]
+
+## subset SCE, SPE, w rowname vector, and w accordingly
+nmf.w.keeprows <- which(nmf.w.rn %in% mhorth$initial_alias)
+orthw <- mslc.nmf$w[nmf.w.keeprows,]
+
+mslc <- mslc[mhorth$initial_alias,]
+lc3 <- lc3[mhorth$ortholog_ensg,]
+
+stopifnot(nrow(orthw)==nrow(mslc))
+## swap mouse LC rownames to be the HUMAN ensg ortholog. since we just reordered both objects by paired mouse-human names, we can pass ortholog_ensg directly and have the appropriate ortholog mappings.
+# rownames(mslc) <- mhorth$ortholog_ensg
+
+## clean up
+rm(tmprn,dropg,nmf.w.keeprows,nmf.w.rn)
+gc(full=T)
+```
+
+## use rcppml::project (pretty straightforward but erik's script for posterity and the L2 parameter used). Actually, there is no L2 parameter argument here so idk wtf. also, the argument order has changed for project relative to this code, i think. nonetheless:
+https://github.com/LieberInstitute/spatial_hpc/blob/main/code/NMF/project_nmf_patterns.R
+
+Note that Erik's code implies there are rownames on the nmf w matrix, which there aren't. so we also need to re-load the full mouse SPE to determine which genes were there to start with (i.e. are the rows of the w matrix) and which remained after ortholog filtering above.
+```{r}
+set.seed(42)
+msprojinto.lff <- RcppML::project(A=logcounts(lc3),w=orthw)#,L2=0.00005)
+msprojinto.lff <- t(msprojinto.lff)
+
+stopifnot(nrow(msprojinto.lff)==ncol(lc3))
+rownames(msprojinto.lff) <- colnames(lc3)
+colnames(msprojinto.lff) <- paste0("V",c(1:100))
+saveRDS(msprojinto.lff,"processed-data/08_validitycheck_25hdg75svg_louv1/09c-LuskinPixelSeq2024_nmf100_projected_into_LFF_SPE_mat.RDS")
+
+## append loadings to SPE, only for those factors that were cell type specific in the mouse data, and in the same order for cross-data labeling convenience
+colData(lc3) <- cbind(colData(lc3),msprojinto.lff[,c("V10",
+                                                     "V1",
+                                                     "V6",
+            "V11","V62", "V92", "V93", "V99",
+            "V66",
+            "V37",
+            "V97","V98",
+            "V27","V28","V5","V8",
+            "V12",
+            "V7",
+            "V51",
+            "V84",
+            "V24",
+            "V85",
+            "V14","V19","V9",
+            "V81",
+            "V23")])
+
+## make a ms factor- ms cluster name for readability
+
+usefulname <- c("V10_DBH1,X13",
+"V1_DBH1, DBH2, X4",
+"V6_X1, X24",
+"V11_X11",
+"V62_X11",
+"V92_X11",
+"V93_X11",
+"V99_X11",
+"V66_X12",
+"V37_X14",
+"V97_X16",
+"V98_X16",
+"V27_X17",
+"V28_X17",
+"V5_X17",
+"V8_X17",
+"V12_X15, X2",
+"V7_X22",
+"V51_X25",
+"V84_X28",
+"V24_X3",
+"V85_X5",
+"V14_X7",
+"V19_X7",
+"V9_X7",
+"V81_X8",
+"V23_X7, X9")
+
+colnames(colData(lc3))[c(40:ncol(colData(lc3)))] <- usefulname
+```
+
+## back to jacqui's plotting code linked above: https://github.com/LieberInstitute/spatial_hpc/blob/main/code/revision/plots_nmf-general-specific.R 
+```{r}
+seed3 = as.matrix(colData(lc3)[,usefulname])
+seed3 = seed3>0
+d3 = cbind.data.frame(LFFclust=as.data.frame(colData(lc3))[,"label"],
+                      seed3) %>% 
+  group_by(LFFclust) %>% add_tally(name="total") %>%
+  group_by(LFFclust, total) %>%
+  summarise_at(usefulname, sum) %>%
+  tidyr::pivot_longer(usefulname, values_to="n", names_to="nmf") %>%
+  mutate(prop=n/total)
+
+seed4 = as.matrix(colData(lc3)[,usefulname])
+seed4 = apply(seed4, 2, scale)
+d4 = cbind.data.frame(LFFclust=as.data.frame(colData(lc3))[,"label"],
+                      seed4) %>% 
+  group_by(LFFclust) %>%
+  summarise_at(usefulname, mean) %>% 
+  tidyr::pivot_longer(usefulname, values_to="scaled.avg", names_to="nmf")
+
+
+pltdat <- left_join(d3[,c("LFFclust","nmf","prop")], 
+                    d4[,c("LFFclust","nmf","scaled.avg")])
+
+# to d.t.
+pltdat <- as.data.table(pltdat)
+pltdat[,nmf:=factor(nmf,usefulname)]
+
+pltdat[,LFFclust:=factor(LFFclust,rev(c("LC.1","ACHE_SERT_SLC17A6_Npeps","ACHE_SERT_SLC17A6_ADCYAP1","Astro_1","Astro_2_APOE","Oligo_1","Oligo_2","Oligo_3","Vascular")))]
+
+png("plots/08_validitycheck_25hdg75svg_louv1/09b-LuskinPixelseq2024_clusspecNMFs_into_LFFSPE_scaledAvgs_and_props_by_LFFCluster.png",height=750,width=1000)
+ggplot(pltdat, aes(x=nmf, y=LFFclust, size=prop, color=scaled.avg))+
+  geom_count()+
+  theme_bw()+
+  scale_size(range=c(0,3))+
+  scale_color_viridis_c(option="F", direction=-1)+
+  labs(x="Mouse LC NMF Factor and Corresp Cluster",y="LFF Cluster")+
+  theme(axis.text.x=element_text(angle=90,hjust=1,vjust=.5,size=10),
+        axis.text.y=element_text(size=10),
+        axis.title.x=element_text(size=12),
+        axis.title.y=element_text(size=12))
+dev.off()
+```
+
+## well THAT's disappointing.
+
+reprod inf
+```{r}
+sessionInfo()
+sessioninfo::session_info()
+```
+R version 4.4.2 (2024-10-31)
+Platform: aarch64-apple-darwin20
+Running under: macOS Sonoma 14.7.1
+
+Matrix products: default
+BLAS:   /System/Library/Frameworks/Accelerate.framework/Versions/A/Frameworks/vecLib.framework/Versions/A/libBLAS.dylib 
+LAPACK: /Library/Frameworks/R.framework/Versions/4.4-arm64/Resources/lib/libRlapack.dylib;  LAPACK version 3.12.0
+
+locale:
+[1] en_US.UTF-8/en_US.UTF-8/en_US.UTF-8/C/en_US.UTF-8/en_US.UTF-8
+
+time zone: America/Chicago
+tzcode source: internal
+
+attached base packages:
+[1] stats4    stats     graphics  grDevices utils     methods   base     
+
+other attached packages:
+ [1] colorout_1.3-0.2            ggplot2_3.5.1              
+ [3] dplyr_1.1.4                 Matrix_1.7-1               
+ [5] SpatialExperiment_1.16.0    SingleCellExperiment_1.28.1
+ [7] SummarizedExperiment_1.36.0 Biobase_2.66.0             
+ [9] GenomicRanges_1.58.0        GenomeInfoDb_1.42.1        
+[11] IRanges_2.40.1              S4Vectors_0.44.0           
+[13] BiocGenerics_0.52.0         MatrixGenerics_1.18.0      
+[15] matrixStats_1.5.0           RcppML_0.3.7               
+[17] data.table_1.16.4           rlang_1.1.4                
+
+loaded via a namespace (and not attached):
+ [1] tidyselect_1.2.1        viridisLite_0.4.2       vipor_0.4.7            
+ [4] farver_2.1.2            viridis_0.6.5           fastmap_1.2.0          
+ [7] digest_0.6.37           rsvd_1.0.5              lifecycle_1.0.4        
+[10] magrittr_2.0.3          compiler_4.4.2          tools_4.4.2            
+[13] utf8_1.2.4              yaml_2.3.10             knitr_1.49             
+[16] S4Arrays_1.6.0          labeling_0.4.3          here_1.0.1             
+[19] DelayedArray_0.32.0     abind_1.4-8             BiocParallel_1.40.0    
+[22] withr_3.0.2             purrr_1.0.2             grid_4.4.2             
+[25] beachmat_2.22.0         colorspace_2.1-1        scales_1.3.0           
+[28] cli_3.6.3               rmarkdown_2.29          crayon_1.5.3           
+[31] generics_0.1.3          rstudioapi_0.17.1       httr_1.4.7             
+[34] rjson_0.2.23            scuttle_1.16.0          ggbeeswarm_0.7.2       
+[37] zlibbioc_1.52.0         parallel_4.4.2          BiocManager_1.30.25    
+[40] XVector_0.46.0          vctrs_0.6.5             jsonlite_1.8.9         
+[43] BiocSingular_1.22.0     BiocNeighbors_2.0.1     ggrepel_0.9.6          
+[46] irlba_2.3.5.1           beeswarm_0.4.0          scater_1.34.0          
+[49] magick_2.8.5            tidyr_1.3.1             glue_1.8.0             
+[52] codetools_0.2-20        gtable_0.3.6            UCSC.utils_1.2.0       
+[55] ScaledMatrix_1.14.0     munsell_0.5.1           tibble_3.2.1           
+[58] pillar_1.10.1           htmltools_0.5.8.1       GenomeInfoDbData_1.2.13
+[61] R6_2.5.1                rprojroot_2.0.4         evaluate_1.0.3         
+[64] lattice_0.22-6          Rcpp_1.0.14             gridExtra_2.3          
+[67] SparseArray_1.6.0       xfun_0.50               pkgconfig_2.0.3        
+> sessioninfo::session_info()
+─ Session info ─────────────────────────────────────────────────────────────────────
+ setting  value
+ version  R version 4.4.2 (2024-10-31)
+ os       macOS Sonoma 14.7.1
+ system   aarch64, darwin20
+ ui       RStudio
+ language (EN)
+ collate  en_US.UTF-8
+ ctype    en_US.UTF-8
+ tz       America/Chicago
+ date     2025-03-03
+ rstudio  2024.07.0-daily+219 Cranberry Hibiscus (desktop)
+ pandoc   3.1.11 @ /Applications/RStudio.app/Contents/Resources/app/quarto/bin/tools/aarch64/ (via rmarkdown)
+
+─ Packages ─────────────────────────────────────────────────────────────────────────
+ !  package              * version date (UTC) lib source
+    abind                  1.4-8   2024-09-12 [1] CRAN (R 4.4.1)
+    beachmat               2.22.0  2024-11-08 [1] Bioconductor 3.20 (R 4.4.1)
+    beeswarm               0.4.0   2021-06-01 [1] CRAN (R 4.4.0)
+    Biobase              * 2.66.0  2024-11-08 [1] Bioconductor 3.20 (R 4.4.1)
+    BiocGenerics         * 0.52.0  2024-11-08 [1] Bioconductor 3.20 (R 4.4.1)
+    BiocManager            1.30.25 2024-08-28 [1] CRAN (R 4.4.1)
+    BiocNeighbors          2.0.1   2024-11-28 [1] Bioconductor 3.20 (R 4.4.2)
+    BiocParallel           1.40.0  2024-11-23 [1] Bioconductor 3.20 (R 4.4.2)
+    BiocSingular           1.22.0  2024-11-08 [1] Bioconductor 3.20 (R 4.4.1)
+ P  cli                    3.6.3   2024-06-21 [2] CRAN (R 4.4.0)
+    codetools              0.2-20  2024-03-31 [1] CRAN (R 4.4.2)
+    colorout             * 1.3-0.2 2024-05-01 [1] Github (jalvesaq/colorout@c6113a2)
+    colorspace             2.1-1   2024-07-26 [1] CRAN (R 4.4.0)
+    crayon                 1.5.3   2024-06-20 [1] CRAN (R 4.4.0)
+    data.table           * 1.16.4  2024-12-06 [1] CRAN (R 4.4.1)
+    DelayedArray           0.32.0  2024-11-08 [1] Bioconductor 3.20 (R 4.4.1)
+    digest                 0.6.37  2024-08-19 [1] CRAN (R 4.4.1)
+    dplyr                * 1.1.4   2023-11-17 [1] CRAN (R 4.4.0)
+    evaluate               1.0.3   2025-01-10 [1] CRAN (R 4.4.1)
+    farver                 2.1.2   2024-05-13 [1] CRAN (R 4.4.0)
+    fastmap                1.2.0   2024-05-15 [1] CRAN (R 4.4.0)
+    generics               0.1.3   2022-07-05 [1] CRAN (R 4.4.0)
+    GenomeInfoDb         * 1.42.1  2024-11-28 [1] Bioconductor 3.20 (R 4.4.2)
+    GenomeInfoDbData       1.2.13  2024-12-12 [1] Bioconductor
+    GenomicRanges        * 1.58.0  2024-11-08 [1] Bioconductor 3.20 (R 4.4.1)
+    ggbeeswarm             0.7.2   2023-04-29 [1] CRAN (R 4.4.0)
+    ggplot2              * 3.5.1   2024-04-23 [1] CRAN (R 4.4.0)
+    ggrepel                0.9.6   2024-09-07 [1] CRAN (R 4.4.1)
+    glue                   1.8.0   2024-09-30 [1] CRAN (R 4.4.1)
+    gridExtra              2.3     2017-09-09 [1] CRAN (R 4.4.0)
+    gtable                 0.3.6   2024-10-25 [1] CRAN (R 4.4.1)
+    here                   1.0.1   2020-12-13 [1] CRAN (R 4.4.0)
+    htmltools              0.5.8.1 2024-04-04 [1] CRAN (R 4.4.0)
+    httr                   1.4.7   2023-08-15 [1] CRAN (R 4.4.0)
+    IRanges              * 2.40.1  2024-12-05 [1] Bioconductor 3.20 (R 4.4.2)
+    irlba                  2.3.5.1 2022-10-03 [1] CRAN (R 4.4.0)
+    jsonlite               1.8.9   2024-09-20 [1] CRAN (R 4.4.1)
+    knitr                  1.49    2024-11-08 [1] CRAN (R 4.4.1)
+    labeling               0.4.3   2023-08-29 [1] CRAN (R 4.4.0)
+    lattice                0.22-6  2024-03-20 [1] CRAN (R 4.4.2)
+    lifecycle              1.0.4   2023-11-07 [1] CRAN (R 4.4.0)
+    magick                 2.8.5   2024-09-20 [1] CRAN (R 4.4.1)
+    magrittr               2.0.3   2022-03-30 [1] CRAN (R 4.4.0)
+    Matrix               * 1.7-1   2024-10-18 [1] CRAN (R 4.4.2)
+    MatrixGenerics       * 1.18.0  2024-11-08 [1] Bioconductor 3.20 (R 4.4.1)
+    matrixStats          * 1.5.0   2025-01-07 [1] CRAN (R 4.4.1)
+    munsell                0.5.1   2024-04-01 [1] CRAN (R 4.4.0)
+    pillar                 1.10.1  2025-01-07 [1] CRAN (R 4.4.1)
+    pkgconfig              2.0.3   2019-09-22 [1] CRAN (R 4.4.0)
+    purrr                  1.0.2   2023-08-10 [1] CRAN (R 4.4.0)
+    R6                     2.5.1   2021-08-19 [1] CRAN (R 4.4.0)
+    Rcpp                   1.0.14  2025-01-12 [1] CRAN (R 4.4.2)
+    RcppML               * 0.3.7   2021-09-21 [1] CRAN (R 4.4.2)
+    rjson                  0.2.23  2024-09-16 [1] CRAN (R 4.4.1)
+ VP rlang                * 1.1.4   2025-01-17 [2] CRAN (R 4.4.1) (on disk 1.1.5)
+    rmarkdown              2.29    2024-11-04 [1] CRAN (R 4.4.1)
+    rprojroot              2.0.4   2023-11-05 [1] CRAN (R 4.4.0)
+    rstudioapi             0.17.1  2024-10-22 [1] CRAN (R 4.4.1)
+    rsvd                   1.0.5   2021-04-16 [1] CRAN (R 4.4.0)
+    S4Arrays               1.6.0   2024-11-08 [1] Bioconductor 3.20 (R 4.4.1)
+    S4Vectors            * 0.44.0  2024-11-08 [1] Bioconductor 3.20 (R 4.4.1)
+    ScaledMatrix           1.14.0  2024-11-08 [1] Bioconductor 3.20 (R 4.4.1)
+    scales                 1.3.0   2023-11-28 [1] CRAN (R 4.4.0)
+    scater                 1.34.0  2024-10-29 [1] Bioconductor 3.20 (R 4.4.1)
+    scuttle                1.16.0  2024-11-08 [1] Bioconductor 3.20 (R 4.4.1)
+    sessioninfo            1.2.2   2021-12-06 [1] CRAN (R 4.4.0)
+    SingleCellExperiment * 1.28.1  2024-11-23 [1] Bioconductor 3.20 (R 4.4.2)
+    SparseArray            1.6.0   2024-11-08 [1] Bioconductor 3.20 (R 4.4.1)
+    SpatialExperiment    * 1.16.0  2024-11-08 [1] Bioconductor 3.20 (R 4.4.1)
+    SummarizedExperiment * 1.36.0  2024-11-08 [1] Bioconductor 3.20 (R 4.4.1)
+    tibble                 3.2.1   2023-03-20 [1] CRAN (R 4.4.0)
+    tidyr                  1.3.1   2024-01-24 [1] CRAN (R 4.4.0)
+    tidyselect             1.2.1   2024-03-11 [1] CRAN (R 4.4.0)
+    UCSC.utils             1.2.0   2024-11-08 [1] Bioconductor 3.20 (R 4.4.1)
+    utf8                   1.2.4   2023-10-22 [1] CRAN (R 4.4.0)
+    vctrs                  0.6.5   2023-12-01 [1] CRAN (R 4.4.0)
+    vipor                  0.4.7   2023-12-18 [1] CRAN (R 4.4.0)
+    viridis                0.6.5   2024-01-29 [1] CRAN (R 4.4.0)
+    viridisLite            0.4.2   2023-05-02 [1] CRAN (R 4.4.0)
+    withr                  3.0.2   2024-10-28 [1] CRAN (R 4.4.1)
+    xfun                   0.50    2025-01-07 [1] CRAN (R 4.4.1)
+    XVector                0.46.0  2024-11-08 [1] Bioconductor 3.20 (R 4.4.1)
+    yaml                   2.3.10  2024-07-26 [1] CRAN (R 4.4.0)
+    zlibbioc               1.52.0  2024-11-08 [1] Bioconductor 3.20 (R 4.4.1)
+
+ [1] /Library/Frameworks/R.framework/Versions/4.4-arm64/Resources/library
+ [2] /Users/bmulvey/Library/R/arm64/4.4/library
+
+ V ── Loaded and on-disk version mismatch.
+ P ── Loaded and on-disk path mismatch.
+
+────────────────────────────────────────────────────────────────────────────────────
