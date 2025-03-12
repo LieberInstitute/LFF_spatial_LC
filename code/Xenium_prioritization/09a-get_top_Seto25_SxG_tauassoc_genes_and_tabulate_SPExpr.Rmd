@@ -1,0 +1,36 @@
+---
+title: "reorg_seto25tab_to_long"
+author: "Bernie Mulvey"
+date: "2025-03-11"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(fig.height = 10,fig.width = 7,include = FALSE)
+#### sets tab autocompletion for directories to begin from the directory containing the .Rproj session, instead of the script's directory if different
+knitr::opts_knit$set(root.dir = here::here())
+
+library(data.table)
+```
+
+```{r}
+seto <- fread("raw-data/ref_data/seto25preprint_sexstrat_NFTassoc_bulkseq_hits.txt")
+seto <- seto[SxG_p<0.05&(fem_fdr<0.05|male_fdr<0.05)]
+# oh okay these are all fdr sig one sex and nomsig for interactions. so determine the upper quartile of effect sizes of significantly assoc genes for each
+minabsmalebeta <- quantile(seto[male_fdr<0.05,abs(male_beta)],0.75)
+minabsfembeta <- quantile(seto[fem_fdr<0.05,abs(fem_beta)],0.75)
+
+seto <- as.data.table(rbind(
+    seto[abs(fem_beta)>minabsfembeta&fem_fdr<0.05],
+    seto[abs(male_beta)>minabsmalebeta&male_fdr<0.05]
+))
+
+## fill rows where the gene has no symbol with the ens id
+seto[gene_name=="",gene_name:=ensg]
+
+## tally number of regions per gene, get those in 2/3 or more
+nreg <- seto[,.N,by="gene_name"][N>=2]
+
+## now subset the full table to those genes so we have all the corresp stats
+seto <- seto[gene_name %in% nreg$gene_name]
+```

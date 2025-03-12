@@ -1,0 +1,159 @@
+---
+title: "get_25hdg75SVG_louv1_LCspot_arrayAndImage_coords"
+author: "Bernie Mulvey"
+date: "2025-03-12"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(fig.height = 10,fig.width = 7,include = FALSE)
+#### sets tab autocompletion for directories to begin from the directory containing the .Rproj session, instead of the script's directory if different
+knitr::opts_knit$set(root.dir = here::here())
+
+library(data.table)
+library(SpatialExperiment)
+# library(SpatialFeatureExperiment)
+
+## rstudio GUI tweaks
+require(colorout)
+ColorOut()
+options("styler.addins_style_transformer" = "biocthis::bioc_style()")
+##
+```
+
+read in spe
+```{r}
+lc2 <- readRDS("processed-data/06-QCed_SPE_split_to_tissSections.RDS")
+
+## read in clustering and annots
+louvs <- readRDS("processed-data/07_featureSelection_dimred_harmony_clustering/04-Initial_louvLeid_res0.5-1-2_clusterings.RDS")
+louvs <- louvs$HARMONYlmbna_HDG_SVG_2575[,.(rn,snnHARMONYlmbna_HDG_SVG_2575_louv_res1)]
+setnames(louvs,2,"clusid")
+
+anno <- fread("processed-data/08_validitycheck_25hdg75svg_louv1/10-25hdg75svg_louv1_annots.txt")
+louvs <- merge.data.table(louvs,anno,by="clusid")
+louvs <- DataFrame(louvs,row.names=louvs$rn)[colnames(lc2),]
+
+## assign
+colLabels(lc2) <- louvs$anno
+
+## subset to LC.1
+lc3 <- lc2[,lc2$label=="LC.1"]
+
+## combine array coord info and spot-to-image-pixel coord info
+fullres_with_splitannots <- as.data.table(cbind(colData(lc3)[,c("original_spot_id","sample_id","array_row","array_col")],lc3@int_colData$spatialCoords))
+
+## save
+fwrite(fullres_with_splitannots,"processed-data/LC_spotAndPixel_coords_25hdg75svg_louv1.txt",sep='\t',quote=F,row.names=F,col.names=T)
+```
+
+rep info
+```{r}
+sessionInfo()
+sessioninfo::session_info()
+```
+R version 4.4.2 (2024-10-31)
+Platform: aarch64-apple-darwin20
+Running under: macOS Sonoma 14.7.1
+
+Matrix products: default
+BLAS:   /System/Library/Frameworks/Accelerate.framework/Versions/A/Frameworks/vecLib.framework/Versions/A/libBLAS.dylib 
+LAPACK: /Library/Frameworks/R.framework/Versions/4.4-arm64/Resources/lib/libRlapack.dylib;  LAPACK version 3.12.0
+
+locale:
+[1] en_US.UTF-8/en_US.UTF-8/en_US.UTF-8/C/en_US.UTF-8/en_US.UTF-8
+
+time zone: America/Chicago
+tzcode source: internal
+
+attached base packages:
+[1] stats4    stats     graphics  grDevices utils     datasets  methods   base     
+
+other attached packages:
+ [1] SpatialExperiment_1.16.0    SingleCellExperiment_1.28.1
+ [3] SummarizedExperiment_1.36.0 Biobase_2.66.0             
+ [5] GenomicRanges_1.58.0        GenomeInfoDb_1.42.1        
+ [7] IRanges_2.40.1              S4Vectors_0.44.0           
+ [9] BiocGenerics_0.52.0         MatrixGenerics_1.18.0      
+[11] matrixStats_1.5.0           data.table_1.16.4          
+[13] rlang_1.1.4                
+
+loaded via a namespace (and not attached):
+ [1] Matrix_1.7-1            jsonlite_1.8.9          rjson_0.2.23           
+ [4] compiler_4.4.2          crayon_1.5.3            Rcpp_1.0.14            
+ [7] magick_2.8.5            yaml_2.3.10             fastmap_1.2.0          
+[10] lattice_0.22-6          R6_2.5.1                XVector_0.46.0         
+[13] S4Arrays_1.6.0          knitr_1.49              DelayedArray_0.32.0    
+[16] GenomeInfoDbData_1.2.13 xfun_0.50               SparseArray_1.6.0      
+[19] cli_3.6.3               magrittr_2.0.3          zlibbioc_1.52.0        
+[22] digest_0.6.37           grid_4.4.2              rstudioapi_0.17.1      
+[25] evaluate_1.0.3          sessioninfo_1.2.2       abind_1.4-8            
+[28] rmarkdown_2.29          httr_1.4.7              tools_4.4.2            
+[31] htmltools_0.5.8.1       UCSC.utils_1.2.0       
+> sessioninfo::session_info()
+─ Session info ─────────────────────────────────────────────────────────────────────
+ setting  value
+ version  R version 4.4.2 (2024-10-31)
+ os       macOS Sonoma 14.7.1
+ system   aarch64, darwin20
+ ui       RStudio
+ language (EN)
+ collate  en_US.UTF-8
+ ctype    en_US.UTF-8
+ tz       America/Chicago
+ date     2025-03-12
+ rstudio  2024.07.0-daily+219 Cranberry Hibiscus (desktop)
+ pandoc   3.1.11 @ /Applications/RStudio.app/Contents/Resources/app/quarto/bin/tools/aarch64/ (via rmarkdown)
+
+─ Packages ─────────────────────────────────────────────────────────────────────────
+ !  package              * version date (UTC) lib source
+    abind                  1.4-8   2024-09-12 [1] CRAN (R 4.4.1)
+    Biobase              * 2.66.0  2024-11-08 [1] Bioconductor 3.20 (R 4.4.1)
+    BiocGenerics         * 0.52.0  2024-11-08 [1] Bioconductor 3.20 (R 4.4.1)
+ P  cli                    3.6.3   2024-06-21 [2] CRAN (R 4.4.0)
+    crayon                 1.5.3   2024-06-20 [1] CRAN (R 4.4.0)
+    data.table           * 1.16.4  2024-12-06 [1] CRAN (R 4.4.1)
+    DelayedArray           0.32.0  2024-11-08 [1] Bioconductor 3.20 (R 4.4.1)
+    digest                 0.6.37  2024-08-19 [1] CRAN (R 4.4.1)
+    evaluate               1.0.3   2025-01-10 [1] CRAN (R 4.4.1)
+    fastmap                1.2.0   2024-05-15 [1] CRAN (R 4.4.0)
+    GenomeInfoDb         * 1.42.1  2024-11-28 [1] Bioconductor 3.20 (R 4.4.2)
+    GenomeInfoDbData       1.2.13  2024-12-12 [1] Bioconductor
+    GenomicRanges        * 1.58.0  2024-11-08 [1] Bioconductor 3.20 (R 4.4.1)
+    htmltools              0.5.8.1 2024-04-04 [1] CRAN (R 4.4.0)
+    httr                   1.4.7   2023-08-15 [1] CRAN (R 4.4.0)
+    IRanges              * 2.40.1  2024-12-05 [1] Bioconductor 3.20 (R 4.4.2)
+    jsonlite               1.8.9   2024-09-20 [1] CRAN (R 4.4.1)
+    knitr                  1.49    2024-11-08 [1] CRAN (R 4.4.1)
+    lattice                0.22-6  2024-03-20 [1] CRAN (R 4.4.2)
+    magick                 2.8.5   2024-09-20 [1] CRAN (R 4.4.1)
+    magrittr               2.0.3   2022-03-30 [1] CRAN (R 4.4.0)
+    Matrix                 1.7-1   2024-10-18 [1] CRAN (R 4.4.2)
+    MatrixGenerics       * 1.18.0  2024-11-08 [1] Bioconductor 3.20 (R 4.4.1)
+    matrixStats          * 1.5.0   2025-01-07 [1] CRAN (R 4.4.1)
+    R6                     2.5.1   2021-08-19 [1] CRAN (R 4.4.0)
+    Rcpp                   1.0.14  2025-01-12 [1] CRAN (R 4.4.2)
+    rjson                  0.2.23  2024-09-16 [1] CRAN (R 4.4.1)
+ VP rlang                * 1.1.4   2025-01-17 [2] CRAN (R 4.4.1) (on disk 1.1.5)
+    rmarkdown              2.29    2024-11-04 [1] CRAN (R 4.4.1)
+    rstudioapi             0.17.1  2024-10-22 [1] CRAN (R 4.4.1)
+    S4Arrays               1.6.0   2024-11-08 [1] Bioconductor 3.20 (R 4.4.1)
+    S4Vectors            * 0.44.0  2024-11-08 [1] Bioconductor 3.20 (R 4.4.1)
+    sessioninfo            1.2.2   2021-12-06 [1] CRAN (R 4.4.0)
+    SingleCellExperiment * 1.28.1  2024-11-23 [1] Bioconductor 3.20 (R 4.4.2)
+    SparseArray            1.6.0   2024-11-08 [1] Bioconductor 3.20 (R 4.4.1)
+    SpatialExperiment    * 1.16.0  2024-11-08 [1] Bioconductor 3.20 (R 4.4.1)
+    SummarizedExperiment * 1.36.0  2024-11-08 [1] Bioconductor 3.20 (R 4.4.1)
+    UCSC.utils             1.2.0   2024-11-08 [1] Bioconductor 3.20 (R 4.4.1)
+    xfun                   0.50    2025-01-07 [1] CRAN (R 4.4.1)
+    XVector                0.46.0  2024-11-08 [1] Bioconductor 3.20 (R 4.4.1)
+    yaml                   2.3.10  2024-07-26 [1] CRAN (R 4.4.0)
+    zlibbioc               1.52.0  2024-11-08 [1] Bioconductor 3.20 (R 4.4.1)
+
+ [1] /Library/Frameworks/R.framework/Versions/4.4-arm64/Resources/library
+ [2] /Users/bmulvey/Library/R/arm64/4.4/library
+
+ V ── Loaded and on-disk version mismatch.
+ P ── Loaded and on-disk path mismatch.
+
+────────────────────────────────────────────────────────────────────────────────────

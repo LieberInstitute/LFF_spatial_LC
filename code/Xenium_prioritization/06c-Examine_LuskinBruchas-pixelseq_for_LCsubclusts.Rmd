@@ -231,12 +231,14 @@ orthos <- fread("raw-data/ref_data/gProfiler_mmusculus_hsapiens_1-28-2025_4-42-1
 
 orthos <- orthos[initial_alias %in% toupper(mks.sublc$gene)]
 ## well, three of the 8 left are mitochondrial genes..
-lc3 <- lc3[orthos[!(ortholog_name %in% c("COX17","COX7C","NDUFS8")),ortholog_name],]
+### as for TMSB4X/Y, make sure both are there.
+lc3 <- lc3[unique(c(orthos[!(ortholog_name %in% c("COX17","COX7C","NDUFS8")),ortholog_name],"TMSB4X","TMSB4Y")),]
 ```
 
 ## tabulate prop of each cluster with counts > 0
 ```{r}
-xprprops <- lapply(rownames(lc3),FUN=function(g){
+# tabulate non chrY genes:
+xprprops <- lapply(rownames(lc3)[rownames(lc3)!="TMSB4Y"],FUN=function(g){
     ans <- lapply(unique(lc3$label),FUN=function(a){
         subans <- sum(counts(lc3[g,lc3$label==a])>0)/ncol(lc3[g,lc3$label==a])
         return(subans)
@@ -244,7 +246,14 @@ xprprops <- lapply(rownames(lc3),FUN=function(g){
     names(ans) <- unique(lc3$label)
     return(ans)
 })
-names(xprprops) <- rownames(lc3)
+names(xprprops) <- rownames(lc3)[rownames(lc3)!="TMSB4Y"]
+
+ty <- lapply(unique(lc3$label),FUN=function(a){
+  subans <- sum(counts(lc3["TMSB4Y",lc3$Sex=="M" & lc3$label==a])>0)/ncol(lc3["TMSB4Y",lc3$Sex=="M" & lc3$label==a])
+  return(subans)
+})
+names(ty) <- unique(lc3$label)
+xprprops[["TMSB4Y"]] <- ty
 
 anstab <- lapply(xprprops,FUN=function(x){
     y <- cbind(as.numeric(x),names(x))

@@ -1,5 +1,5 @@
 ---
-title: "06c-Plot_propNonzero_spotsPerClust_perLuskinPixelSeq_DBHX3-enriched-vs-DBHX21"
+title: "07a-Plot_propNonzero_spotsPerClust_perLiteratureLCsubpopMk"
 author: "Bernie Mulvey"
 date: "2025-03-03"
 output: html_document
@@ -30,36 +30,38 @@ theme_set(theme_bw()+theme(axis.text.x = element_text(size = 9), axis.title.x = 
 unloadNamespace("datasets")
 ```
 
-read in proportions table
+read in proportions table and list of literature subpop/developmental LC markers
 ```{r}
-clprop <- fread("processed-data/Xenium_prioritization/06c-ProportionSpots_per_clus_w_LuskinPixelseq_LCclusPairDiffMks.txt")
+clprop <- fread("processed-data/Xenium_prioritization/07a-ProportionSpots_per_clus_w_Literature_adultOrDevelLC-subpop-mks.txt")
+
+subclus <- fread("processed-data/Xenium_prioritization/07a-Lit_NE_subpopAndDevOrigin_mks.txt")
+
+clprop <- merge.data.table(clprop,subclus[gene_name!="HOXB1"],by.x="gene",by.y="gene_name")
+rm(subclus)
 ```
 
-plot. (there were no genes enriched in X21 over X3 that were not FDR-signif enriched in both but also FDR signif pairwise differential)
+plot
 ```{r}
 plts <- lapply(unique(clprop$gene),FUN=function(g){
     pltdat <- clprop[gene==g]
-    t <- ifelse(g=="TMSB4Y",
-                paste0(g," , (Ms DBH+ Pixelseq clus X3)<br>Male LFF Samples"),
-                paste0(g,", (Ms DBH+ Pixelseq clus X3)"))
     p <- ggplot(pltdat,aes(y=cluster,x=prop_nonzero))+
         geom_col()+
-        ggtitle(t)
+        ggtitle(g,subtitle = unique(clprop[gene==g,notes_and_source]))+
+        theme(title=element_text(size=8),plot.title.position="plot")
     return(p)
 })
 
-pdf("plots/Xenium_prioritization/06c-PropClusterSpots_xpr_Luskin_Pixelseq-DBHX3-enriched-vs-DBHX21.pdf",height=4*ceiling(length(plts)/2),width=12)
+pdf("plots/Xenium_prioritization/07a-PropClusterSpots_xpr_Literature_LCsubpop-or-developmentalSubpop_mks.pdf",height=4*ceiling(length(plts)/2),width=14)
 do.call("grid.arrange",c(plts,ncol=3))
 dev.off()
 ```
-
-Interestingly, the only one of these that seems to actually be LFF LC expressed over other clusters is TMSB4Y, a Y chromosomal gene. TMSB4X, the chrX ortholog, is interestingly ubiquitious in every cluster by contrast.
 
 repinf
 ```{r}
 sessionInfo()
 sessioninfo::session_info()
 ```
+
 R version 4.4.2 (2024-10-31)
 Platform: aarch64-apple-darwin20
 Running under: macOS Sonoma 14.7.1
@@ -103,7 +105,7 @@ loaded via a namespace (and not attached):
  collate  en_US.UTF-8
  ctype    en_US.UTF-8
  tz       America/Chicago
- date     2025-03-02
+ date     2025-03-03
  rstudio  2024.07.0-daily+219 Cranberry Hibiscus (desktop)
  pandoc   3.1.11 @ /Applications/RStudio.app/Contents/Resources/app/quarto/bin/tools/aarch64/ (via rmarkdown)
 
@@ -137,7 +139,7 @@ loaded via a namespace (and not attached):
     pillar        1.10.1  2025-01-07 [1] CRAN (R 4.4.1)
     pkgconfig     2.0.3   2019-09-22 [1] CRAN (R 4.4.0)
     R6            2.5.1   2021-08-19 [1] CRAN (R 4.4.0)
-    Rcpp          1.0.14  2025-01-12 [1] CRAN (R 4.4.1)
+    Rcpp          1.0.14  2025-01-12 [1] CRAN (R 4.4.2)
  VP rlang       * 1.1.4   2025-01-17 [2] CRAN (R 4.4.1) (on disk 1.1.5)
     rmarkdown     2.29    2024-11-04 [1] CRAN (R 4.4.1)
     rprojroot     2.0.4   2023-11-05 [1] CRAN (R 4.4.0)
