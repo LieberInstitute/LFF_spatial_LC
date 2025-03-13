@@ -1,7 +1,7 @@
 ---
-title: "08a-Collate Oterogarcia ctx NFT-assoc genes and get lff cluster xpr props"
+title: "08a-Collate Oterogarcia22 and York21 NFT-assoc neuronal genes genes and get lff cluster xpr props"
 author: "Bernie Mulvey"
-date: "2025-03-11"
+date: "2025-03-12"
 output: html_document
 ---
 
@@ -24,7 +24,7 @@ options("styler.addins_style_transformer" = "biocthis::bioc_style()")
 unloadNamespace("datasets")
 ```
 
-## the full DE results comparing AD donor AT8+ to AD AT8-, AD AT8+ to ctrl AT8-, and AD AT8- to ctrl AT8- are in a spreadsheet, sheet per cluster.
+## Otero-Garcia 2022: the full DE results comparing AD donor AT8+ to AD AT8-, AD AT8+ to ctrl AT8-, and AD AT8- to ctrl AT8- are in a spreadsheet, sheet per cluster.
 
 ## to get the NFT-SPECIFIC DEGs from their tables, we want those genes that are DE between AD AT8+ and AD AT8- (AT8 signature) and NOT de between AD AT8- and ctrl AT8- (NOT broader disease state signature).
 ```{r}
@@ -62,6 +62,73 @@ otg2sub[,DEclusts:=paste0(otero_clust,collapse="_"),by="Gene"]
 otg2genes <- unique(otg2sub[,.(Gene,DEclusts)])
 ```
 
+
+## York 2021: their RNAseq was performed with nanostring and only covered 200 genes. Gemini was used to extract all mentioned DE comparisons/hit genes/direction of effect into a table. There are several comparisons here that could be of interest (sex, APOE3/E4). Note that "AD NeuN+" signifies negativity for AT8 and is NOT simply all neurons regardless of AT8. So, as before, we don't want genes that are part of an AT8- vs. control signature.
+```{r}
+york <- fread("raw-data/ref_data/York21_AT8neuron_DEGs.txt")
+
+## 
+# unique(york$comparison)
+# 
+#  [1] "NeuN+ AD vs. NeuN+ Normal"            "AT8+ AD vs. NeuN+ Normal"            
+#  [3] "AT8+ AD vs. AD NeuN+"                 "APOE4 AT8+ AD vs. APOE3 AT8+ AD"     
+#  [5] "APOE3 AT8+ AD vs. APOE3 NeuN+ Normal" "APOE4 AT8+ AD vs. APOE4 NeuN+ Normal"
+#  [7] "NeuN+ AD Females vs. NeuN+ AD Males"  "AT8+ AD Females vs. AT8+ AD Males"   
+#  [9] "Normal Females vs. Normal Males"      "AD vs. Control (Protein IHC)" 
+
+## get genes that are in one of the uniques above (2,3,4,5,6) and not in 1, plus all in 8
+yorka <- york[comparison %in% c("AT8+ AD vs. NeuN+ Normal",
+                                "AT8+ AD vs. AD NeuN+",
+                                "APOE4 AT8+ AD vs. APOE3 AT8+ AD",
+                                "APOE3 AT8+ AD vs. APOE3 NeuN+ Normal",
+                                "APOE4 AT8+ AD vs. APOE4 NeuN+ Normal")&!(comparison=="NeuN+ AD vs. NeuN+ Normal"),]
+yorkb <- york[comparison=="AT8+ AD Females vs. AT8+ AD Males"]
+york <- rbind(yorka,yorkb)
+rm(yorka,yorkb)
+
+## get the gene symbols
+yorkg <- unique(york$gene)
+## a couple of these have parenthetical AKAs we want to get rid of for rowname matching
+yorkg[yorkg=="SLC7A2 (CAT2)"] <- "SLC7A2"
+yorkg[yorkg=="SLC3A2 (LAT1)"] <- "SLC3A2"
+yorkg[yorkg=="TIM (Timeless)"] <- "TIM"
+yorkg[yorkg=="GATM (AGAT)"] <- "GATM"
+yorkg[yorkg=="delta-CTNND2"] <- "CTNND2"
+yorkg[yorkg=="DMP4/FAM20C"] <- "FAM20C" # hgnc symbol is fam20c
+yorkg[yorkg=="eEF1a1"] <- "EEF1A1"
+yorkg[yorkg=="GNMT-3"] <- "GNMT" # why they call this "-3" in the paper is beyond me, no such gene in humans. the citation on its function in mice also uses the symbol GNMT.
+
+## reuniquify
+yorkg <- unique(yorkg)
+```
+
+## join the two sets of AT8 genes into a lookup table
+```{r}
+gtab <- as.data.table(cbind(c(keepg,yorkg),
+              c(rep("Otero22",length(keepg)),rep("York21",length(yorkg)))))
+
+## check if any genes are in both
+gtab[,.N,by="V1"][N>1]
+gtab[V1 %in% c("EEF1A1","AZIN1"),V2:="Otero22_York21"]
+gtab <- unique(gtab)
+setnames(gtab,c("gene","source"))
+
+rm(otg2,otg2genes,otg2rec,otg2sub,york,keepg,yorkg)
+```
+
+## finally, add a couple miscellaneous genes:
+XBP1 (pathway in weinshenker htyr mouse)
+EN2 (protective against oxidative stress in dopaminergic populations, https://doi.org/10.3389/fnmol.2021.699562
+
+```{r}
+nutab <- as.data.frame(matrix(nrow=2,ncol=2))
+nutab$V1 <- c("XBP1","EN2")
+nutab$V2 <- c("hTyrMs","Aguila21")
+colnames(nutab) <- c("gene","source")
+gtab <- rbind(gtab,nutab)
+gtab <- as.data.table(gtab)
+```
+
 ## now load SPE and annots
 ```{r}
 lc3 <- readRDS("processed-data/06-countsOnly_noImgData_QCed_SPE_split_to_tissSections.RDS")
@@ -88,7 +155,7 @@ rownames(lc3) <- rowData(lc3)$gene_name
 
 ### tabulate and save
 ```{r}
-lc3sub <- lc3[rownames(lc3) %in% keepg,]
+lc3sub <- lc3[rownames(lc3) %in% gtab$gene,]
 
 xprprops <- lapply(rownames(lc3sub),FUN=function(g){
     ans <- lapply(unique(lc3sub$label),FUN=function(a){
@@ -108,8 +175,10 @@ anstab <- lapply(xprprops,FUN=function(x){
 })
 anstab <- rbindlist(anstab,idcol="gene")
 
+anstab <- merge.data.table(anstab,gtab,by="gene",all.x=T)
+
 # save
-fwrite(anstab,"processed-data/Xenium_prioritization/08a-ProportionSpots_per_clus_w_Oterogarcia22_multiclust_AT8DEGs.txt",sep='\t',quote=F,row.names=F)
+fwrite(anstab,"processed-data/Xenium_prioritization/08a-ProportionSpots_per_clus_w_Oterogarcia22_multiclust_or_York21_AT8DEGs.txt",sep='\t',quote=F,row.names=F)
 ```
 
 rep info
@@ -179,7 +248,7 @@ loaded via a namespace (and not attached):
  collate  en_US.UTF-8
  ctype    en_US.UTF-8
  tz       America/Chicago
- date     2025-03-11
+ date     2025-03-12
  rstudio  2024.12.1+563 Kousa Dogwood (desktop)
  pandoc   3.2 @ /Applications/RStudio.app/Contents/Resources/app/quarto/bin/tools/aarch64/ (via rmarkdown)
 
