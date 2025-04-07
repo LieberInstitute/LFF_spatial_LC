@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH --mem=80G
+#SBATCH --mem=200G
 #SBATCH -o /dcs05/lieber/marmaypag/LFF_spatialLC_LIBD4140/LFF_spatial_LC/code/VistoSeg/code/logs/meanBG.txt
 #SBATCH -e /dcs05/lieber/marmaypag/LFF_spatialLC_LIBD4140/LFF_spatial_LC/code/VistoSeg/code/logs/meanBG.txt
  
@@ -18,7 +18,7 @@ echo "Task id: ${SLURM_ARRAY_TASK_ID}"
 module load matlab/R2023a
 
 ## Run VNS function
-matlab -nodesktop -nosplash -nojvm -r "meanBG.m"
+matlab -nodesktop -nosplash -r "meanBG"
 
 echo "**** Job ends ****"
 date
