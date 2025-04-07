@@ -2,9 +2,10 @@ cd /dcs05/lieber/marmaypag/LFF_spatialLC_LIBD4140/LFF_spatial_LC/
 O = '/dcs05/lieber/marmaypag/LFF_spatialLC_LIBD4140/LFF_spatial_LC/processed-data/Images/NMseg/';
 D = '/dcs05/lieber/marmaypag/LFF_spatialLC_LIBD4140/LFF_spatial_LC/raw-data/Images/'; 
 myfiles = dir(fullfile(O,'*NMseg.mat'));
+
+for i = 1:numel(myfiles)
  figure;
 set(gca, 'XScale', 'log');
-for i = 1:numel(myfiles)
 
 disp(myfiles(i).name);
 load(fullfile(myfiles(i).folder, myfiles(i).name))  
@@ -17,15 +18,19 @@ load(fullfile(myfiles(i).folder, myfiles(i).name))
     regionSizes = [stats.Area];
     
     % Plot histogram of region sizes
-    hold on;
-    histogram(regionSizes, 'Normalization', 'probability', 'EdgeColor', 'none', ...
-        'FaceColor', rand(1,3));  % Random color for each image
-
-    if mod(i, 15) == 0
+    %hold on;
+    histogram(regionSizes)%  ...
+       % , 'Normalization', 'probability','FaceColor', rand(1,3),'EdgeColor', 'none');  % Random color for each image
+    xlim([1,10000])
+    ylim([0,10000])
+    saveas(gcf, fullfile(pwd, 'plots', 'NMseg', [myfiles(i).name(1:end-4), 'Hist.png']));
+    %if mod(i, 15) == 0
         % Save the figure with a unique name
-        saveas(gcf, fullfile(pwd, 'plots', 'NMseg', sprintf('NMsegSizehist_%d.png', i)));
-        ylim([0,10000])
-    end
+        %saveas(gcf, fullfile(pwd, 'plots', 'NMseg', sprintf('NMsegSizehist_%d.png', i)));
+        %ylim([0,10000])
+    %end
+
+ close all
 end
 
 % Add labels and title
