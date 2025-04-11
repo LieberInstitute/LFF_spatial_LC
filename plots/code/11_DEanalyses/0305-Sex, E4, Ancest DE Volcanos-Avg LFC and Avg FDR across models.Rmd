@@ -1,0 +1,411 @@
+---
+title: "0305-Sex, E4, Ancest DE Volcanos-Avg LFC and Avg FDR across models"
+author: "Bernie Mulvey"
+date: "2025-03-19"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(fig.height = 10,fig.width = 7,include = FALSE)
+#### sets tab autocompletion for directories to begin from the directory containing the .Rproj session, instead of the script's directory if different
+knitr::opts_knit$set(root.dir = here::here())
+
+library(data.table)
+library(ggplot2)
+library(ggtext)
+library(gridExtra)
+# library(SpatialFeatureExperiment)
+
+## rstudio GUI tweaks
+require(colorout)
+ColorOut()
+options("styler.addins_style_transformer" = "biocthis::bioc_style()")
+##
+
+## ggplot defaults
+theme_set(theme_bw()+theme(axis.text.x = element_text(size = 9), axis.title.x = element_text(size = 10), axis.text.y = element_text(size = 9), axis.title.y = element_text(size =10), plot.title = element_markdown(size = 11,hjust=0.5), strip.text = element_text(size=11), legend.text = element_text(size=8), legend.title = element_text(size=9,hjust=0.5),plot.title.position = "panel"))
+
+## last of all, unload the base package datasets, whose data keep getting in the way of autocompletions (e.g., Theoph is priortized over TRUE)
+unloadNamespace("datasets")
+```
+
+## read in DE RDSes
+```{r}
+detabs <- readRDS("processed-data/11_DEanalyses/03a-E4andSexDE_with_e4alleleCountModel_toptabs_testsWithandWithout_RINandorAncestry_10spotmin.RDS")
+
+## structure: list per model, containing list for each cluster, containg list of var of interest (apo, sex)
+
+# first, subset to columns of interest
+detabs2 <- mapply(d=detabs,n=names(detabs),SIMPLIFY=FALSE,FUN=function(d,n){
+    mapply(cl=d,vn=names(d),SIMPLIFY=FALSE,FUN=function(cl,vn){
+        lapply(cl,function(y){
+            z <- as.data.table(y)[,.(gene_id,gene_name,logFC,adj.P.Val)]
+            setnames(z,"logFC",paste0("logFC_",vn,"_",n))
+            setnames(z,"adj.P.Val",paste0("fdr_",vn,"_",n))
+            return(z)
+        })
+    })
+})
+
+apos <- lapply(detabs2,function(d){
+    lapply(d,function(cl){
+        return(cl$apo)
+    })
+})
+
+sexs <- lapply(detabs2,function(d){
+    lapply(d,function(cl){
+        return(cl$sex)
+    })
+})
+
+## rbind by cluster (yes really, itll be easier to get to that than trying to merge things)
+cls <- names(apos[[1]])
+apocats <- list()
+sexcats <- list()
+j<-1
+for (j in c(1:length(cls))){
+    i <- 1
+    for (i in c(1:length(apos))){
+        curcl <- cls[j]
+        if (i==1){
+            tmpconcat.a <- melt.data.table(apos[[i]][[j]],
+                                           id.vars=c("gene_id","gene_name"))
+            tmpconcat.s <- melt.data.table(sexs[[i]][[j]],
+                                           id.vars=c("gene_id","gene_name"))
+        } else{
+            tmpconcat.a <- rbind(
+                melt.data.table(apos[[i]][[j]],id.vars=c("gene_id","gene_name")),
+                                tmpconcat.a)
+            tmpconcat.s <- rbind(
+                melt.data.table(sexs[[i]][[j]],id.vars=c("gene_id","gene_name")),
+                                tmpconcat.s)
+        }
+    }
+    apocats[[j]] <- tmpconcat.a
+    sexcats[[j]] <- tmpconcat.s
+    
+    names(apocats)[j] <- cls[j]
+    names(sexcats)[j] <- cls[j]
+}
+
+sexcats <- rbindlist(sexcats,idcol = "clus")
+apocats <- rbindlist(apocats,idcol = "clus")
+
+## now we have all four lfcs and fdrs each gene-cluster in rows. just need to extract the fdrs pvals and specific model from each:
+apocats[,stat:=gsub(variable,pattern="^(logFC|fdr)_.*$",replacement="\\1")]
+sexcats[,stat:=gsub(variable,pattern="^(logFC|fdr)_.*$",replacement="\\1")]
+
+apocats[,demod:=gsub(variable,pattern="^(logFC|fdr)_(.*)$",replacement="\\2")]
+apocats[,demod:=gsub(demod,pattern="^.*_(.*_.*)$",replacement="\\1")]
+
+sexcats[,demod:=gsub(variable,pattern="^(logFC|fdr)_(.*)$",replacement="\\2")]
+sexcats[,demod:=gsub(demod,pattern="^.*_(.*_.*)$",replacement="\\1")]
+
+apocats.l <- apocats[stat=="logFC"]
+setnames(apocats.l,"value","logFC")
+apocats.l[,stat:=NULL]
+apocats.l[,variable:=NULL]
+
+apocats.f <- apocats[stat=="fdr"]
+setnames(apocats.f,"value","fdr")
+apocats.f[,stat:=NULL]
+apocats.f[,variable:=NULL]
+
+apocats2 <- merge.data.table(apocats.f,apocats.l,by=c("gene_id","gene_name","clus","demod"))
+
+sexcats.l <- sexcats[stat=="logFC"]
+setnames(sexcats.l,"value","logFC")
+sexcats.l[,stat:=NULL]
+sexcats.l[,variable:=NULL]
+
+sexcats.f <- sexcats[stat=="fdr"]
+setnames(sexcats.f,"value","fdr")
+sexcats.f[,stat:=NULL]
+sexcats.f[,variable:=NULL]
+
+sexcats2 <- merge.data.table(sexcats.f,sexcats.l,by=c("gene_id","gene_name","clus","demod"))
+
+rm(sexcats.l,sexcats.f,sexcats,apocats,apocats.f,apocats.l,detabs,detabs2,apos,sexs,tmpconcat.a,tmpconcat.s,cls,curcl,i,j)
+gc(full=T)
+```
+
+## get average per gene-cluster pair
+```{r}
+apoans <- unique(apocats2[,.(gene_name,mean(logFC),mean(fdr)),by=c("clus","gene_id")])
+sexans <- unique(sexcats2[,.(gene_name,mean(logFC),mean(fdr)),by=c("clus","gene_id")])
+
+
+setnames(apoans,c("V2","V3"),c("logFC","fdr"))
+setnames(sexans,c("V2","V3"),c("logFC","fdr"))
+
+### gahhh drop sex chromosomal genes
+genelut <- fread("raw-data/USEFOR10X_ensg_lut_hg38_fromEns98_111123.txt")
+genelut <- unique(genelut[,.(ensembl_gene_id,chromosome_name)])
+
+apoans <- apoans[!(gene_id %in% genelut[chromosome_name %in% c("X","Y","MT"),ensembl_gene_id])]
+sexans <- sexans[!(gene_id %in% genelut[chromosome_name %in% c("X","Y","MT"),ensembl_gene_id])]
+
+
+
+## LASTLY, swap in the autoannot names with the finalish cluster annots
+annots <- fread("processed-data/08_validitycheck_25hdg75svg_louv1/10-25hdg75svg_louv1_annots.txt")
+## in our autoannots we had called X3 "5HT.1" and X5 "5HT.2" and X6 "LC.1"
+sexans <- sexans[clus=="5HT.1",clus:="X3"]
+apoans <- apoans[clus=="5HT.1",clus:="X3"]
+
+sexans <- sexans[clus=="5HT.2",clus:="X5"]
+apoans <- apoans[clus=="5HT.2",clus:="X5"]
+
+sexans <- sexans[clus=="LC.1",clus:="X6"]
+apoans <- apoans[clus=="LC.1",clus:="X6"]
+
+sexans <- merge.data.table(sexans,annots,by.x="clus",by.y="clusid")
+apoans <- merge.data.table(apoans,annots,by.x="clus",by.y="clusid")
+
+splts <- lapply(unique(sexans$anno),function(cl){
+    ggplot(sexans[anno==cl],aes(x=logFC,y=-log10(fdr)))+
+        geom_point(size=1,stroke =0)+
+        geom_hline(yintercept=-log10(0.05),col="red",linetype="dashed")+
+        labs(x="logFC (M+, F-)", y="-log10 (FDR)")+
+        guides(size="none")+
+        ggtitle(paste0("Avg Sex DE Stats<br>in ",cl))
+})
+
+
+aplts <- lapply(unique(apoans$anno),function(cl){
+    ggplot(apoans[anno==cl],aes(x=logFC,y=-log10(fdr)))+
+        geom_point(size=1,stroke =0)+
+        geom_hline(yintercept=-log10(0.05),col="red",linetype="dashed")+
+        labs(x="logFC (E4-upreg +)", y="-log10 (FDR)")+
+        guides(size="none")+
+        ggtitle(paste0("Avg APOE4 Copynum DE<br>Stats in ",cl))
+})
+
+png("plots/11_DEanalyses/05a-4modelAvg_SexDEvolcanos.png",height=900,width=900)
+do.call("grid.arrange",c(splts,ncol=3))
+dev.off()
+
+png("plots/11_DEanalyses/05b-4modelAvg_APOE4copies_volcanos.png",height=900,width=900)
+do.call("grid.arrange",c(aplts,ncol=3))
+dev.off()
+
+
+```
+
+great news! we get to do this again for the global CEU/AFR ancestry analyses. those are in their own RDS though and only two tests (w or w/o RIN) so  it should be a littttle easier.
+
+```{r}
+rm(list=ls())
+```
+
+## read in DE tables for global ancestry tests (where e4 copy number was a covariate)
+```{r}
+detabs <- readRDS("processed-data/11_DEanalyses/05a-GlobalCEUprop_DE_with_e4alleleCountModel_toptabs_testsWithandWithout_RIN_10spotmin.RDS")
+
+ancs <- mapply(d=detabs,n=names(detabs),SIMPLIFY=FALSE,FUN=function(d,n){
+    mapply(cl=d,vn=names(d),SIMPLIFY=FALSE,FUN=function(cl,vn){
+        z <- as.data.table(cl)[,.(gene_id,gene_name,logFC,adj.P.Val)]
+        setnames(z,"logFC",paste0("logFC_",vn,"_",n))
+        setnames(z,"adj.P.Val",paste0("fdr_",vn,"_",n))
+        return(z)
+    })
+})
+
+
+## rbind by cluster (yes really, itll be easier to get to that than trying to merge things)
+cls <- names(ancs[[1]])
+anccats <- list()
+j<-1
+for (j in c(1:length(cls))){
+    i <- 1
+    for (i in c(1:length(ancs))){
+        curcl <- cls[j]
+        if (i==1){
+            tmpconcat.a <- melt.data.table(ancs[[i]][[j]],
+                                           id.vars=c("gene_id","gene_name"))
+        } else{
+            tmpconcat.a <- rbind(
+                melt.data.table(ancs[[i]][[j]],id.vars=c("gene_id","gene_name")),
+                                tmpconcat.a)
+        }
+    }
+    anccats[[j]] <- tmpconcat.a
+
+    names(anccats)[j] <- cls[j]
+}
+
+anccats <- rbindlist(anccats,idcol = "clus")
+
+## now we have all four lfcs and fdrs each gene-cluster in rows. just need to extract the fdrs pvals and specific model from each:
+anccats[,stat:=gsub(variable,pattern="^(logFC|fdr)_.*$",replacement="\\1")]
+
+anccats[,demod:=gsub(variable,pattern="^(logFC|fdr)_(.*)$",replacement="\\2")]
+anccats[,demod:=gsub(demod,pattern="^.*_(.*_.*)$",replacement="\\1")]
+
+anccats.l <- anccats[stat=="logFC"]
+setnames(anccats.l,"value","logFC")
+anccats.l[,stat:=NULL]
+anccats.l[,variable:=NULL]
+
+anccats.f <- anccats[stat=="fdr"]
+setnames(anccats.f,"value","fdr")
+anccats.f[,stat:=NULL]
+anccats.f[,variable:=NULL]
+
+anccats2 <- merge.data.table(anccats.f,anccats.l,by=c("gene_id","gene_name","clus","demod"))
+
+rm(anccats,anccats.f,anccats.l,detabs,ancs,tmpconcat.a,cls,curcl,i,j)
+gc(full=T)
+```
+
+## get average per gene-cluster pair
+```{r}
+ancans <- unique(anccats2[,.(gene_name,mean(logFC),mean(fdr)),by=c("clus","gene_id")])
+
+setnames(ancans,c("V2","V3"),c("logFC","fdr"))
+
+### gahhh drop sex chromosomal genes
+genelut <- fread("raw-data/USEFOR10X_ensg_lut_hg38_fromEns98_111123.txt")
+genelut <- unique(genelut[,.(ensembl_gene_id,chromosome_name)])
+
+ancans <- ancans[!(gene_id %in% genelut[chromosome_name %in% c("X","Y","MT"),ensembl_gene_id])]
+
+
+
+## LASTLY, swap in the autoannot names with the finalish cluster annots
+annots <- fread("processed-data/08_validitycheck_25hdg75svg_louv1/10-25hdg75svg_louv1_annots.txt")
+## in our autoannots we had called X3 "5HT.1" and X5 "5HT.2" and X6 "LC.1"
+ancans <- ancans[clus=="5HT.1",clus:="X3"]
+ancans <- ancans[clus=="5HT.2",clus:="X5"]
+ancans <- ancans[clus=="LC.1",clus:="X6"]
+
+ancans <- merge.data.table(ancans,annots,by.x="clus",by.y="clusid")
+
+# plots
+aplts <- lapply(unique(ancans$anno),function(cl){
+    ggplot(ancans[anno==cl],aes(x=logFC,y=-log10(fdr)))+
+        geom_point(size=1,stroke =0)+
+        geom_hline(yintercept=-log10(0.05),col="red",linetype="dashed")+
+        labs(x="logFC (CEU+, AFR-)", y="-log10 (FDR)")+
+        guides(size="none")+
+        ggtitle(paste0("Avg EUR/AFR DE<br>Stats in ",cl))
+})
+
+
+png("plots/11_DEanalyses/05c-2modelAvg_GlobAnc_volcanos.png",height=900,width=900)
+do.call("grid.arrange",c(aplts,ncol=3))
+dev.off()
+```
+
+
+repinf
+```{r}
+sessionInfo()
+sessioninfo::session_info()
+```
+
+R version 4.4.3 (2025-02-28)
+Platform: aarch64-apple-darwin20
+Running under: macOS Sonoma 14.7.1
+
+Matrix products: default
+BLAS:   /System/Library/Frameworks/Accelerate.framework/Versions/A/Frameworks/vecLib.framework/Versions/A/libBLAS.dylib 
+LAPACK: /Library/Frameworks/R.framework/Versions/4.4-arm64/Resources/lib/libRlapack.dylib;  LAPACK version 3.12.0
+
+locale:
+[1] en_US.UTF-8/en_US.UTF-8/en_US.UTF-8/C/en_US.UTF-8/en_US.UTF-8
+
+time zone: America/New_York
+tzcode source: internal
+
+attached base packages:
+[1] stats     graphics  grDevices utils     methods   base     
+
+other attached packages:
+[1] colorout_1.3-0.2  gridExtra_2.3     ggtext_0.1.2      ggplot2_3.5.1    
+[5] data.table_1.17.0 rlang_1.1.5      
+
+loaded via a namespace (and not attached):
+ [1] gtable_0.3.6      dplyr_1.1.4       compiler_4.4.3    tidyselect_1.2.1 
+ [5] Rcpp_1.0.14       stringr_1.5.1     xml2_1.3.6        scales_1.3.0     
+ [9] yaml_2.3.10       fastmap_1.2.0     here_1.0.1        R6_2.6.1         
+[13] commonmark_1.9.2  labeling_0.4.3    generics_0.1.3    knitr_1.50       
+[17] tibble_3.2.1      munsell_0.5.1     rprojroot_2.0.4   pillar_1.10.1    
+[21] stringi_1.8.4     xfun_0.51         cli_3.6.3         withr_3.0.2      
+[25] magrittr_2.0.3    digest_0.6.37     grid_4.4.3        gridtext_0.1.5   
+[29] rstudioapi_0.17.1 markdown_1.13     lifecycle_1.0.4   vctrs_0.6.5      
+[33] evaluate_1.0.3    glue_1.8.0        farver_2.1.2      sessioninfo_1.2.3
+[37] colorspace_2.1-1  rmarkdown_2.29    tools_4.4.3       pkgconfig_2.0.3  
+[41] htmltools_0.5.8.1
+> sessioninfo::session_info()
+─ Session info ─────────────────────────────────────────────────────────────────────
+ setting  value
+ version  R version 4.4.3 (2025-02-28)
+ os       macOS Sonoma 14.7.1
+ system   aarch64, darwin20
+ ui       RStudio
+ language (EN)
+ collate  en_US.UTF-8
+ ctype    en_US.UTF-8
+ tz       America/New_York
+ date     2025-03-19
+ rstudio  2024.07.0-daily+219 Cranberry Hibiscus (desktop)
+ pandoc   3.1.11 @ /Applications/RStudio.app/Contents/Resources/app/quarto/bin/tools/aarch64/ (via rmarkdown)
+ quarto   1.4.555 @ /Applications/RStudio.app/Contents/Resources/app/quarto/bin/quarto
+
+─ Packages ─────────────────────────────────────────────────────────────────────────
+ !  package     * version date (UTC) lib source
+ VP cli           3.6.3   2025-02-13 [2] CRAN (R 4.4.1) (on disk 3.6.4)
+    colorout    * 1.3-0.2 2024-05-01 [1] Github (jalvesaq/colorout@c6113a2)
+    colorspace    2.1-1   2024-07-26 [1] CRAN (R 4.4.0)
+    commonmark    1.9.2   2024-10-04 [1] CRAN (R 4.4.1)
+    data.table  * 1.17.0  2025-02-22 [1] CRAN (R 4.4.1)
+    digest        0.6.37  2024-08-19 [1] CRAN (R 4.4.1)
+    dplyr         1.1.4   2023-11-17 [1] CRAN (R 4.4.0)
+    evaluate      1.0.3   2025-01-10 [1] CRAN (R 4.4.1)
+    farver        2.1.2   2024-05-13 [1] CRAN (R 4.4.0)
+    fastmap       1.2.0   2024-05-15 [1] CRAN (R 4.4.0)
+    generics      0.1.3   2022-07-05 [1] CRAN (R 4.4.0)
+    ggplot2     * 3.5.1   2024-04-23 [1] CRAN (R 4.4.0)
+    ggtext      * 0.1.2   2022-09-16 [1] CRAN (R 4.4.0)
+    glue          1.8.0   2024-09-30 [1] CRAN (R 4.4.1)
+    gridExtra   * 2.3     2017-09-09 [1] CRAN (R 4.4.0)
+    gridtext      0.1.5   2022-09-16 [1] CRAN (R 4.4.0)
+    gtable        0.3.6   2024-10-25 [1] CRAN (R 4.4.1)
+    here          1.0.1   2020-12-13 [1] CRAN (R 4.4.0)
+    htmltools     0.5.8.1 2024-04-04 [1] CRAN (R 4.4.0)
+    knitr         1.50    2025-03-16 [1] CRAN (R 4.4.2)
+    labeling      0.4.3   2023-08-29 [1] CRAN (R 4.4.0)
+    lifecycle     1.0.4   2023-11-07 [1] CRAN (R 4.4.0)
+    magrittr      2.0.3   2022-03-30 [1] CRAN (R 4.4.0)
+    markdown      1.13    2024-06-04 [1] CRAN (R 4.4.0)
+    munsell       0.5.1   2024-04-01 [1] CRAN (R 4.4.0)
+    pillar        1.10.1  2025-01-07 [1] CRAN (R 4.4.1)
+    pkgconfig     2.0.3   2019-09-22 [1] CRAN (R 4.4.0)
+    R6            2.6.1   2025-02-15 [1] CRAN (R 4.4.1)
+    Rcpp          1.0.14  2025-01-12 [1] CRAN (R 4.4.1)
+ P  rlang       * 1.1.5   2025-01-17 [2] CRAN (R 4.4.1)
+    rmarkdown     2.29    2024-11-04 [1] CRAN (R 4.4.1)
+    rprojroot     2.0.4   2023-11-05 [1] CRAN (R 4.4.0)
+    rstudioapi    0.17.1  2024-10-22 [1] CRAN (R 4.4.1)
+    scales        1.3.0   2023-11-28 [1] CRAN (R 4.4.0)
+    sessioninfo   1.2.3   2025-02-05 [1] CRAN (R 4.4.1)
+    stringi       1.8.4   2024-05-06 [1] CRAN (R 4.4.0)
+    stringr       1.5.1   2023-11-14 [1] CRAN (R 4.4.0)
+    tibble        3.2.1   2023-03-20 [1] CRAN (R 4.4.0)
+    tidyselect    1.2.1   2024-03-11 [1] CRAN (R 4.4.0)
+    vctrs         0.6.5   2023-12-01 [1] CRAN (R 4.4.0)
+    withr         3.0.2   2024-10-28 [1] CRAN (R 4.4.1)
+    xfun          0.51    2025-02-19 [1] CRAN (R 4.4.1)
+    xml2          1.3.6   2023-12-04 [1] CRAN (R 4.4.0)
+    yaml          2.3.10  2024-07-26 [1] CRAN (R 4.4.0)
+
+ [1] /Library/Frameworks/R.framework/Versions/4.4-arm64/Resources/library
+ [2] /Users/bmulvey/Library/R/arm64/4.4/library
+
+ * ── Packages attached to the search path.
+ V ── Loaded and on-disk version mismatch.
+ P ── Loaded and on-disk path mismatch.
+
+────────────────────────────────────────────────────────────────────────────────────

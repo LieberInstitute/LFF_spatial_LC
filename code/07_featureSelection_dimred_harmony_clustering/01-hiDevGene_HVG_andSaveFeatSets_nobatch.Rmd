@@ -54,6 +54,8 @@ lc3 <- readRDS("processed-data/06-QCed_SPE_split_to_tissSections.RDS")
 
 # Feature type 1: binomial gene deviance residuals (an HVG-alike method that uses non-log normalized data. package scry). We already calculated high-deviance genes without covariates, covarying by slide, or covarying by donor in code/04-QC script #5. Since the spots themselves (and for that matter, their pairings to covariates of donor or slide) remain unchanged by splitting the capture areas in half, so we can (thankfully, as these calculations required on the order of 600 GB RAM) use those for identifying HDGs.
 
+In other words, as Jacqui (power user of HDGs) says affirming this approach: "because you didn't specify any covariates/batch for the devianceFeatureSelection it doesn't matter if you did or did not split the capture area since the model was agnostic to the origin of any and all spots"
+
 ```{r}
 devgen <- fread("processed-data/04_QC/05-deviance_binomial_gene_deviances_panSPE_brnumAsBatch_or_slideAsBatch.txt")
 

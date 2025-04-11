@@ -1,0 +1,116 @@
+---
+title: "Fig1 panel X draft-LC spots over HE"
+author: "Bernie Mulvey"
+date: "2025-04-04"
+output: html_document
+---
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(fig.height = 10,fig.width = 7,include = FALSE)
+#### sets tab autocompletion for directories to begin from the directory containing the .Rproj session, instead of the script's directory if different
+knitr::opts_knit$set(root.dir = here::here())
+
+library(data.table)
+library(ggplot2)
+library(gridExtra)
+library(SpatialExperiment)
+library(spatialLIBD)
+library(Polychrome)
+library(ggrastr)
+
+## rstudio GUI tweaks
+require(colorout)
+ColorOut()
+options("styler.addins_style_transformer" = "biocthis::bioc_style()")
+##
+
+## enable forked parallel processing with BiocParallel::multicoreParam, future::, etc. seemed to need this a couple times, but otherwise havent so its here as a preventative measure. part of this is adding the line 
+# OBJC_DISABLE_INITIALIZE_FORK_SAFETY=YES
+# to Renviron.site. see e.g. top response on https://stackoverflow.com/questions/73638290/python-on-mac-is-it-safe-to-set-objc-disable-initialize-fork-safety-yes-globall 
+library(parallelly)
+options(parallelly.supportsMulticore.disableOn="")
+options(parallelly.fork.enable=TRUE)
+library(BiocParallel)
+options(bphost="localhost")
+library(parallel)
+
+
+## ggplot defaults
+theme_set(theme_bw()+theme(axis.text.x = element_text(size = 10), axis.title.x = element_text(size = 11), axis.text.y = element_text(size = 10), axis.title.y = element_text(size =11), plot.title = element_text(size = 11,hjust=0.5), strip.text = element_text(size=11), legend.text = element_text(size=9), legend.title = element_text(size=10,hjust=0.5)))
+
+## last of all, unload the base package datasets, whose data keep getting in the way of autocompletions (e.g., Theoph is priortized over TRUE)
+unloadNamespace("datasets")
+```
+
+load QC'ed spe at capture area level (for consistency with plotting stuff in fig 1) clustering results; subset to louvain clusterings only (leiden clusterings all returned 100s-1000s of clusters)
+```{r}
+lc3 <- readRDS("processed-data/04_QC/04-lffLC_noEdges_noLocOutliers_remainder1pctileUMIorGene-removed.RDS")
+
+## dump off some unecessary stuff for making these plots (counts and logcounts matrices, image data)
+assays(lc3) <- assays(lc3)[1]
+# counts(lc3) <- NULL
+gc(full=T)
+
+### get clusterings and cluster autoannot tables
+SNNlouvlist <- readRDS("processed-data/07_featureSelection_dimred_harmony_clustering/04-Initial_louvLeid_res0.5-1-2_clusterings.RDS")
+
+snnlouvs <- SNNlouvlist$HARMONYlmbna_HDG_SVG_2575[,.(rn,snnHARMONYlmbna_HDG_SVG_2575_louv_res1)]
+setnames(snnlouvs,2,"clusid")
+
+## annots
+anno <- fread("processed-data/08_validitycheck_25hdg75svg_louv1/10-25hdg75svg_louv1_annots.txt")
+snnlouvs <- merge.data.table(snnlouvs,anno,by="clusid")
+# fix rownames to not have the section suffix
+snnlouvs[,rn:=gsub(rn,pattern="^(.*-..._.1)s.$",replacement="\\1")]
+stopifnot(all(snnlouvs$rn %in% colnames(lc3)))
+
+snnlouvs.df <- DataFrame(snnlouvs,row.names=snnlouvs$rn)[colnames(lc3),]
+colLabels(lc3) <- snnlouvs.df$anno
+## clean up
+rm(SNNlouvlist)
+gc(full=T)
+```
+
+```{r}
+# load pre-defined palette
+pal <- readRDS("plots/cluster_palette_narrowluminance.RDS")
+stopifnot(all(names(pal) %in% unique(lc3$label)))
+## the sampel we want is V13M06-332_B1
+## first plot with all clusters, without H&E
+allclus <- vis_clus(lc3, sampleid = "V13M06-332_B1", clustervar = "label", sort_clust = FALSE, return_plots = T, width = 6, height = 6, spatial = F, auto_crop = T, point_size = 1.225, na_color = NA, alpha = 1, colors = pal)
+
+# run again to get past the bizarre first-run has-axis-labels thing
+allclus <- vis_clus(lc3, sampleid = "V13M06-332_B1", clustervar = "label", sort_clust = TRUE, return_plots = T, width = 6, height = 6, spatial = F, auto_crop = T, point_size = 1.225, na_color = NA, alpha = 1, colors = pal)
+
+allclus <- allclus + ggtitle("V13M06-332_B1") + theme(legend.position = "bottom", legend.text = element_text(size = 8), plot.title = element_text(size = 10, hjust = 0.5), legend.key.size = unit(0, "in"), legend.key.height = unit(0, "in"), legend.key.spacing = unit(0.05, "in")) + guides(fill = guide_legend(ncol = 1, override.aes = list(size = 2)))
+allclus
+pdf("local_ref/Allclusters_draft_V13M06-332_B1.pdf", height = 5.5, width = 4)
+allclus
+dev.off()
+
+### now set all non LC.1 clusters to other
+snnlouvs[anno != "LC.1", anno := "Other"]
+snnlouvs.df <- DataFrame(snnlouvs, row.names = snnlouvs$rn)[colnames(lc3), ]
+colLabels(lc3) <- snnlouvs.df$anno
+
+pal <- c(pal[1], NA)
+# next line is needed for consistency in color-cluster assignments between libdspatial and the generated legend below
+names(pal) <- c("LC.1", "Other")
+
+### make spotplots. had this in an mclapply loop originally but only the first two plots would generate and then R just acted like it was still running but nothing was happening in terms of file creation or computational resource use.
+LChe <- vis_clus(lc3, sampleid = "V13M06-332_B1", clustervar = "label", sort_clust = FALSE, return_plots = T, width = 6, height = 6, spatial = T, auto_crop = T, point_size = 1.35, na_color = NA, alpha = 0.5, colors = pal, image_id = "hires")
+
+LChe <- LChe + ggtitle("V13M06-332_B1") + theme(legend.position = "bottom", legend.text = element_text(size = 8), plot.title = element_text(size = 10, hjust = 0.5), legend.key.size = unit(0, "in"), legend.key.height = unit(0, "in"), legend.key.spacing = unit(0.05, "in")) + guides(fill = guide_legend(ncol = 1, override.aes = list(size = 2)))
+
+pdf("local_ref/LCche_draft_V13M06-332_B1.pdf", height = 5.5, width = 4)
+LChe
+dev.off()
+```
+
+
+reprod info
+```{r}
+sessionInfo()
+sessioninfo::session_info()
+```
