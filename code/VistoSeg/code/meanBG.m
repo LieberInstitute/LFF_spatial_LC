@@ -168,6 +168,9 @@ BG_mask(NM) = 0;
 BGmask_LC2i = BG_mask;
 LC2i = mean(BG_mask(:));
 
+%% for 6
+%LC2 = LC1;
+%LC2i = LC1i;
  %% Append to results table
     T = table({fname}, tis1, BB1, LC1, tis2,  BB2,  LC2, ...
                tis1i, BB1i, LC1i, tis2i,  BB2i,  LC2i, ...
