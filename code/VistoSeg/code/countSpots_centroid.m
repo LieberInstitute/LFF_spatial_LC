@@ -36,6 +36,7 @@ points = struct2table(regionprops(BW.(O{C}), 'Centroid')).Centroid;
         idx = mask(crow(i), ccol(i));
         spot = regionprops(mask==idx);
         signal = struct2table(regionprops(mask==idx & BW.(O{C})>0, img.(O{C}), 'Area', 'MeanIntensity'));
+        signal_P = struct2table(regionprops(mask==idx & BW.(O{C})>0, img.(O{C})-BG, 'Area', 'MeanIntensity'));
         isincircle = sum((points - [ccol(i) crow(i)]).^2,2)<= R^2;
         %check
 %         [tempx,tempy] = find(mask == idx);
@@ -44,7 +45,8 @@ points = struct2table(regionprops(BW.(O{C}), 'Centroid')).Centroid;
 %         viscircles(size(temp)/2, repelem(R, 1), 'Color', 'r');
         count.(O{C})(i) = length([signal.Area]);
         prop.(O{C})(i) = sum([signal.Area])/spot.Area;
-        inten.(O{C})(i) = mean([signal.MeanIntensity]);
+        inten_P.(O{C})(i) = mean([signal_P.MeanIntensity]);
+        inten.(O{C})(i) = mean([signal.MeanIntensity])-BG;
         countC.(O{C})(i) = length(find(isincircle));
         if mod(i,100) == 0
         disp([num2str(i),' spots finished in time ', num2str(toc),'s'])
@@ -55,8 +57,10 @@ points = struct2table(regionprops(BW.(O{C}), 'Centroid')).Centroid;
 end
 
 for C = 1:numel(O)
+ temp = [count.(O{C}) prop.(O{C}) inten_P.(O{C}) countC.(O{C})];  
+ tbl_P = [tbl array2table(temp, 'VariableNames', {['N',O{C}],['P',O{C}],['I',O{C}],['CN',O{C}]})];   
  temp = [count.(O{C}) prop.(O{C}) inten.(O{C}) countC.(O{C})];  
- tbl = [tbl array2table(temp, 'VariableNames', {['N',O{C}],['P',O{C}],['I',O{C}],['CN',O{C}]})];        
+ tbl = [tbl array2table(temp, 'VariableNames', {['N',O{C}],['P',O{C}],['I',O{C}],['CN',O{C}]})];
 end
 
 if ~exist(posPath, 'dir')
@@ -64,6 +68,7 @@ if ~exist(posPath, 'dir')
 end
     
     disp('writing table')
-    writetable(tbl, fullfile(posPath, 'tissue_spot_counts.csv'), 'Delimiter', ',');
+    writetable(tbl_P, fullfile(posPath, 'tissue_spot_counts_PBG.csv'), 'Delimiter', ',');
+    writetable(tbl, fullfile(posPath, 'tissue_spot_counts_BG.csv'), 'Delimiter', ',');
 
 end

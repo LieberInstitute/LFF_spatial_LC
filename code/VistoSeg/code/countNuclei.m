@@ -2,13 +2,15 @@
 %jsonname = '/dcl02/lieber/ajaffe/SpatialTranscriptomics/LIBD/spatialDLPFC/outputs/NextSeq/DLPFC_Br3942_post_manual_alignment/outs/spatial/scalefactors_json.json';
 %posname = '/dcl02/lieber/ajaffe/SpatialTranscriptomics/LIBD/spatialDLPFC/outputs/NextSeq/DLPFC_Br3942_post_manual_alignment/outs/spatial/tissue_positions_list.csv';
 
-function [count,prop,countC,inten] = countNuclei(mask,imgname,jsonname,posname,~) 
+function [count,prop,countC,inten] = countNuclei(mask,imgname,jsonname,posname,BGname,~) 
 
 disp('loading data')
  %img = load(img);
  %BW = load(mask);
- 
-img.NM = mat2gray(rgb2gray(imread(imgname)));
+
+load(BGname);
+BG = (results.LC1i + results.LC2i)/2 ;
+img.NM = imcomplement(mat2gray(rgb2gray(imread(imgname))));
 BW = load(mask, 'NM');
 
 O = fieldnames(BW);
@@ -35,7 +37,7 @@ prop = [];
   %  else
        tbl.Properties.VariableNames = {'barcode','tissue','row','col','imagerow','imagecol'};
 	   %tbl.Properties.VariableNames = {'barcode','tissue','row','col','imagerow','imagecol','NDAPI','PDAPI','IDAPI','CNDAPI','NNeuN','PNeuN','INeuN','CNNeuN','NWFA','PWFA','IWFA','CNWFA'}
-       [count,prop,countC,inten] = countSpots_centroid(BW, img, R, tbl, posPath);
+       [count,prop,countC,inten] = countSpots_centroid(BW, img, R, tbl, posPath,BG);
         
   %  end
 end

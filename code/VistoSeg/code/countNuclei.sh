@@ -1,9 +1,9 @@
 #!/bin/bash
 #SBATCH --mem=30G
 #SBATCH --job-name=countNuclei
-#SBATCH -o logs/countNuclei_%a.txt 
-#SBATCH -e logs/countNuclei_%a.txt
-#SBATCH --array=7-7%10
+#SBATCH -o logs/countNuclei_BG%a.txt 
+#SBATCH -e logs/countNuclei_BG%a.txt
+#SBATCH --array=1-1%10
 
 
 echo "**** Job starts ****"
@@ -38,8 +38,9 @@ echo "Processing sample ${fileName}"
 jsonname=/dcs05/lieber/marmaypag/LFF_spatialLC_LIBD4140/LFF_spatial_LC/processed-data/01_spaceranger/${fileName}_untrimmed/outs/spatial/scalefactors_json.json
 posname=/dcs05/lieber/marmaypag/LFF_spatialLC_LIBD4140/LFF_spatial_LC/processed-data/01_spaceranger/${fileName}_untrimmed/outs/spatial/tissue_positions.csv
 imgname=/dcs05/lieber/marmaypag/LFF_spatialLC_LIBD4140/LFF_spatial_LC/raw-data/Images/${fileName}.tif
+BGname=/dcs05/lieber/marmaypag/LFF_spatialLC_LIBD4140/LFF_spatial_LC/processed-data/Images/NMseg/${fileName}_meanBG.mat
 
-matlab -nodesktop -nosplash -nojvm -r "addpath(genpath('$toolbox')), countNuclei('$filePath','$imgname','$jsonname','$posname')" 
+matlab -nodesktop -nosplash -nojvm -r "addpath(genpath('$toolbox')), countNuclei('$filePath','$imgname','$jsonname','$posname','$BGname')" 
 
 echo "**** Job ends ****"
 date
