@@ -176,7 +176,7 @@ LC2i = mean(BG_mask(:));
     results = [results; T];
 
  %% plot
- figure('Name', fname, 'NumberTitle', 'off');
+ figure('Name', fname, 'NumberTitle', 'off', 'visible', 'off');
  subplot(2,3,1);
  imshow(BGmask_tis1, []);
  title('BGmask\_tis1');
