@@ -69,7 +69,7 @@ if ~exist(posPath, 'dir')
 end
     
     disp('writing table')
-    writetable(tbl_P, fullfile(posPath, 'tissue_spot_counts_PBG.csv'), 'Delimiter', ',');
+    writetable(tbl_P, fullfile(posPath, 'tissue_spot_counts_PBG_temp.csv'), 'Delimiter', ',');
     writetable(tbl, fullfile(posPath, 'tissue_spot_counts_BG.csv'), 'Delimiter', ',');
 
 end
