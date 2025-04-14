@@ -25,6 +25,7 @@ for C = 1:numel(O)
     prop.(O{C}) = zeros(nSpots, 1);
     countC.(O{C}) = zeros(nSpots, 1);
     inten.(O{C}) = zeros(nSpots, 1);
+    inten_P.(O{C}) = zeros(nSpots, 1);
 end
 
 tic
