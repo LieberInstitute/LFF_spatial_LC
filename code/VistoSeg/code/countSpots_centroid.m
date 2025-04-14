@@ -1,4 +1,4 @@
-function [count,prop,countC, inten] = countSpots_centroid(BW, img, R, tbl, posPath)
+function [count,prop,countC, inten] = countSpots_centroid(BW, img, R, tbl, posPath, BG)
   
 count = [];
 prop = [];
