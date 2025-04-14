@@ -22,9 +22,8 @@ load(fullfile(pwd, '/processed-data/Images/NMseg/Mdata.mat'))
 files = dir(fullfile(pwd, '/raw-data/Images/*1.tif'));
 myfiles = files(cellfun(@(x) length(x) == 17, {files.name}));
 
-results = table();
-
-for i= 1:numel(myfiles)
+for i= 43:numel(myfiles)
+    results = table();
 fname = myfiles(i).name(1:end-4);
 disp(fname);
 img = imread([pwd, '/raw-data/Images/',fname,'.tif']);
@@ -176,7 +175,7 @@ LC2i = mean(BG_mask(:));
     results = [results; T];
 
  %% plot
- figure('Name', fname, 'NumberTitle', 'off', 'visible', 'off');
+ figure('Name', fname, 'NumberTitle', 'off', 'Visible','off');
  subplot(2,3,1);
  imshow(BGmask_tis1, []);
  title('BGmask\_tis1');
@@ -208,6 +207,7 @@ LC2i = mean(BG_mask(:));
  xlabel(sprintf('%.4f, %.4f',LC2,LC2i));
 
  saveas(gcf, fullfile(pwd, 'plots', 'NMseg', [fname '_BGmasks.png']));
+ save(fullfile(pwd, 'processed-data/Images/NMseg/',[fname '_meanBG.mat']), 'results');
+ disp(i)
 end
 
-save(fullfile(pwd, 'processed-data/Images/NMseg/meanBG.mat'), 'results');
