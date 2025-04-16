@@ -265,7 +265,7 @@ df = clus(strcmp(clus.sample_id,fname) & strcmp(clus.section, 's1'), :);
 x = df.pxl_col_in_fullres; y = df.pxl_row_in_fullres;
 k = convhull(y,x);
 Bmask = poly2mask(x(k), y(k), size(BW, 1), size(BW, 2)); % Black out everything outside the polygon
-BmaskImg = bsxfun(@times, BW, cast(Bmask, class(BW)));
+%BmaskImg = bsxfun(@times, BW, cast(Bmask, class(BW)));
 img1(~Bmask) = 0;
 BG_mask = img1; NM_mask = img1;
 NM_mask(~NM) = 0; BG_mask(NM) = 0;
@@ -286,7 +286,7 @@ df = clus(strcmp(clus.sample_id,fname) & strcmp(clus.section, 's2'), :);
 x = df.pxl_col_in_fullres; y = df.pxl_row_in_fullres;
 k = convhull(y,x);
 Bmask = poly2mask(x(k), y(k), size(BW, 1), size(BW, 2)); % Black out everything outside the polygon
-BmaskImg = bsxfun(@times, BW, cast(Bmask, class(BW)));
+%BmaskImg = bsxfun(@times, BW, cast(Bmask, class(BW)));
 img1(~Bmask) = 0;
 BG_mask = img1; NM_mask = img1;
 NM_mask(~NM) = 0; BG_mask(NM) = 0;
