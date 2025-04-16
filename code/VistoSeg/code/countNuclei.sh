@@ -3,7 +3,7 @@
 #SBATCH --job-name=countNuclei
 #SBATCH -o logs/countNuclei_BG%a.txt 
 #SBATCH -e logs/countNuclei_BG%a.txt
-#SBATCH --array=3-43%10
+#SBATCH --array=1-7%10
 
 
 echo "**** Job starts ****"
