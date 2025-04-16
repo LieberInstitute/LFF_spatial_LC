@@ -119,7 +119,8 @@ writetable(Mdata, fullfile(pwd,'processed-data/Images/NMscore.csv'));
 
 
 %%%%%%%
-% compare mean nm intensities before and after BG subtraction
+% compare mean nm intensities before and after BG subtraction for bernie
+% annotated regions
 
 for i= 1:numel(myfiles)
 fname = myfiles(i).name(1:end-4);
@@ -191,3 +192,53 @@ temp2 = sum(nm-HE < 0);
 Mdata.tempsize2(Mdata.sample_id == fname) = temp2;
 end
 
+cluster = fullfile(pwd, '/processed-data/LC_spotAndPixel_coords_25hdg75svg_louv1.txt');
+clus = readtable(cluster);
+clus.section = cellfun(@(x) x(end-1:end), clus.sample_id, 'UniformOutput', false);
+clus.sample_id = cellfun(@(x) x(1:end-2), clus.sample_id, 'UniformOutput', false);
+naIdx = strcmp(clus.section, 'NA');
+naIndices = find(naIdx);
+if size(naIndices, 1)> 0 , disp([naIndices, 'donot have clusters']); end
+
+for i= 1:numel(myfiles)
+fname = myfiles(i).name(1:end-4);
+disp(fname);
+img = imread([pwd, '/raw-data/Images/',fname,'.tif']);
+
+NMseg_dir = fullfile(pwd, '/processed-data/Images/NMseg/');
+load([NMseg_dir, fname, 'NMseg_clean.mat'])
+
+img1 = imcomplement(mat2gray(rgb2gray(img)));
+BW = img1 < 0.1;     
+
+df = clus(strcmp(clus.sample_id,fname) & strcmp(clus.section, 's1'), :);
+x = df.pxl_col_in_fullres; y = df.pxl_row_in_fullres;
+k = convhull(y,x);
+Bmask = poly2mask(x(k), y(k), size(BW, 1), size(BW, 2)); % Black out everything outside the polygon
+BmaskImg = bsxfun(@times, BW, cast(Bmask, class(BW)));
+img1(~BmaskImg) = 0;
+
+BG_mask = img1; NM_mask = img1;
+NM_mask(~NM) = 0; BG_mask(NM) = 0;
+nm = NM_mask(NM_mask>0);
+HE = mean(BG_mask(:));
+temp1 = sum(nm-HE < 0);
+Mdata.LCtempsize1(Mdata.sample_id == fname) = temp1;
+
+img1 = imcomplement(mat2gray(rgb2gray(img)));
+BW = img1 < 0.1;     
+
+df = clus(strcmp(clus.sample_id,fname) & strcmp(clus.section, 's2'), :);
+x = df.pxl_col_in_fullres; y = df.pxl_row_in_fullres;
+k = convhull(y,x);
+Bmask = poly2mask(x(k), y(k), size(BW, 1), size(BW, 2)); % Black out everything outside the polygon
+BmaskImg = bsxfun(@times, BW, cast(Bmask, class(BW)));
+img1(~BmaskImg) = 0;
+
+BG_mask = img1; NM_mask = img1;
+NM_mask(~NM) = 0; BG_mask(NM) = 0;
+nm = NM_mask(NM_mask>0);
+HE = mean(BG_mask(:));
+temp2 = sum(nm-HE < 0);
+Mdata.LCtempsize2(Mdata.sample_id == fname) = temp2;
+end
