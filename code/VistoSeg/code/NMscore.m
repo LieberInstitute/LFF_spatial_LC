@@ -156,7 +156,7 @@ Pi = sum(nm-HE);
 maxNM = max(nm-HE);
 Mt = size(nm,1)*maxNM;
 BGNMscore1 = Pi/Mt;
-%temp1 = sum(nm-HE < 0);
+temp1 = sum(nm-HE < 0);
 
 %Mdata.BGNMscore1(Mdata.sample_id == fname) = BGNMscore1;
 Mdata.tempsize1(Mdata.sample_id == fname) = temp1;
@@ -185,7 +185,7 @@ Pi = sum(nm-HE);
 maxNM = max(nm-HE);
 Mt = size(nm,1)*maxNM;
 BGNMscore2 = Pi/Mt;
-%temp2 = sum(nm-HE < 0);
+temp2 = sum(nm-HE < 0);
 
 %Mdata.BGNMscore2(Mdata.sample_id == fname) = BGNMscore2;
 Mdata.tempsize2(Mdata.sample_id == fname) = temp2;
