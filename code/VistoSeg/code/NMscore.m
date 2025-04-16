@@ -248,7 +248,7 @@ end
 %%
 % LC cluster based BG
 for i= 1:numel(myfiles)
-      if ismember(i, [7, 11, 18, 25, 37,38])
+      if ismember(i, [6, 7, 11, 18, 25, 37,38])
         continue
       end
 fname = myfiles(i).name(1:end-4);
