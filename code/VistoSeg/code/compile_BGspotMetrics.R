@@ -56,5 +56,128 @@ segmentations <-
     )]
   colData(lc3) <- cbind(colData(lc3), segmentation_info)
 
+  library(dplyr)      # Minimum required
+  library(ggplot2) 
+
   # Convert colData to dataframe
   df <- as.data.frame(colData(lc3))
+  df$NM_pos <- ifelse(df$Prop_NM > 0.025, TRUE, FALSE)
+  
+  prop_df <- df %>%
+    filter(!is.na(label), !is.na(APOE)) %>%
+    group_by(APOE, label) %>%
+    summarize(
+      total_spots = n(),
+      NM_pos_count = sum(NM_pos == TRUE, na.rm = TRUE),
+      proportion = NM_pos_count / total_spots,
+      .groups = "drop"
+    )
+	
+    # Plot heatmap
+    ggplot(prop_df, aes(x = APOE, y = label, fill = proportion)) +
+      geom_tile(color = "white") +
+  	geom_text(aes(label = round(proportion, 2)), size = 3) +
+      scale_fill_gradient(low = "white", high = "black", limits = c(0, 1)) +
+      labs(title = "Proportion of NM+ spots",
+           x = "APOE Genotype", y = "", fill = "Proportion NM+") +
+      theme_minimal() +
+      theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+	  prop_df <- df %>%
+	    filter(!is.na(label), !is.na(Sex)) %>%
+	    group_by(Sex, label) %>%
+	    summarize(
+	      total_spots = n(),
+	      NM_pos_count = sum(NM_pos == TRUE, na.rm = TRUE),
+	      proportion = NM_pos_count / total_spots,
+	      .groups = "drop"
+	    )
+	    # Plot heatmap
+	    ggplot(prop_df, aes(x = Sex, y = label, fill = proportion)) +
+	      geom_tile(color = "white") +
+	  	geom_text(aes(label = round(proportion, 2)), size = 3) +
+	      scale_fill_gradient(low = "white", high = "black", limits = c(0, 1)) +
+	      labs(title = "Proportion of NM+ spots",
+	           x = "Sex", y = "", fill = "Proportion NM+") +
+	      theme_minimal() +
+	      theme(axis.text.x = element_text(angle = 45, hjust = 1))	
+
+ 
+df$NM_pos <- ifelse(df$Prop_NM > 0.025, TRUE, FALSE)
+df_NM_pos = df[df$NM_pos==TRUE,]
+	  prop_df <- df_NM_pos %>%
+	    filter(!is.na(label), !is.na(APOE)) %>%
+	    group_by(APOE, label) %>%
+	    summarize(
+	      total_spots = n(),
+	      TINM = sum(INM),
+	      mINM = TINM/total_spots
+	    )
+		
+	    # Plot heatmap
+	    ggplot(prop_df, aes(x = APOE, y = label, fill = mINM)) +
+	      geom_tile(color = "white") +
+	  	geom_text(aes(label = round(mINM, 2)), size = 3) +
+	      scale_fill_gradient(low = "white", high = "black",na.value = "white") +
+	      labs(title = "mean Intensity of NM+ spots",
+	           x = "APOE Genotype", y = "") +
+	      theme_minimal() +
+	      theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+  	    ggplot(prop_df, aes(x = APOE, y = label, fill = TINM)) +
+  	      geom_tile(color = "white") +
+  	  	geom_text(aes(label = round(TINM, 2)), size = 3) +
+  	      scale_fill_gradient(low = "white", high = "black",na.value = "white", limits = c(0, 500)) +
+  	      labs(title = "sum Intensity of NM+ spots",
+  	           x = "APOE Genotype", y = "") +
+  	      theme_minimal() +
+  	      theme(axis.text.x = element_text(angle = 45, hjust = 1))
+		
+       
+	  ggplot(Idf, aes(x = APOE, y = label, fill = INM)) +
+        geom_tile(color = "white") +
+    	geom_text(aes(label = round(INM, 2)), size = 3) +
+        scale_fill_gradient(low = "white", high = "black", limits = c(0, 1)) +
+        labs(title = "mean of meanIntensity of NM+ spots",
+             x = "APOE Genotype", y = "") +
+        theme_minimal() +
+        theme(axis.text.x = element_text(angle = 45, hjust = 1))
+	  
+	  
+  total_NM_pos_apoe <- df %>%
+    filter(!is.na(label), !is.na(APOE)) %>%
+    group_by(APOE) %>%
+    summarize(total_NM_pos_apoe = sum(NM_pos == TRUE, na.rm = TRUE))
+    
+	prop_df = df %>% group_by(APOE, label) %>%
+    summarize(NM_pos_count = sum(NM_pos == TRUE, na.rm = TRUE), .groups = "drop") %>%
+    mutate(proportion = NM_pos_count / total_NM_pos_apoe)
+
+    # Plot heatmap
+    ggplot(prop_df, aes(x = APOE, y = label, fill = proportion)) +
+      geom_tile(color = "white") +
+  	geom_text(aes(label = round(proportion, 2)), size = 3) +
+      scale_fill_gradient(low = "white", high = "black", limits = c(0, 1)) +
+      labs(title = "Proportion of NM+ spots",
+           x = "APOE Genotype", y = "", fill = "Proportion NM+") +
+      theme_minimal() +
+      theme(axis.text.x = element_text(angle = 45, hjust = 1))
+	  
+    total_NM_pos <- sum(df$NM_pos == TRUE, na.rm = TRUE)
+
+    # Count NM+ per label and APOE
+    nm_table <- df %>%
+      filter(!is.na(APOE), !is.na(label)) %>%
+      group_by(label, APOE) %>%
+      summarize(NM_pos_count = sum(NM_pos == TRUE, na.rm = TRUE), .groups = "drop") %>%
+      mutate(proportion = NM_pos_count / total_NM_pos)
+
+  	# Plot heatmap
+  	ggplot(nm_table, aes(x = APOE, y = label, fill = proportion)) +
+  	  geom_tile(color = "white") +
+  	  geom_text(aes(label = round(proportion, 2)), size = 3) +
+  	  scale_fill_gradient(low = "white", high = "black", limits = c(0, 1)) +
+  	  labs(title = "Proportion of NM+ spots",
+  	       x = "APOE Genotype", y = "", fill = "Proportion NM+") +
+  	  theme_minimal() +
+  	  theme(axis.text.x = element_text(angle = 45, hjust = 1))
