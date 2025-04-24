@@ -1,0 +1,31 @@
+**** Job starts ****
+Mon Apr 14 11:01:18 PM EDT 2025
+**** JHPCE info ****
+User: mtippani
+Job id: 16033729s
+Job name: countNuclei
+Hostname: 
+Task id: 7
+Processing sample V13B23-366_A1
+MATLAB is selecting SOFTWARE OPENGL rendering.
+
+                            < M A T L A B (R) >
+                  Copyright 1984-2023 The MathWorks, Inc.
+             R2023a Update 3 (9.14.0.2286388) 64-bit (glnxa64)
+                                May 25, 2023
+
+ 
+For online documentation, see https://www.mathworks.com/support
+For product information, visit www.mathworks.com.
+ 
+loading data
+{Error using fileread
+Could not open file
+/dcs05/lieber/marmaypag/LFF_spatialLC_LIBD4140/LFF_spatial_LC/processed-data/01_spaceranger/V13B23-366_A1/outs/spatial/scalefactors_json.json.
+No such file or directory.
+
+Error in countNuclei (line 20)
+w = jsondecode(fileread(jsonname));
+} 
+>> **** Job ends ****
+Mon Apr 14 11:01:51 PM EDT 2025
