@@ -36,7 +36,6 @@ BmaskImg = bsxfun(@times, BWi, cast(Bmask, class(BWi)));
 img1i(~BmaskImg) = 0;
 BG_mask = img1i; 
 BG_mask(NM) = 0;
-BG_mask(BG_mask<=0.1) = 0;
 LC1_all = mean(BG_mask(:));
 temp = BG_mask(BG_mask>0);
 LC1_lc = mean(temp);
@@ -55,7 +54,7 @@ NM_BG(NM_BG < round(LC1_lc,1)) = 0;
 sum(NM_BG> 0 & NM_BG < round(LC1_lc,1), 'all')
 temp = NM_BG(NM_BG>0) - round(LC1_lc,1);
 NM1_BGlc = mean(temp);
-nNM1_BGlc = sum(temp)/size(temp,1)*max(temp);
+nNM1_BGlc = sum(temp)/(size(temp,1)*max(temp));
 
 %section2
 img1 = mat2gray(rgb2gray(img));     
@@ -90,7 +89,7 @@ NM_BG(NM_BG < round(LC2_lc,1)) = 0;
 sum(NM_BG> 0 & NM_BG < round(LC2_lc,1), 'all')
 temp = NM_BG(NM_BG>0) - round(LC2_lc,1);
 NM2_BGlc = mean(temp);
-nNM2_BGlc = sum(temp)/size(temp,1)*max(temp);
+nNM2_BGlc = sum(temp)/(size(temp,1)*max(temp));
 
  %Append to results table
     T = table({fname}, LC1_lc, NM1_lc, NM1_BGlc, nNM1_BGlc, LC2_lc, NM2_lc, NM2_BGlc, nNM2_BGlc, ...
