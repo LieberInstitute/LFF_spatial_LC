@@ -1,0 +1,365 @@
+---
+title: "01-Make_cluster_DGEs_withMinSpots_reqmnt"
+author: "Bernie Mulvey"
+date: "2025-04-26"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(fig.height = 10,fig.width = 7,include = FALSE)
+#### sets tab autocompletion for directories to begin from the directory containing the .Rproj session, instead of the script's directory if different
+knitr::opts_knit$set(root.dir = here::here())
+
+library(data.table)
+library(SpatialExperiment)
+library(dreamlet)
+library(limma)
+library(edgeR)
+library(gridExtra)
+library(ggplot2)
+
+## rstudio GUI tweaks
+require(colorout)
+ColorOut()
+options("styler.addins_style_transformer" = "biocthis::bioc_style()")
+##
+
+## enable forked parallel processing with BiocParallel::multicoreParam, future::, etc. seemed to need this a couple times, but otherwise havent so its here as a preventative measure. part of this is adding the line 
+# OBJC_DISABLE_INITIALIZE_FORK_SAFETY=YES
+# to Renviron.site. see e.g. top response on https://stackoverflow.com/questions/73638290/python-on-mac-is-it-safe-to-set-objc-disable-initialize-fork-safety-yes-globall 
+library(parallelly)
+options(parallelly.supportsMulticore.disableOn="")
+options(parallelly.fork.enable=TRUE)
+library(BiocParallel)
+options(bphost="localhost")
+library(parallel) # use PSOCK clusters for best performance here
+
+## last of all, unload the base package datasets, whose data keep getting in the way of autocompletions (e.g., Theoph is priortized over TRUE)
+unloadNamespace("datasets")
+```
+
+ 
+## load SPE and assign hdg_svg_2575_louv_res1 clusterings as autoannotated
+## Drop Br5517 (unknown anatomy/orientation), Br5276 (LC has been depleted by QC), Br5712 (unknown anatomy/orientation). Keep 6297; no LC but anatomy is right in vicinity.
+```{r}
+lc3 <- readRDS("processed-data/06-countsOnly_noImgData_QCed_SPE_split_to_tissSections.RDS")
+
+louvs <- readRDS("processed-data/07_featureSelection_dimred_harmony_clustering/04-Initial_louvLeid_res0.5-1-2_clusterings.RDS")
+louvs <- louvs[["HARMONYlmbna_HDG_SVG_2575"]][,.(rn,snnHARMONYlmbna_HDG_SVG_2575_louv_res1)]
+setnames(louvs,2,"clusid")
+
+autoan <- readRDS("processed-data/07_featureSelection_dimred_harmony_clustering/05b-init_clusterings_autoannoLCrapheAndGABAergic.RDS")
+autoan <- autoan[["snnHARMONYlmbna_HDG_SVG_2575_louv_res1"]]
+
+louvs <- merge.data.table(louvs,autoan,by="clusid")
+louvs <- DataFrame(louvs,row.names=louvs$rn)[colnames(lc3),]
+
+colLabels(lc3) <- louvs$autoanno
+lc3 <- lc3[,!(lc3$brnum %in% paste0("Br",c(5517,5276,5712)))]
+```
+
+### now the important part: to model all data jointly, we need to make a cluster-sex-genotype pseudobulk object. then to run sex DE for one cluster we would do e.g. (LC_E2hetMale + LC_E2homMale + LC_E4hetMale + LC_E4homMale) - (LC_E2hetFem + LC_E2homFem + LC_E4hetFem + LC_E4homFem).
+```{r}
+# simplify APOE labels and make sexapo groups
+lc3$APOE <- gsub(lc3$APOE,pattern="\\/ ",replacement="_")
+lc3$APOE[lc3$APOE=="E4_E4"] <- "E4hom"
+lc3$APOE[lc3$APOE=="E3_E4"] <- "E4het"
+lc3$APOE[lc3$APOE=="E2_E3"] <- "E2het"
+lc3$APOE[lc3$APOE=="E2_E2"] <- "E2hom"
+
+lc3$geno_group <- paste0(lc3$Sex,"_",lc3$APOE)
+lc3$clus_geno_group <- paste0(lc3$label,"_",lc3$geno_group)
+
+
+```
+
+## for plotting pseudobulk MDS by Visium slide, we need to edit the colData(spe)$Visium_slide to JUST be the slide (it still has the slide capture area ID appended to it)
+```{r}
+colData(lc3)$Visium_slide <- gsub(colData(lc3)$Visium_slide,pattern="^(V.....-...)_..$",replacement="\\1")
+
+rm(louvs,autoan)
+```
+
+#### TOP LEVEL CLUSTER DGELists ####
+
+# make pseudobulk object (dreamlet is v. fast at this)
+```{r}
+ag <- dreamlet::aggregateToPseudoBulk(lc3,sample_id="sample_id",cluster_id = "label",BPPARAM = MulticoreParam(6))
+
+# extract number of spots in a pseudobulk sample to filter by. this is in the inverse of the format we want, list entries are sample and subentries are cluster, so rearrange to cluster listed by sample
+agn <- ag@int_colData$n_cells
+agn <- lapply(agn,function(x){as.data.frame(t(x))})
+agn <- rbindlist(agn,idcol="samp")
+
+# extract colData to feed into DGEList as the "samples" data
+agcd <- as.data.frame(colData(ag))
+
+## only retain clusters for which at least 43 samples (of 85 total, i.e over half) of ≥10 spots each are available:  
+ag <- as.list(assays(ag))
+agc <- mapply(ag,names(ag),SIMPLIFY=FALSE,FUN=function(a,n){
+  tenspot <- agn[get(n)>=10,samp]
+  ncol(a[,colSums(a)>0][,tenspot])
+})
+
+ag <- ag[!(agc<43)]
+
+## drop clusters where there are 20+ samples, but under 18 samples for one of the sexes (i.e., < half of the samples from the smaller group--females w 35 sections total):
+agsc <-  mapply(ag,names(ag),SIMPLIFY=FALSE,FUN=function(a,n){
+    cn <- colnames(a[,colSums(a)>0]) # any counts
+    cn <- cn[cn %in% agn[get(n)>=10,samp]] # 10+ spots included
+    tmp <- as.data.table(agcd[cn,])
+    if(nrow(tmp[,.N,by="Sex"][N<18])>0){
+      return(0)
+    } else {return(1)}
+})
+ag <- ag[agsc==1]
+
+
+```
+
+## make the DGELists per remaining cluster:
+## ADDED 02/14/25: store plots of the entire count distribution with the low-expression cutoff marked to check that this is working as expected.
+## ADDED 02/26/25: filter out samples with under 10 spots in the current cluster
+```{r}
+## get rowData as a data.table from the SPE to append to the DGElist--namely so we can make MDS plots of the pseudobulks while excluding mitochondrial and sex chromosomal genes
+tmprd <- as.data.table(rowData(lc3)) # rownames are the same as $gene_id
+
+dgels <- mapply(a=ag,n=names(ag),SIMPLIFY=FALSE,FUN=function(a,n){
+    cn <- colnames(a[,colSums(a)>0]) # has counts
+    
+    tenspot <- cn[cn %in% agn[get(n)>=10,samp]] # and has 10+spots contributed
+    X <- a[,tenspot]
+    
+    s <- copy(agcd)[colnames(X),]
+    if(length(unique(s$Sex))<2){return()} else 
+    {
+
+        dge <- DGEList(counts=as.matrix(X),samples=s,genes=as.data.frame(tmprd,row.names = tmprd$rn)[rownames(X),])
+        dge <- normLibSizes(dge,method = "TMM")
+        
+        ## find the smaller group for this cluster
+        smolgrp <- table(dge$samples$Sex)[which.min(table(dge$samples$Sex))]
+        
+        ## for the smallest group, determine low expression cutoff
+        rowmn.m <- as.numeric(rowMeans(cpm(dge[,(dge$samples$Sex==names(smolgrp)[1])],log=TRUE)))
+        
+        ## get histogram distribution with 10 bins at the low end of the logcpm space
+        h <- hist(rowmn.m[which(rowmn.m>min(rowmn.m)&rowmn.m<(1+min(rowmn.m)))],breaks=10,plot=FALSE)
+        ## get the minimum in this low logcpm range and its corresponding bin (x axis value, i.e. log cpm)
+        minc <- h$breaks[which(h$counts==min(h$counts))]
+        
+        ## get the corresponding smallest-library count value for this minimum^
+        smollib <- min(dge$samples[(dge$samples$Sex==names(smolgrp)[1]),"lib.size"])
+        countthresh <- (minc^2)*(as.numeric(smollib)/10^6)
+        
+        ## and convert that smallest count to the logcpm value in said smallest library to use as a low-expression threshold
+        cpmthresh <- log2(countthresh/(as.numeric(smollib)*10^-6))
+        
+        ## 2/14/25: make a plot to also return
+        mnplt <- as.data.table(rowmn.m)
+        setnames(mnplt,1,"V1")
+        
+        ## exclude genes with a mean logcpm under 0.1
+        mnplt <- mnplt[V1>0.1]
+        
+        plt <- ggplot(mnplt,aes(x=V1))+
+          geom_histogram(bins = 100)+
+          geom_vline(xintercept=cpmthresh,col="red")+
+          guides(color="none")+
+          ggtitle(paste0(n," genewise mean logCPM in\nlower n sex (",smolgrp,")"))
+        
+        ## filter for genes with at least thresh counts in at least (smaller sex group size) samples
+        keep <- rowSums(cpm(dge,log=T)>cpmthresh) >= as.numeric(smolgrp)
+        
+        ## recalc lib factors after dropping low-expressed genes
+        dge <- dge[keep,,keep.lib.sizes=FALSE]
+        dge <- calcNormFactors(dge,method = "TMM")
+        
+        retlist <- list(dge,plt)
+        names(retlist) <- c(n,"plt")
+        return(retlist)
+    }
+})
+
+## get and arrange plots
+plts <- lapply(dgels,function(x){x$plt})
+
+pdf("plots/12_DEanalyses_removedsampsAndFinalNMseg/01-logCPM_cutoff_checks_10spotfilt.pdf",height=10,width=10)
+do.call("grid.arrange",c(plts,ncol=3))
+dev.off()
+
+dgels <- lapply(dgels,function(x){x[[1]]})
+```
+
+## save
+```{r}
+saveRDS(dgels,"processed-data/12_DEanalyses_removedsampsAndFinalNMseg/01a-DGElist_per_25HDG75SVGlouv1_cluster_normFilt_10spotmin.RDS")
+```
+
+## make MDS plots per pseudobulk cluster per potential variable of interest
+```{r}
+clus <- makeCluster(9,"PSOCK")
+clusterMap(d=dgels,n=names(dgels),SIMPLIFY=FALSE,cl=clus,fun=function(d,n){
+  covcols <- c("Sex","APOE","Visium_slide","brnum")
+  lapply(covcols,FUN=function(cov){
+    pal <- rainbow(n=length(unique(d$samples[,cov])))
+    d$samples[,cov] <- as.factor(d$samples[,cov])
+    
+    png(paste0("plots/12_DEanalyses_removedsampsAndFinalNMseg/01_pseudobulk_cluster_MDSes/01a-",n,"_",cov,"_1_2_10spotfilt.png"),width=1000,height=800)
+    plotMDS(d,col=pal[factor(d$samples[,cov])], dim.plot = c(1,2),pch = 18)
+    legend('bottomright', legend=levels(d$samples[,cov]), col=pal, cex=1, pch=18)
+    dev.off()
+    
+    png(paste0("plots/12_DEanalyses_removedsampsAndFinalNMseg/01_pseudobulk_cluster_MDSes/01a-",n,"_",cov,"_1_3_10spotfilt.png"),width=1000,height=800)
+    plotMDS(d,col=pal[factor(d$samples[,cov])], dim.plot = c(1,3),pch = 18)
+    legend('bottomright', legend=levels(d$samples[,cov]), col=pal, cex=1, pch=18)
+    dev.off()
+    
+    png(paste0("plots/12_DEanalyses_removedsampsAndFinalNMseg/01_pseudobulk_cluster_MDSes/01a-",n,"_",cov,"_2_3_10spotfilt.png"),width=1000,height=800)
+    plotMDS(d,col=pal[factor(d$samples[,cov])], dim.plot = c(2,3),pch = 18)
+    legend('bottomright', legend=levels(d$samples[,cov]), col=pal, cex=1, pch=18)
+    dev.off()
+  })
+})
+stopCluster(clus)
+gc(full=T)
+```
+
+# clean up
+```{r}
+rm(ag,agc,agcd,agsc,clus,dgels,plts)
+```
+
+#### LCNM-SEGMENTATION-SUBCLUSTER DGELists -- only LC NM+/NM- frxns. ####
+#### not done yet ####
+
+## # make pseudobulk object (dreamlet is v. fast at this)
+```{r}
+LCNMadj.ag <- dreamlet::aggregateToPseudoBulk(lc3[,lc3$NMseg_subclus!=""],sample_id="sample_id",cluster_id = "NMseg_subclus",BPPARAM = MulticoreParam(6))
+
+# extract colData to feed into DGEList as the "samples" data
+nm.agcd <- as.data.frame(colData(LCNMadj.ag))
+
+# extract number of spots in a pseudobulk sample to filter by. this is in the inverse of the format we want, list entries are sample and subentries are cluster, so rearrange to cluster listed by sample
+nmagn <- LCNMadj.ag@int_colData$n_cells
+nmagn <- lapply(nmagn,function(x){as.data.frame(t(x))})
+nmagn <- rbindlist(nmagn,idcol="samp")
+
+## only retain LCNM+- clusters, and then only if at least 43 samples with 10+ spots of a type (of 85 total, i.e over half) are available after pseudobulking through dreamlet:  
+
+LCNMadj.ag <- as.list(assays(LCNMadj.ag))
+LCNMadj.ag <- LCNMadj.ag[c("LC.1_NMpos","LC.1_NMneg")]
+LCNMadj.agc <- mapply(LCNMadj.ag,names(LCNMadj.ag),SIMPLIFY=FALSE,FUN=function(a,n){
+  tenspot <- nmagn[get(n)>=10,samp]
+  ncol(a[,colSums(a)>0][,tenspot])
+})
+
+LCNMadj.ag <- LCNMadj.ag[!(LCNMadj.agc<43)]
+
+## drop clusters where there are 20+ samples, but under 18 samples for one of the sexes (i.e., < half of the samples from the smaller group--females w 35 sections total):
+agsc <- mapply(LCNMadj.ag,n=names(LCNMadj.ag),SIMPLIFY=FALSE,FUN=function(a,n){
+    cn <- colnames(a[,colSums(a)>0])
+    cn <- cn[cn %in% nmagn[get(n)>=10,samp]] # 10+ spots included
+
+    tmp <- as.data.table(nm.agcd[cn,])
+    if(nrow(tmp[,.N,by="Sex"][N<18])>0){
+      return(0)
+    } else {return(1)}
+})
+
+LCNMadj.ag <- LCNMadj.ag[agsc==1]
+
+rm(agscs,LCadj.agc,LCNMadj.agc)
+
+# stratify by APOE4 positive / negative  
+nm.agcd$e4 <- ifelse(nm.agcd$APOE %in% c("E4/ E4","E3/ E4"),yes="carrier",no="negative")
+
+```
+
+## make the DGELists per retained subcluster:
+```{r}
+## get rowData as a data.table from the SPE to append to the DGElist--namely so we can make MDS plots of the pseudobulks while excluding mitochondrial and sex chromosomal genes
+tmprd <- as.data.table(rowData(lc3)) # rownames are the same as $gene_id
+
+retdgels <- mapply(a=LCNMadj.ag,n=names(LCNMadj.ag),SIMPLIFY=FALSE,FUN=function(a,n){
+    cn <- colnames(a[,colSums(a)>0]) # has counts
+    
+    tenspot <- cn[cn %in% nmagn[get(n)>=10,samp]] # and has 10+spots contributed
+    X <- a[,tenspot]
+    
+    s <- copy(nm.agcd)[colnames(X),]
+    if(length(unique(s$Sex))<2){return()} else {
+
+        dge <- DGEList(counts=as.matrix(X),samples=s,genes=as.data.frame(tmprd,row.names = tmprd$rn)[rownames(X),])
+        dge <- normLibSizes(dge,method = "TMM")
+        
+        ## find the smaller group for this cluster
+        smolgrp <- table(dge$samples$Sex)[which.min(table(dge$samples$Sex))]
+        
+        ## for the smallest group, determine low expression cutoff
+        rowmn.m <- as.numeric(rowMeans(cpm(dge[,(dge$samples$Sex==names(smolgrp)[1])],log=TRUE)))
+        
+        ## get histogram distribution with 10 bins at the low end of the logcpm space
+        h <- hist(rowmn.m[which(rowmn.m>min(rowmn.m)&rowmn.m<(4+min(rowmn.m)))],breaks=10,plot=FALSE)
+        ## get the minimum in this low logcpm range and its corresponding bin (x axis value, i.e. log cpm)
+        minc <- h$breaks[which(h$counts==min(h$counts))]
+        
+        # if there's multiple points meeting this^ minimum, take the larger
+        if(length(minc)>1){minc <- max(minc)}
+        
+        ## get the corresponding smallest-library count value for this minimum^
+        smollib <- min(dge$samples[(dge$samples$Sex==names(smolgrp)[1]),"lib.size"])
+        countthresh <- (minc^2)*(as.numeric(smollib)/10^6)
+        
+        ## and convert that smallest count to the logcpm value in said smallest library to use as a low-expression threshold
+        cpmthresh <- log2(countthresh/(as.numeric(smollib)*10^-6))
+        
+        ## 2/14/25: make a plot to also return
+        mnplt <- as.data.table(rowmn.m)
+        setnames(mnplt,1,"V1")
+        
+        ## exclude genes with a mean logcpm under 0.1
+        mnplt <- mnplt[V1>0.1]
+        
+        plt <- ggplot(mnplt,aes(x=V1))+
+          geom_histogram(bins = 100)+
+          guides(color="none")+
+          ggtitle(paste0(n," genewise mean logCPM in\nlower n sex (",smolgrp,")"))
+        
+        ## only draw the threshold line if it's within the rowmn.m range
+        if(cpmthresh>min(rowmn.m)&cpmthresh<max(rowmn.m)){
+          plt <- plt + geom_vline(xintercept=cpmthresh,col="red")
+        }
+        
+        ## filter for genes with at least thresh counts in at least (smaller sex group size) samples
+        keep <- rowSums(cpm(dge,log=T)>cpmthresh) >= as.numeric(smolgrp)
+        
+        ## recalc lib factors after dropping low-expressed genes
+        dge <- dge[keep,,keep.lib.sizes=FALSE]
+        dge <- calcNormFactors(dge,method = "TMM")
+        
+        retlist <- list(dge,plt)
+        names(retlist) <- c(n,"plt")
+        return(retlist)
+    }
+    return(retdgels)
+})
+```
+
+## get and arrange low-expression-cutoff plots
+```{r}
+plts <- lapply(retdgels,FUN=function(y){
+    y$plt
+})
+
+pdf(paste0("plots/11_DEanalyses/01b-logCPM_cutoff_checks_LC-NM-subsets.pdf"),height=3.33*ceiling(length(plts)/3),width=10)
+do.call("grid.arrange",c(plts,ncol=3))
+dev.off()
+```
+
+## get the dgelists themselves to save
+```{r}
+retdgels <- lapply(retdgels,function(x){x[[1]]}) 
+
+saveRDS(retdgels,"processed-data/11_DEanalyses/01b-DGElist_per_LCNM_subcluster_normFilt_10spotmin.RDS")
+```

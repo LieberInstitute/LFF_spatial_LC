@@ -1,0 +1,241 @@
+---
+title: "02-DEanalysis_minspots"
+author: "Bernie Mulvey"
+date: "2025-02-26"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(fig.height = 10,fig.width = 7,include = FALSE)
+#### sets tab autocompletion for directories to begin from the directory containing the .Rproj session, instead of the script's directory if different
+knitr::opts_knit$set(root.dir = here::here())
+
+library(data.table)
+library(edgeR)
+library(limma)
+
+# library(SpatialFeatureExperiment)
+
+## rstudio GUI tweaks
+require(colorout)
+ColorOut()
+options("styler.addins_style_transformer" = "biocthis::bioc_style()")
+##
+
+## enable forked parallel processing with BiocParallel::multicoreParam, future::, etc. seemed to need this a couple times, but otherwise havent so its here as a preventative measure. part of this is adding the line 
+# OBJC_DISABLE_INITIALIZE_FORK_SAFETY=YES
+# to Renviron.site. see e.g. top response on https://stackoverflow.com/questions/73638290/python-on-mac-is-it-safe-to-set-objc-disable-initialize-fork-safety-yes-globall 
+library(parallelly)
+options(parallelly.supportsMulticore.disableOn="")
+options(parallelly.fork.enable=TRUE)
+library(BiocParallel)
+options(bphost="localhost")
+library(parallel)
+
+
+## last of all, unload the base package datasets, whose data keep getting in the way of autocompletions (e.g., Theoph is priortized over TRUE)
+unloadNamespace("datasets")
+```
+
+```{r}
+dgel <- readRDS("processed-data/12_DEanalyses_removedsampsAndFinalNMseg/01a-DGElist_per_25HDG75SVGlouv1_clusterSexAPO_normFilt_10spotmin.RDS")
+
+### to avoid any issues, replace "Br6119(re-dis)" with "Br6119" in the samples tables
+dgel$samples$brnum[dgel$samples$brnum=="Br6119(re-dis)"] <- "Br6119"
+```
+
+## append global genetic ancestry proportion estimates (FLARE, 3-component CEU ancestry--the other two being YRI and CHB). this source file is intentionally not included in in github but is on JHPCE. The CHB proportions range 0.0001 to 0.01--so CEU is effectively the proportion that is not YRI, and we can just use CEU as the variable here.
+
+```{r}
+flares <- fread("raw-data/ancestryAndHaplotypes/FLARE/global_ancestry_estimates.txt")
+
+tmpsamp <- as.data.table(dgel$samples,keep.rownames=T)
+tmpsamp <- merge.data.table(tmpsamp,flares,by.x="brnum",by.y="ID")
+tmpsamp <- as.data.frame(tmpsamp,row.names=tmpsamp$rn)[rownames(dgel$samples),]
+tmpsamp$rn <- NULL
+dgel$samples <- tmpsamp
+rm(flares)
+```
+
+### specify contrasts: Sex, E4 vs E2, E4 copy number vs E2, E2 copy number vs E4, per cluster
+```{r}
+## it's not going to like the LC.1, so change it to LC
+dgel$samples$clus_geno_group <- gsub(dgel$samples$clus_geno_group,pattern="\\.",replacement="")
+dgel$samples$label <-  gsub(dgel$samples$label,pattern="\\.",replacement="")
+
+## full design matrix with colnames matching clus geno group values
+des <- model.matrix(~0+clus_geno_group+Age+YRI, data = dgel$samples)
+colnames(des) <- gsub(colnames(des),pattern="clus_geno_group",replacement="")
+
+### apply default edgeR low count filtering
+dgel2 <- filterByExpr.DGEList(dgel,design = des)
+dgel2 <- dgel[dgel2,]
+rm(dgel)
+
+## make sex and e4s vs e2s contrasts for each cluster
+i<-1
+for (i in c(1:length(unique(dgel2$samples$label)))){
+    x <- unique(dgel2$samples$label)[i]
+# trasts <- lapply(unique(dgel$samples$label),function(x){
+    ## get groups for sex DE
+    
+    malepat <- paste0(x,"_M_")
+    malegrps <- unique(grep(dgel2$samples$clus_geno_group,pattern=malepat,value=T))
+    fempat <- paste0(x,"_F_")
+    femgrps <- unique(grep(dgel2$samples$clus_geno_group,pattern=fempat,value=T))
+    
+    if(length(femgrps)!=length(malegrps)){
+        if(length(femgrps)<length(malegrps)){
+            mult <- length(malegrps)/length(femgrps)
+        } else {
+            mult <- length(femgrps)/length(malegrps)
+        }
+    } else {mult <- 1}
+    
+    ### get groups for all E4 carriers vs all E2 carriers
+    
+    e4pat <- paste0("E4")
+    e4grps <- unique(grep(dgel2$samples$clus_geno_group,pattern=e4pat,value=T))
+    e4grps <- grep(e4grps,pattern=x,value=T)
+    
+    e2pat <- paste0("E2")
+    e2grps <- unique(grep(dgel2$samples$clus_geno_group,pattern=e2pat,value=T))
+    e2grps <- grep(e2grps,pattern=x,value=T)
+    
+    if(length(e4grps)!=length(e2grps)){
+    if(length(e4grps)<length(e2grps)){
+        e4e2mult <- length(e2grps)/length(e4grps)
+    } else {
+        e4e2mult <- length(e4grps)/length(e2grps)
+    }
+    } else {e4e2mult <- 1}
+    
+    ret <- makeContrasts(
+        str2expression(
+            paste0(x,"_Sex=",paste0("mult*(",paste0(malegrps,collapse="+"),")"),
+               paste0("-(",paste0(femgrps,collapse="+"),")"))),
+        
+        str2expression(
+            paste0(x,"_E4vE2=",paste0("e4e2mult*(",paste0(e4grps,collapse="+"),")"),
+               paste0("-(",paste0(e2grps,collapse="+"),")"))),
+    
+        levels=des)
+    
+    colnames(ret) <- paste0(x,c("_Sex","_E4vsE2"))
+    
+    if(i==1){
+        trastmat <- ret
+    } else{ 
+        trastmat <- cbind(trastmat,ret)
+    }
+}
+rm(e2grps,e4grps,e2pat,e4pat,e4e2mult,femgrps,fempat,i,malegrps,malepat,mult,x,ret)
+```
+
+run DE ### LEFT OFF HERE probably needs to be jhpce'd because its going to take a while
+```{r}
+v.swt <- voomLmFit(dgel2,design = des,block = as.factor(dgel2$samples$brnum),adaptive.span = T,sample.weights = T)
+v.swt.fit <- contrasts.fit(v.swt,contrasts=trastmat)
+v.swt.fit.e <- eBayes(v.swt.fit)
+
+keeplist <- list(voomLFt=v.swt,trastsFit=v.swt.fit,eBay=v.swt.fit.e,dgel=dgel2,trasts=trastmat)
+
+saveRDS(keeplist,"processed-data/12_DEanalyses_removedsampsAndFinalNMseg/02TESTa-allclust_sexAPOde_results.RDS")
+rm(keeplist)
+
+detabs <- lapply(c(1:length(colnames(trastmat))),FUN=function(t){
+    restab <- as.data.table(topTable(v.swt.fit.e,coef = t,number=Inf,adjust.method = "BH"))
+    return(restab)
+})
+names(detabs) <- colnames(trastmat)
+
+saveRDS(detabs,"processed-data/12_DEanalyses_removedsampsAndFinalNMseg/02TESTa-allclust_sexAPO_deTabs.RDS")
+```
+
+```{r}
+rm(list=ls())
+gc(full=T)
+```
+
+reprod inf
+```{r}
+sessionInfo()
+sessioninfo::session_info()
+```
+R version 4.4.3 (2025-02-28)
+Platform: aarch64-apple-darwin20
+Running under: macOS Sequoia 15.3.2
+
+Matrix products: default
+BLAS:   /System/Library/Frameworks/Accelerate.framework/Versions/A/Frameworks/vecLib.framework/Versions/A/libBLAS.dylib 
+LAPACK: /Library/Frameworks/R.framework/Versions/4.4-arm64/Resources/lib/libRlapack.dylib;  LAPACK version 3.12.0
+
+locale:
+[1] en_US.UTF-8/en_US.UTF-8/en_US.UTF-8/C/en_US.UTF-8/en_US.UTF-8
+
+time zone: America/Chicago
+tzcode source: internal
+
+attached base packages:
+[1] parallel  stats     graphics  grDevices utils     methods   base     
+
+other attached packages:
+[1] BiocParallel_1.40.0 parallelly_1.43.0   colorout_1.3-0.2    edgeR_4.4.2        
+[5] limma_3.62.2        data.table_1.17.0   rlang_1.1.5        
+
+loaded via a namespace (and not attached):
+ [1] digest_0.6.37     codetools_0.2-20  fastmap_1.2.0     xfun_0.51        
+ [5] lattice_0.22-6    knitr_1.50        htmltools_0.5.8.1 rmarkdown_2.29   
+ [9] cli_3.6.4         grid_4.4.3        statmod_1.5.0     compiler_4.4.3   
+[13] rprojroot_2.0.4   here_1.0.1        rstudioapi_0.17.1 tools_4.4.3      
+[17] evaluate_1.0.3    yaml_2.3.10       locfit_1.5-9.12  
+> sessioninfo::session_info()
+─ Session info ────────────────────────────────────────────────────────────────────────
+ setting  value
+ version  R version 4.4.3 (2025-02-28)
+ os       macOS Sequoia 15.3.2
+ system   aarch64, darwin20
+ ui       RStudio
+ language (EN)
+ collate  en_US.UTF-8
+ ctype    en_US.UTF-8
+ tz       America/Chicago
+ date     2025-04-28
+ rstudio  2024.07.0-daily+219 Cranberry Hibiscus (desktop)
+ pandoc   3.1.11 @ /Applications/RStudio.app/Contents/Resources/app/quarto/bin/tools/aarch64/ (via rmarkdown)
+ quarto   1.4.555 @ /Applications/RStudio.app/Contents/Resources/app/quarto/bin/quarto
+
+─ Packages ────────────────────────────────────────────────────────────────────────────
+ ! package      * version  date (UTC) lib source
+   BiocParallel * 1.40.0   2024-11-23 [1] Bioconductor 3.20 (R 4.4.2)
+ P cli            3.6.4    2025-02-13 [2] CRAN (R 4.4.1)
+   codetools      0.2-20   2024-03-31 [1] CRAN (R 4.4.3)
+   colorout     * 1.3-0.2  2024-05-01 [1] Github (jalvesaq/colorout@c6113a2)
+   data.table   * 1.17.0   2025-02-22 [1] CRAN (R 4.4.1)
+   digest         0.6.37   2024-08-19 [1] CRAN (R 4.4.1)
+   edgeR        * 4.4.2    2025-01-27 [1] Bioconductor 3.20 (R 4.4.2)
+   evaluate       1.0.3    2025-01-10 [1] CRAN (R 4.4.1)
+   fastmap        1.2.0    2024-05-15 [1] CRAN (R 4.4.0)
+   here           1.0.1    2020-12-13 [1] CRAN (R 4.4.0)
+   htmltools      0.5.8.1  2024-04-04 [1] CRAN (R 4.4.0)
+   knitr          1.50     2025-03-16 [1] CRAN (R 4.4.2)
+   lattice        0.22-6   2024-03-20 [1] CRAN (R 4.4.3)
+   limma        * 3.62.2   2025-01-09 [1] Bioconductor 3.20 (R 4.4.2)
+   locfit         1.5-9.12 2025-03-05 [1] CRAN (R 4.4.1)
+   parallelly   * 1.43.0   2025-03-24 [1] CRAN (R 4.4.1)
+ P rlang        * 1.1.5    2025-01-17 [2] CRAN (R 4.4.1)
+   rmarkdown      2.29     2024-11-04 [1] CRAN (R 4.4.1)
+   rprojroot      2.0.4    2023-11-05 [1] CRAN (R 4.4.0)
+   rstudioapi     0.17.1   2024-10-22 [1] CRAN (R 4.4.1)
+   sessioninfo    1.2.3    2025-02-05 [1] CRAN (R 4.4.1)
+   statmod        1.5.0    2023-01-06 [1] CRAN (R 4.4.0)
+   xfun           0.51     2025-02-19 [1] CRAN (R 4.4.1)
+   yaml           2.3.10   2024-07-26 [1] CRAN (R 4.4.0)
+
+ [1] /Library/Frameworks/R.framework/Versions/4.4-arm64/Resources/library
+ [2] /Users/bmulvey/Library/R/arm64/4.4/library
+
+ * ── Packages attached to the search path.
+ P ── Loaded and on-disk path mismatch.
+
+───────────────────────────────────────────────────────────────────────────────────────
