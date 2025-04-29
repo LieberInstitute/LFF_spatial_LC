@@ -14,7 +14,7 @@ files = dir(fullfile(pwd, '/raw-data/Images/*1.tif'));
 myfiles = files(cellfun(@(x) length(x) == 17, {files.name}));
 
 results = table();
-for i= 19:numel(myfiles)
+for i= 1:numel(myfiles)
 
 fname = myfiles(i).name(1:end-4);
 disp(fname);
@@ -24,6 +24,12 @@ if ismember(i, [11, 25, 37, 38])
     nRGBNM1 = 0;
     RGBNM2 = 0;
     nRGBNM2 = 0;
+    lcR1 = 0;
+    lcR2 = 0;
+    lcG1 = 0;
+    lcG2 = 0;
+    lcB1 = 0;
+    lcB2 = 0;
 else
     img = imread([pwd, '/raw-data/Images/',fname,'.tif']);
     NMseg_dir = fullfile(pwd, '/processed-data/Images/NMseg/');
@@ -48,17 +54,17 @@ else
     BG_maskR = imcomplement(BG_mask(:,:,1)*0.2989);
     BG_maskR(NM) = 0; BG_maskR(~BmaskImg) = 0;
     temp = BG_maskR(BG_maskR>0);
-    lcR = mean(temp);
+    lcR1 = mean(temp);
     
     BG_maskG = imcomplement(BG_mask(:,:,2)*0.5870);
     BG_maskG(NM) = 0; BG_maskG(~BmaskImg) = 0;
     temp = BG_maskG(BG_maskG>0);
-    lcG = mean(temp);
+    lcG1 = mean(temp);
     
     BG_maskB = imcomplement(BG_mask(:,:,3)*0.1140);
     BG_maskB(NM) = 0; BG_maskB(~BmaskImg) = 0;
     temp = BG_maskB(BG_maskB>0);
-    lcB = mean(temp);
+    lcB1 = mean(temp);
     
     NM_maskR = imcomplement(NM_mask(:,:,1)*0.2989) - lcR;
     NM_maskR(~NM) = 0; NM_maskR(~BmaskImg) = 0;
@@ -82,6 +88,9 @@ else
     if ismember(i, [6, 7, 18])
         RGBNM2 = RGBNM1;
         nRGBNM2 = nRGBNM1;
+        lcR1 = lcR2;
+        lcG1 = lcG2;
+        lcB1 = lcB2;
     else
     
         df = clus(strcmp(clus.sample_id,fname) & strcmp(clus.section, 's2'), :);
@@ -101,17 +110,17 @@ else
         BG_maskR = imcomplement(BG_mask(:,:,1)*0.2989);
         BG_maskR(NM) = 0; BG_maskR(~BmaskImg) = 0;
         temp = BG_maskR(BG_maskR>0);
-        lcR = mean(temp);
+        lcR2 = mean(temp);
         
         BG_maskG = imcomplement(BG_mask(:,:,2)*0.5870);
         BG_maskG(NM) = 0; BG_maskG(~BmaskImg) = 0;
         temp = BG_maskG(BG_maskG>0);
-        lcG = mean(temp);
+        lcG2 = mean(temp);
         
         BG_maskB = imcomplement(BG_mask(:,:,3)*0.1140);
         BG_maskB(NM) = 0; BG_maskB(~BmaskImg) = 0;
         temp = BG_maskB(BG_maskB>0);
-        lcB = mean(temp);
+        lcB2 = mean(temp);
         
         NM_maskR = imcomplement(NM_mask(:,:,1)*0.2989) - lcR;
         NM_maskR(~NM) = 0; NM_maskR(~BmaskImg) = 0;
@@ -134,8 +143,8 @@ else
 end
 % RGBNM1 =0 , nRGBNM1=0 , RGBNM2=0 , nRGBNM2=0
  %Append to results table
-    T = table({fname}, RGBNM1, nRGBNM1, RGBNM2, nRGBNM2, ...
-              'VariableNames', {'fname', 'RGBNM1', 'nRGBNM1', 'RGBNM2','nRGBNM2'});
+    T = table({fname}, RGBNM1, nRGBNM1, lcR1, lcG1, lcB1, RGBNM2, nRGBNM2, lcR2, lcG2, lcB2,...
+              'VariableNames', {'fname', 'RGBNM1', 'nRGBNM1', 'lcR1', 'lcG1', 'lcB1', 'RGBNM2', 'nRGBNM2', 'lcR2', 'lcG2', 'lcB2'});
     results = [results; T];
 
 end
