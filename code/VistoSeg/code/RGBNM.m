@@ -66,13 +66,13 @@ else
     temp = BG_maskB(BG_maskB>0);
     lcB1 = mean(temp);
     
-    NM_maskR = imcomplement(NM_mask(:,:,1)*0.2989) - lcR;
+    NM_maskR = imcomplement(NM_mask(:,:,1)*0.2989) - lcR1;
     NM_maskR(~NM) = 0; NM_maskR(~BmaskImg) = 0;
     sum(NM_maskR(:)<0)
-    NM_maskG = imcomplement(NM_mask(:,:,2)*0.5870) - lcG;
+    NM_maskG = imcomplement(NM_mask(:,:,2)*0.5870) - lcG1;
     NM_maskG(~NM) = 0; NM_maskG(~BmaskImg) = 0;
     sum(NM_maskG(:)<0)
-    NM_maskB = imcomplement(NM_mask(:,:,3)*0.1140) - lcB;
+    NM_maskB = imcomplement(NM_mask(:,:,3)*0.1140) - lcB1;
     NM_maskB(~NM) = 0; NM_maskB(~BmaskImg) = 0;
     sum(NM_maskB(:)<0)
     
@@ -122,13 +122,13 @@ else
         temp = BG_maskB(BG_maskB>0);
         lcB2 = mean(temp);
         
-        NM_maskR = imcomplement(NM_mask(:,:,1)*0.2989) - lcR;
+        NM_maskR = imcomplement(NM_mask(:,:,1)*0.2989) - lcR2;
         NM_maskR(~NM) = 0; NM_maskR(~BmaskImg) = 0;
         sum(NM_maskR(:)<0)
-        NM_maskG = imcomplement(NM_mask(:,:,2)*0.5870) - lcG;
+        NM_maskG = imcomplement(NM_mask(:,:,2)*0.5870) - lcG2;
         NM_maskG(~NM) = 0; NM_maskG(~BmaskImg) = 0;
         sum(NM_maskG(:)<0)
-        NM_maskB = imcomplement(NM_mask(:,:,3)*0.1140) - lcB;
+        NM_maskB = imcomplement(NM_mask(:,:,3)*0.1140) - lcB2;
         NM_maskB(~NM) = 0; NM_maskB(~BmaskImg) = 0;
         sum(NM_maskB(:)<0)
         
