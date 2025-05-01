@@ -41,7 +41,7 @@ else
     x = df.pxl_col_in_fullres; y = df.pxl_row_in_fullres;
     k = convhull(y,x);
     Bmask = poly2mask(x(k), y(k), size(img, 1), size(img, 2)); % Black out everything outside the polygon
-    BWi = mat2gray(rgb2gray(img)) < 0.9;
+    BWi = mat2gray(rgb2gray(img)) < 0.8;
     BmaskImg = bsxfun(@times, BWi, cast(Bmask, class(BWi)));
     
     img1 = img;
