@@ -51,11 +51,18 @@ for i= 1:numel(myfiles)
      LC1_lc = mean(temp);
      
      NM(~BmaskImg) = 0;
-     NM_mask = img1i;
+     
+     NM_mask = img1;
      NM_mask(~NM) = 0;
      NM1_all = mean(NM_mask(:));
      temp = NM_mask(NM_mask>0);
      NM1_lc = mean(temp);
+
+     NM_mask = img1i;
+     NM_mask(~NM) = 0;
+     NM1_alli = mean(NM_mask(:));
+     temp = NM_mask(NM_mask>0);
+     NM1_lci = mean(temp);
      
      NM_BG = NM_mask;
      sum(NM_BG(:)> 0)
@@ -92,11 +99,18 @@ for i= 1:numel(myfiles)
      LC2_lc = mean(temp);
      
      NM(~BmaskImg) = 0;
-     NM_mask = img1i;
+
+     NM_mask = img1;
      NM_mask(~NM) = 0;
      NM2_all = mean(NM_mask(:));
      temp = NM_mask(NM_mask>0);
      NM2_lc = mean(temp);
+
+     NM_mask = img1i;
+     NM_mask(~NM) = 0;
+     NM2_alli = mean(NM_mask(:));
+     temp = NM_mask(NM_mask>0);
+     NM2_lci = mean(temp);
      
      NM_BG = NM_mask;
      sum(NM_BG(:)> 0)
@@ -109,13 +123,13 @@ for i= 1:numel(myfiles)
     end
       %Append to results table
   end
-  T = table({fname}, LC1_lc, NM1_lc, NM1_BGlc, LC2_lc, NM2_lc, NM2_BGlc, ...
-                   'VariableNames', {'fname', 'BG1', 'NM1', 'BG_NM1', 'BG2', 'NM2', 'BG_NM2'});
+  T = table({fname}, LC1_lc, NM1_all, NM1_lc, NM1_lci, NM1_BGlc, LC2_lc, NM2_all, NM2_lc, NM2_lci, NM2_BGlc, ...
+                   'VariableNames', {'fname', 'BG1', 'NM1_all', 'NM1_lc', 'NM1_lci', 'BG_NM1', 'BG2', 'NM2_all', 'NM2_lc', 'NM2_lci','BG_NM2'});
          results = [results; T];
 
 end
 
-writetable(results, '/dcs05/lieber/marmaypag/LFF_spatialLC_LIBD4140/LFF_spatial_LC/processed-data/Images/NMvsBGNMvsRGBBGNM/NMvsBGNM.csv')
+writetable(results, '/dcs05/lieber/marmaypag/LFF_spatialLC_LIBD4140/LFF_spatial_LC/processed-data/Images/NMvsBGNMvsRGBBGNM/NMvsBGNM1.csv')
 
 
 %%
