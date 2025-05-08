@@ -1,7 +1,7 @@
 ---
 title: "02-DEanalysis_minspots"
 author: "Bernie Mulvey"
-date: "2025-02-26"
+date: "2025-05-06"
 output: html_document
 ---
 
@@ -205,7 +205,7 @@ names(fulldgelres.anc.rin) <- names(dgels)
 
 concatres <- list(noAncestry_noRin=fulldgelres.norin,noAncestry_wRin=fulldgelres.rin,wAncestry_noRin=fulldgelres.anc.norin,wAncestry_wRin=fulldgelres.anc.rin)
 
-saveRDS(concatres,"processed-data/11_DEanalyses/02a-DEtoptabs_testsWithandWithout_RINandorAncestry_10spotmin.RDS")
+saveRDS(concatres,"processed-data/12_DEanalyses_removedsampsAndFinalNMseg/02a-DEtoptabs_testsWithandWithout_RINandorAncestry_10spotmin.RDS")
 ```
 
 ## if big wide tables of reuslts across all models are desired for APO in a cluster, e.g.:
@@ -355,13 +355,13 @@ sexunadjs <- sexunadjs[,.(gene_name,louvCluster,DEtest_unadjP.05_forCluster,Nsig
 
 save these last four tables
 ```{r}
-fwrite(apofdrs,"processed-data/11_DEanalyses/02b-APOE4_DE_FDRunder0.2_byGene_byNmodelsOf4max_byCluster_10spotmin.txt",sep='\t',quote=F,row.names=F,col.names=T)
+fwrite(apofdrs,"processed-data/12_DEanalyses_removedsampsAndFinalNMseg/02b-APOE4_DE_FDRunder0.2_byGene_byNmodelsOf4max_byCluster_10spotmin.txt",sep='\t',quote=F,row.names=F,col.names=T)
 
-fwrite(apounadjs,"processed-data/11_DEanalyses/02c-APOE4_DE_unadjP.05_byGene_byNmodelsOf4max_byCluster_10spotmin.txt",sep='\t',quote=F,row.names=F,col.names=T)
+fwrite(apounadjs,"processed-data/12_DEanalyses_removedsampsAndFinalNMseg/02c-APOE4_DE_unadjP.05_byGene_byNmodelsOf4max_byCluster_10spotmin.txt",sep='\t',quote=F,row.names=F,col.names=T)
 
-fwrite(sexfdrs,"processed-data/11_DEanalyses/02d-Sex_DE_FDRunder0.2_byGene_byNmodelsOf4max_byCluster_10spotmin.txt",sep='\t',quote=F,row.names=F,col.names=T)
+fwrite(sexfdrs,"processed-data/12_DEanalyses_removedsampsAndFinalNMseg/02d-Sex_DE_FDRunder0.2_byGene_byNmodelsOf4max_byCluster_10spotmin.txt",sep='\t',quote=F,row.names=F,col.names=T)
 
-fwrite(sexunadjs,"processed-data/11_DEanalyses/02e-Sex_DE_unadjP.05_byGene_byNmodelsOf4max_byCluster_10spotmin.txt",sep='\t',quote=F,row.names=F,col.names=T)
+fwrite(sexunadjs,"processed-data/12_DEanalyses_removedsampsAndFinalNMseg/02e-Sex_DE_unadjP.05_byGene_byNmodelsOf4max_byCluster_10spotmin.txt",sep='\t',quote=F,row.names=F,col.names=T)
 ```
 
 ```{r}

@@ -40,7 +40,7 @@ unloadNamespace("datasets")
 
  
 ## load SPE and assign hdg_svg_2575_louv_res1 clusterings as autoannotated
-## Drop Br5517 (unknown anatomy/orientation), Br5276 (LC has been depleted by QC), Br5712 (unknown anatomy/orientation). Keep 6297; no LC but anatomy is right in vicinity.
+## Drop Br5517 (unknown anatomy/orientation), Br5276 (LC has been depleted by QC), Br5712 (unknown anatomy/orientation). Keep 6297; no LC but anatomy is right in vicinity and there appears to be nm (?!).
 ```{r}
 lc3 <- readRDS("processed-data/06-countsOnly_noImgData_QCed_SPE_split_to_tissSections.RDS")
 
@@ -352,7 +352,7 @@ plts <- lapply(retdgels,FUN=function(y){
     y$plt
 })
 
-pdf(paste0("plots/11_DEanalyses/01b-logCPM_cutoff_checks_LC-NM-subsets.pdf"),height=3.33*ceiling(length(plts)/3),width=10)
+pdf(paste0("plots/12_DEanalyses_removedsampsAndFinalNMseg/01b-logCPM_cutoff_checks_LC-NM-subsets.pdf"),height=3.33*ceiling(length(plts)/3),width=10)
 do.call("grid.arrange",c(plts,ncol=3))
 dev.off()
 ```
@@ -361,5 +361,5 @@ dev.off()
 ```{r}
 retdgels <- lapply(retdgels,function(x){x[[1]]}) 
 
-saveRDS(retdgels,"processed-data/11_DEanalyses/01b-DGElist_per_LCNM_subcluster_normFilt_10spotmin.RDS")
+saveRDS(retdgels,"processed-data/12_DEanalyses_removedsampsAndFinalNMseg/01b-DGElist_per_LCNM_subcluster_normFilt_10spotmin.RDS")
 ```
