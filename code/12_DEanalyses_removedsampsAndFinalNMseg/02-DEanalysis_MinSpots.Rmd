@@ -73,115 +73,20 @@ fulldgelres.norin <- parallel::clusterApply(x=dgels,cl = clus,fun=function(X){
     library(edgeR)
     
     # prevent resource competition, though we aren't explicitly using DT at all here:
-
+    setDTthreads(1,restore_after_fork=FALSE)
     dge <- X
-    des <- model.matrix(~0+e4+Sex+Age, data = dge$samples)
+
+    des <- model.matrix(~0+APOE+Sex+Age+YRI, data = dge$samples)
+    des <- as.data.frame(des)
     
+    # make these more readable
+    colnames(des) <- gsub(colnames(des),pattern="APOE",replacement="")
+
     # INITIALIZE the voomwithqualityweights model, equivalent to pseudobulkDGE(method="voom",qualities=T)
     
     # run voomLmFit for the pseudobulked data, referring donor to duplicateCorrelation; using an adaptive span (number of genes, based on the number of genes in the dge) for smoothing the mean-variance trend
     v.swt <- voomLmFit(dge,design = des,block = as.factor(dge$samples$brnum),adaptive.span = T,sample.weights = T)
-    cont <- makeContrasts(apoe=e4carrier-e4negative,Sex=SexM,levels=des)
-    v.swt.fit <- contrasts.fit(v.swt,contrasts=cont)
-    v.swt.fit.e <- eBayes(v.swt.fit)
-    v.swt.e.tt.apo <- topTable(v.swt.fit.e,coef = 1,number=Inf,adjust.method = "BH")
-    
-    v.swt.e.tt.sex <- topTable(v.swt.fit.e,coef = 2,number=Inf,adjust.method = "BH")
-    
-    
-    retlist <- list(apo=v.swt.e.tt.apo,sex=v.swt.e.tt.sex)
-    return(retlist)
-})
-parallel::stopCluster(clus)
-```
-
-### DE TEST 2 ### no ancestry; model WITH best pfc RIN as a covar
-```{r}
-setDTthreads(1,restore_after_fork = FALSE)
-clus <- parallel::makeCluster(9,type = "PSOCK")
-fulldgelres.rin <- parallel::clusterApply(x=dgels,cl = clus,fun=function(X){
-    
-    library(data.table)
-    library(limma)
-    library(edgeR)
-    
-    # prevent resource competition, though we aren't explicitly using DT at all here:
-
-    dge <- X
-    des <- model.matrix(~0+e4+Sex+Age+Rin, data = dge$samples)
-    
-    # INITIALIZE the voomwithqualityweights model, equivalent to pseudobulkDGE(method="voom",qualities=T)
-    
-    # run voomLmFit for the pseudobulked data, referring donor to duplicateCorrelation; using an adaptive span (number of genes, based on the number of genes in the dge) for smoothing the mean-variance trend
-    v.swt <- voomLmFit(dge,design = des,block = as.factor(dge$samples$brnum),adaptive.span = T,sample.weights = T)
-    cont <- makeContrasts(apoe=e4carrier-e4negative,Sex=SexM,levels=des)
-    v.swt.fit <- contrasts.fit(v.swt,contrasts=cont)
-    v.swt.fit.e <- eBayes(v.swt.fit)
-    v.swt.e.tt.apo <- topTable(v.swt.fit.e,coef = 1,number=Inf,adjust.method = "BH")
-    
-    v.swt.e.tt.sex <- topTable(v.swt.fit.e,coef = 2,number=Inf,adjust.method = "BH")
-    
-    
-    retlist <- list(apo=v.swt.e.tt.apo,sex=v.swt.e.tt.sex)
-    return(retlist)
-})
-parallel::stopCluster(clus)
-```
-
-
-### DE TEST 3 ### WITH CEU proportion, WITHOUT best pfc rin as a covar
-```{r}
-setDTthreads(1,restore_after_fork = FALSE)
-clus <- parallel::makeCluster(9,type = "PSOCK")
-fulldgelres.anc.norin <- parallel::clusterApply(x=dgels,cl = clus,fun=function(X){
-    
-    library(data.table)
-    library(limma)
-    library(edgeR)
-    
-    # prevent resource competition, though we aren't explicitly using DT at all here:
-
-    dge <- X
-    des <- model.matrix(~0+e4+Sex+CEU+Age, data = dge$samples)
-    
-    # INITIALIZE the voomwithqualityweights model, equivalent to pseudobulkDGE(method="voom",qualities=T)
-    
-    # run voomLmFit for the pseudobulked data, referring donor to duplicateCorrelation; using an adaptive span (number of genes, based on the number of genes in the dge) for smoothing the mean-variance trend
-    v.swt <- voomLmFit(dge,design = des,block = as.factor(dge$samples$brnum),adaptive.span = T,sample.weights = T)
-    cont <- makeContrasts(apoe=e4carrier-e4negative,Sex=SexM,levels=des)
-    v.swt.fit <- contrasts.fit(v.swt,contrasts=cont)
-    v.swt.fit.e <- eBayes(v.swt.fit)
-    v.swt.e.tt.apo <- topTable(v.swt.fit.e,coef = 1,number=Inf,adjust.method = "BH")
-    
-    v.swt.e.tt.sex <- topTable(v.swt.fit.e,coef = 2,number=Inf,adjust.method = "BH")
-    
-    
-    retlist <- list(apo=v.swt.e.tt.apo,sex=v.swt.e.tt.sex)
-    return(retlist)
-})
-parallel::stopCluster(clus)
-```
-
-### DE TEST 4 ### WITH CEU proportion, model WITH best pfc RIN as a covar
-```{r}
-setDTthreads(1,restore_after_fork = FALSE)
-clus <- parallel::makeCluster(9,type = "PSOCK")
-fulldgelres.anc.rin <- parallel::clusterApply(x=dgels,cl = clus,fun=function(X){
-    
-    library(data.table)
-    library(limma)
-    library(edgeR)
-    
-    # prevent resource competition, though we aren't explicitly using DT at all here:
-
-    dge <- X
-    des <- model.matrix(~0+e4+Sex+CEU+Age+Rin, data = dge$samples)
-    
-    # INITIALIZE the voomwithqualityweights model, equivalent to pseudobulkDGE(method="voom",qualities=T)
-    
-    # run voomLmFit for the pseudobulked data, referring donor to duplicateCorrelation; using an adaptive span (number of genes, based on the number of genes in the dge) for smoothing the mean-variance trend
-    v.swt <- voomLmFit(dge,design = des,block = as.factor(dge$samples$brnum),adaptive.span = T,sample.weights = T)
-    cont <- makeContrasts(apoe=e4carrier-e4negative,Sex=SexM,levels=des)
+    cont <- makeContrasts(apoe=(E4hom+E4het)-(E2hom+E2het),Sex=SexM,levels=des)
     v.swt.fit <- contrasts.fit(v.swt,contrasts=cont)
     v.swt.fit.e <- eBayes(v.swt.fit)
     v.swt.e.tt.apo <- topTable(v.swt.fit.e,coef = 1,number=Inf,adjust.method = "BH")
@@ -199,169 +104,13 @@ parallel::stopCluster(clus)
 ```{r}
 # make sure the output list has the corresponding cell cluster names
 names(fulldgelres.norin) <- names(dgels)
-names(fulldgelres.rin) <- names(dgels)
-names(fulldgelres.anc.norin) <- names(dgels)
-names(fulldgelres.anc.rin) <- names(dgels)
 
-concatres <- list(noAncestry_noRin=fulldgelres.norin,noAncestry_wRin=fulldgelres.rin,wAncestry_noRin=fulldgelres.anc.norin,wAncestry_wRin=fulldgelres.anc.rin)
-
-saveRDS(concatres,"processed-data/12_DEanalyses_removedsampsAndFinalNMseg/02a-DEtoptabs_testsWithandWithout_RINandorAncestry_10spotmin.RDS")
-```
-
-## if big wide tables of reuslts across all models are desired for APO in a cluster, e.g.:
-```{r}
-# tabres <- mapply(b=fulldgelres.norin,br=fulldgelres.rin,a=fulldgelres.anc.norin,ar=fulldgelres.anc.rin,SIMPLIFY=FALSE,FUN=function(b,br,a,ar){
-#     apos <- list(b$apo,br$apo,a$apo,ar$apo)
-#     names(apos) <- c("E4_noAncestry_noRin","E4_noAncestry_wRin", "E4_wAncestry_noRin","E4_wAncestry_wRin")
-#     apos <- mapply(x=apos,n=names(apos),SIMPLIFY=FALSE,function(x,n){
-#         x <- as.data.table(x)[,.(gene_name,chr,logFC,t,P.Value,adj.P.Val)]
-#         setnames(x,c("logFC","t","P.Value","adj.P.Val"),paste0(c("logFC","t","P.Value","adj.P.Val"),"_",n))
-#         return(x)
-#     })
-# 
-#     sexs <- list(b$sex,br$sex,a$sex,ar$sex)
-#     names(sexs) <- c("Sex_noAncestry_noRin","Sex_noAncestry_wRin", "Sex_wAncestry_noRin","Sex_wAncestry_wRin")
-#     sexs <- mapply(x=sexs,n=names(sexs),SIMPLIFY=FALSE,function(x,n){
-#         x <- as.data.table(x)[,.(gene_name,chr,logFC,t,P.Value,adj.P.Val)]
-#         setnames(x,c("logFC","t","P.Value","adj.P.Val"),paste0(c("logFC","t","P.Value","adj.P.Val"),"_",n))
-#         return(x)
-#     })
-# 
-#     i <- 1
-#     for (i in c(1:4)){
-#         if(i==1){
-#             sexs2 <- sexs[[i]]
-#             apos2 <- apos[[i]]
-#         } else {
-#             sexs2 <- merge(sexs2,sexs[[i]],by=c("gene_name","chr"),all=T)
-#             apos2 <- merge(apos2,apos[[i]],by=c("gene_name","chr"),all=T)
-#         }
-#     }
-#     retlist <- list(allapos=apos2,allsex=sexs2)
-#     return(retlist)
-# })
-# 
-
-```
-
-## tabulate how many sex models and how many apo models picked up DE per cluster at FDR<0.2
-```{r}
-tabres <- mapply(b=fulldgelres.norin,br=fulldgelres.rin,a=fulldgelres.anc.norin,ar=fulldgelres.anc.rin,SIMPLIFY=FALSE,FUN=function(b,br,a,ar){
-
-    apos <- list(b$apo,br$apo,a$apo,ar$apo)
-    names(apos) <- c("E4_noAncestry_noRin","E4_noAncestry_wRin", "E4_wAncestry_noRin","E4_wAncestry_wRin")
-    
-    aposf <- mapply(x=apos,n=names(apos),SIMPLIFY=FALSE,FUN=function(x,n){
-        x <- as.data.table(x)[adj.P.Val<0.2,gene_name]
-        rettab <- cbind(x,n)
-        rettab <- as.data.table(rettab)
-
-        if(length(x)==0){
-            return(NULL)
-        } else
-        {
-            setnames(rettab,c("gene_name","DEtest_FDRunder0.2"))
-            return(rettab)
-        }
-    })
-    aposf <- rbindlist(aposf,fill=T)
-    # account for cases where no fdr sig genes in any of the models:
-    if(nrow(aposf)==0){
-        aposf <- as.data.table(cbind(gene_name=NA,DEtest_FDRunder0.2=NA))
-    } 
-    # 
-    aposf[,Nsigmodels:=.N,by="gene_name"]
-
-    aposnom <- mapply(x=apos,n=names(apos),SIMPLIFY=FALSE,FUN=function(x,n){
-        x <- as.data.table(x)[P.Value<0.05,gene_name]
-        rettab <- cbind(x,n)
-        rettab <- as.data.table(rettab)
-
-        if(length(x)==0){
-            return(NULL)
-        } else
-        {
-            setnames(rettab,c("gene_name","DEtest_unadjP.05"))
-            return(rettab)
-        }
-    })
-    aposnom <- rbindlist(aposnom,fill=T)
-    aposnom[,Nsigmodels:=.N,by="gene_name"]
-    
-    sexs <- list(b$sex,br$sex,a$sex,ar$sex)
-    names(sexs) <- c("Sex_noAncestry_noRin","Sex_noAncestry_wRin", "Sex_wAncestry_noRin","Sex_wAncestry_wRin")
-    
-    sexsf <- mapply(x=sexs,n=names(sexs),SIMPLIFY=FALSE,FUN=function(x,n){
-        x <- as.data.table(x)[adj.P.Val<0.2,gene_name]
-                rettab <- cbind(x,n)
-        rettab <- as.data.table(rettab)
-
-        if(length(x)==0){
-            return(NULL)
-        } else
-        {
-            setnames(rettab,c("gene_name","DEtest_FDRunder0.2"))
-            return(rettab)
-        }
-    })
-    sexsf <- rbindlist(sexsf,fill=T)
-    # account for cases where no fdr sig genes in any of the models:
-    if(nrow(sexsf)==0){
-        sexsf <- as.data.table(cbind(gene_name=NA,DEtest_FDRunder0.2=NA))
-    } 
-    # 
-    sexsf[,Nsigmodels:=.N,by="gene_name"]
-    
-    sexsnom <- mapply(x=sexs,n=names(sexs),SIMPLIFY=FALSE,FUN=function(x,n){
-        x <- as.data.table(x)[P.Value<0.05,gene_name]
-        rettab <- cbind(x,n)
-        rettab <- as.data.table(rettab)
-
-        if(length(x)==0){
-            return(NULL)
-        } else
-        {
-            setnames(rettab,c("gene_name","DEtest_unadjP.05"))
-            return(rettab)
-        }
-    })
-    sexsnom <- rbindlist(sexsnom,fill=T)
-    sexsnom[,Nsigmodels:=.N,by="gene_name"]
-    
-    retlist <- list(aposf=aposf,aposnom=aposnom,sexsf=sexsf,sexsnom=sexsnom)
-    return(retlist)
+# make data.tables
+fulldgelres.norin <- lapply(fulldgelres.norin,function(x){
+    lapply(x,as.data.table)
 })
 
-
-### then, concatenate these within variable of interest and sig cutoff
-
-apofdrs <- rbindlist(mapply(x=tabres,n=names(tabres),SIMPLIFY=FALSE,FUN=function(x,n){as.data.table(cbind(x$aposf,n))}),fill=T)
-setnames(apofdrs,c("DEtest_FDRunder0.2","Nsigmodels","n"),c("DEtest_FDRunder0.2_forCluster","Nsigmodels_forCluster","louvCluster"))
-apofdrs <- apofdrs[,.(gene_name,louvCluster,DEtest_FDRunder0.2_forCluster,Nsigmodels_forCluster)]
-
-apounadjs <- rbindlist(mapply(x=tabres,n=names(tabres),SIMPLIFY=FALSE,FUN=function(x,n){as.data.table(cbind(x$aposnom,n))}),fill=T)
-setnames(apounadjs,c("DEtest_unadjP.05","Nsigmodels","n"),c("DEtest_unadjP.05_forCluster","Nsigmodels_forCluster","louvCluster"))
-apounadjs <- apounadjs[,.(gene_name,louvCluster,DEtest_unadjP.05_forCluster,Nsigmodels_forCluster)]
-
-sexfdrs <- rbindlist(mapply(x=tabres,n=names(tabres),SIMPLIFY=FALSE,FUN=function(x,n){as.data.table(cbind(x$sexsf,n))}),fill=T)
-setnames(sexfdrs,c("DEtest_FDRunder0.2","Nsigmodels","n"),c("DEtest_FDRunder0.2_forCluster","Nsigmodels_forCluster","louvCluster"))
-sexfdrs <- sexfdrs[,.(gene_name,louvCluster,DEtest_FDRunder0.2_forCluster,Nsigmodels_forCluster)]
-
-sexunadjs <- rbindlist(mapply(x=tabres,n=names(tabres),SIMPLIFY=FALSE,FUN=function(x,n){as.data.table(cbind(x$sexsnom,n))}),fill=T)
-setnames(sexunadjs,c("DEtest_unadjP.05","Nsigmodels","n"),c("DEtest_unadjP.05_forCluster","Nsigmodels_forCluster","louvCluster"))
-sexunadjs <- sexunadjs[,.(gene_name,louvCluster,DEtest_unadjP.05_forCluster,Nsigmodels_forCluster)]
-```
-
-
-save these last four tables
-```{r}
-fwrite(apofdrs,"processed-data/12_DEanalyses_removedsampsAndFinalNMseg/02b-APOE4_DE_FDRunder0.2_byGene_byNmodelsOf4max_byCluster_10spotmin.txt",sep='\t',quote=F,row.names=F,col.names=T)
-
-fwrite(apounadjs,"processed-data/12_DEanalyses_removedsampsAndFinalNMseg/02c-APOE4_DE_unadjP.05_byGene_byNmodelsOf4max_byCluster_10spotmin.txt",sep='\t',quote=F,row.names=F,col.names=T)
-
-fwrite(sexfdrs,"processed-data/12_DEanalyses_removedsampsAndFinalNMseg/02d-Sex_DE_FDRunder0.2_byGene_byNmodelsOf4max_byCluster_10spotmin.txt",sep='\t',quote=F,row.names=F,col.names=T)
-
-fwrite(sexunadjs,"processed-data/12_DEanalyses_removedsampsAndFinalNMseg/02e-Sex_DE_unadjP.05_byGene_byNmodelsOf4max_byCluster_10spotmin.txt",sep='\t',quote=F,row.names=F,col.names=T)
+saveRDS(fulldgelres.norin,"processed-data/12_DEanalyses_removedsampsAndFinalNMseg/02a-perCluster_DEtoptabs_10spotmin_noYRItest.RDS")
 ```
 
 ```{r}
@@ -374,9 +123,9 @@ reprod inf
 sessionInfo()
 sessioninfo::session_info()
 ```
-R version 4.4.2 (2024-10-31)
+R version 4.4.3 (2025-02-28)
 Platform: aarch64-apple-darwin20
-Running under: macOS Sonoma 14.7.1
+Running under: macOS Sequoia 15.3.2
 
 Matrix products: default
 BLAS:   /System/Library/Frameworks/Accelerate.framework/Versions/A/Frameworks/vecLib.framework/Versions/A/libBLAS.dylib 
@@ -389,64 +138,116 @@ time zone: America/Chicago
 tzcode source: internal
 
 attached base packages:
-[1] parallel  stats     graphics  grDevices utils     methods   base     
+[1] parallel  stats    
+[3] graphics  grDevices
+[5] utils     methods  
+[7] base     
 
 other attached packages:
-[1] BiocParallel_1.40.0 parallelly_1.42.0   colorout_1.3-0.2    edgeR_4.4.1        
-[5] limma_3.62.1        data.table_1.16.4   rlang_1.1.4        
+[1] BiocParallel_1.40.0
+[2] parallelly_1.43.0  
+[3] gridExtra_2.3      
+[4] ggplot2_3.5.2      
+[5] colorout_1.3-0.2   
+[6] edgeR_4.4.2        
+[7] limma_3.62.2       
+[8] data.table_1.17.0  
+[9] rlang_1.1.5        
 
 loaded via a namespace (and not attached):
- [1] digest_0.6.37     codetools_0.2-20  fastmap_1.2.0     xfun_0.50        
- [5] lattice_0.22-6    knitr_1.49        htmltools_0.5.8.1 rmarkdown_2.29   
- [9] cli_3.6.3         grid_4.4.2        statmod_1.5.0     compiler_4.4.2   
-[13] rprojroot_2.0.4   here_1.0.1        rstudioapi_0.17.1 tools_4.4.2      
-[17] evaluate_1.0.3    yaml_2.3.10       locfit_1.5-9.10  
+ [1] vctrs_0.6.5       
+ [2] cli_3.6.4         
+ [3] knitr_1.50        
+ [4] xfun_0.52         
+ [5] pkgload_1.4.0     
+ [6] generics_0.1.3    
+ [7] glue_1.8.0        
+ [8] statmod_1.5.0     
+ [9] rprojroot_2.0.4   
+[10] locfit_1.5-9.12   
+[11] scales_1.4.0      
+[12] grid_4.4.3        
+[13] evaluate_1.0.3    
+[14] tibble_3.2.1      
+[15] lifecycle_1.0.4   
+[16] compiler_4.4.3    
+[17] codetools_0.2-20  
+[18] dplyr_1.1.4       
+[19] RColorBrewer_1.1-3
+[20] pkgconfig_2.0.3   
+[21] here_1.0.1        
+[22] farver_2.1.2      
+[23] lattice_0.22-6    
+[24] R6_2.6.1          
+[25] tidyselect_1.2.1  
+[26] dichromat_2.0-0.1 
+[27] pillar_1.10.2     
+[28] magrittr_2.0.3    
+[29] withr_3.0.2       
+[30] tools_4.4.3       
+[31] gtable_0.3.6      
 > sessioninfo::session_info()
-─ Session info ─────────────────────────────────────────────────────────────────────
+─ Session info ────────────
  setting  value
- version  R version 4.4.2 (2024-10-31)
- os       macOS Sonoma 14.7.1
+ version  R version 4.4.3 (2025-02-28)
+ os       macOS Sequoia 15.3.2
  system   aarch64, darwin20
- ui       RStudio
+ ui       X11
  language (EN)
  collate  en_US.UTF-8
  ctype    en_US.UTF-8
  tz       America/Chicago
- date     2025-02-26
- rstudio  2024.07.0-daily+219 Cranberry Hibiscus (desktop)
- pandoc   3.1.11 @ /Applications/RStudio.app/Contents/Resources/app/quarto/bin/tools/aarch64/ (via rmarkdown)
+ date     2025-05-07
+ pandoc   NA
+ quarto   1.6.40 @ /Applications/Positron.app/Contents/Resources/app/quarto/bin/quarto
 
-─ Packages ─────────────────────────────────────────────────────────────────────────
+─ Packages ────────────────
  !  package      * version  date (UTC) lib source
     BiocParallel * 1.40.0   2024-11-23 [1] Bioconductor 3.20 (R 4.4.2)
- P  cli            3.6.3    2024-06-21 [2] CRAN (R 4.4.0)
-    codetools      0.2-20   2024-03-31 [1] CRAN (R 4.4.2)
+ VP cli            3.6.4    2025-04-23 [2] CRAN (R 4.4.1) (on disk 3.6.5)
+    codetools      0.2-20   2024-03-31 [1] CRAN (R 4.4.3)
     colorout     * 1.3-0.2  2024-05-01 [1] Github (jalvesaq/colorout@c6113a2)
-    data.table   * 1.16.4   2024-12-06 [1] CRAN (R 4.4.1)
-    digest         0.6.37   2024-08-19 [1] CRAN (R 4.4.1)
-    edgeR        * 4.4.1    2024-12-02 [1] Bioconductor 3.20 (R 4.4.2)
+    data.table   * 1.17.0   2025-02-22 [1] CRAN (R 4.4.1)
+    dichromat      2.0-0.1  2022-05-02 [1] CRAN (R 4.4.0)
+    dplyr          1.1.4    2023-11-17 [1] CRAN (R 4.4.0)
+    edgeR        * 4.4.2    2025-01-27 [1] Bioconductor 3.20 (R 4.4.2)
     evaluate       1.0.3    2025-01-10 [1] CRAN (R 4.4.1)
-    fastmap        1.2.0    2024-05-15 [1] CRAN (R 4.4.0)
+    farver         2.1.2    2024-05-13 [1] CRAN (R 4.4.0)
+    generics       0.1.3    2022-07-05 [1] CRAN (R 4.4.0)
+    ggplot2      * 3.5.2    2025-04-09 [1] CRAN (R 4.4.1)
+    glue           1.8.0    2024-09-30 [1] CRAN (R 4.4.1)
+    gridExtra    * 2.3      2017-09-09 [1] CRAN (R 4.4.0)
+    gtable         0.3.6    2024-10-25 [1] CRAN (R 4.4.1)
     here           1.0.1    2020-12-13 [1] CRAN (R 4.4.0)
-    htmltools      0.5.8.1  2024-04-04 [1] CRAN (R 4.4.0)
-    knitr          1.49     2024-11-08 [1] CRAN (R 4.4.1)
-    lattice        0.22-6   2024-03-20 [1] CRAN (R 4.4.2)
-    limma        * 3.62.1   2024-11-08 [1] Bioconductor 3.20 (R 4.4.1)
-    locfit         1.5-9.10 2024-06-24 [1] CRAN (R 4.4.0)
-    parallelly   * 1.42.0   2025-01-30 [1] CRAN (R 4.4.1)
- VP rlang        * 1.1.4    2025-01-17 [2] CRAN (R 4.4.1) (on disk 1.1.5)
-    rmarkdown      2.29     2024-11-04 [1] CRAN (R 4.4.1)
+    knitr          1.50     2025-03-16 [1] CRAN (R 4.4.2)
+    lattice        0.22-6   2024-03-20 [1] CRAN (R 4.4.3)
+    lifecycle      1.0.4    2023-11-07 [1] CRAN (R 4.4.0)
+    limma        * 3.62.2   2025-01-09 [1] Bioconductor 3.20 (R 4.4.2)
+    locfit         1.5-9.12 2025-03-05 [1] CRAN (R 4.4.1)
+    magrittr       2.0.3    2022-03-30 [1] CRAN (R 4.4.0)
+    parallelly   * 1.43.0   2025-03-24 [1] CRAN (R 4.4.1)
+    pillar         1.10.2   2025-04-05 [1] CRAN (R 4.4.1)
+    pkgconfig      2.0.3    2019-09-22 [1] CRAN (R 4.4.0)
+    pkgload        1.4.0    2024-06-28 [1] CRAN (R 4.4.1)
+    R6             2.6.1    2025-02-15 [1] CRAN (R 4.4.1)
+    RColorBrewer   1.1-3    2022-04-03 [1] CRAN (R 4.4.0)
+ VP rlang        * 1.1.5    2025-04-11 [2] CRAN (R 4.4.1) (on disk 1.1.6)
     rprojroot      2.0.4    2023-11-05 [1] CRAN (R 4.4.0)
-    rstudioapi     0.17.1   2024-10-22 [1] CRAN (R 4.4.1)
-    sessioninfo    1.2.2    2021-12-06 [1] CRAN (R 4.4.0)
+    scales         1.4.0    2025-04-24 [1] CRAN (R 4.4.1)
+    sessioninfo    1.2.3    2025-02-05 [1] CRAN (R 4.4.1)
     statmod        1.5.0    2023-01-06 [1] CRAN (R 4.4.0)
-    xfun           0.50     2025-01-07 [1] CRAN (R 4.4.1)
-    yaml           2.3.10   2024-07-26 [1] CRAN (R 4.4.0)
+    tibble         3.2.1    2023-03-20 [1] CRAN (R 4.4.0)
+    tidyselect     1.2.1    2024-03-11 [1] CRAN (R 4.4.0)
+    vctrs          0.6.5    2023-12-01 [1] CRAN (R 4.4.0)
+    withr          3.0.2    2024-10-28 [1] CRAN (R 4.4.1)
+    xfun           0.52     2025-04-02 [1] CRAN (R 4.4.1)
 
  [1] /Library/Frameworks/R.framework/Versions/4.4-arm64/Resources/library
  [2] /Users/bmulvey/Library/R/arm64/4.4/library
 
+ * ── Packages attached to the search path.
  V ── Loaded and on-disk version mismatch.
  P ── Loaded and on-disk path mismatch.
 
-────────────────────────────────────────────────────────────────────────────────────
+───────────────────────────
+>
