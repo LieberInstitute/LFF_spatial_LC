@@ -70,7 +70,7 @@ w2m.select <- w2m.sub[gene_id %in% fewfactorgenes]
 ## how many factors have more than, say, 25 genes?
 keepfacts <- w2m.select[,.N,by="factor"][N>=25,as.character(factor)]
 ## 15 factors, nice
-w2m.select <- w2m.select[factor %in% factor] # these are our factors of interest AND their specific-ish genes
+w2m.select <- w2m.select[factor %in% keepfacts] # these are our factors of interest AND their specific-ish genes
 
 rm(w2m.sub,fewfactorgenes,w2m)
 ```
@@ -248,6 +248,9 @@ outlist2 <- lapply(outlist2,function(x){
 
 ## save
 saveRDS(outlist2,"processed-data/12_DEanalyses_removedsampsAndFinalNMseg/06-LC_NMF_specificallyLoadedFactors_GSEA_msigdbAndTFtarg.RDS")
+
+## also save our table of factors with 25+ specific genes and which genes go with each
+fwrite(w2m.select,"processed-data/12_DEanalyses_removedsampsAndFinalNMseg/06-LCNMF_factors_and_factorSpecGenes_min25specGenes.txt",sep='\t',quote=F,row.names=F,col.names=T)
 ```
 
 
