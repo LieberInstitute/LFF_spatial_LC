@@ -1,0 +1,91 @@
+---
+title: "07-NMF decomp LC for GSEA weights"
+author: "Bernie Mulvey"
+date: "2025-05-16"
+output: html_document
+---
+
+```{r}
+knitr::opts_chunk$set(fig.height = 10,fig.width = 7,include = FALSE)
+#### sets tab autocompletion for directories to begin from the directory containing the .Rproj session, instead of the script's directory if different
+knitr::opts_knit$set(root.dir = here::here())
+
+library(SpatialExperiment)
+library(RcppML)
+library(data.table)
+library(Matrix)
+
+```
+
+setup
+```{r}
+lc3 <- readRDS("processed-data/06-countsOnly_noImgData_QCed_SPE_split_to_tissSections.RDS")
+lc3 <- scater::computeLibraryFactors(lc3)
+lc3 <- scater::logNormCounts(lc3)
+```
+
+## Drop Br5517 (unknown anatomy/orientation), Br5276 (LC has been depleted by QC), Br5712 (unknown anatomy/orientation). Keep 6297; no LC but anatomy is right in vicinity.
+```{r}
+lc3 <- lc3[,!(lc3$brnum %in% paste0("Br",c(5517,5276,5712)))]
+```
+
+### annotate and subset to LC spots
+```{r}
+clus <- readRDS("processed-data/07_featureSelection_dimred_harmony_clustering/04-Initial_louvLeid_res0.5-1-2_clusterings.RDS")
+clus <- clus$HARMONYlmbna_HDG_SVG_2575[,.(rn,snnHARMONYlmbna_HDG_SVG_2575_louv_res1)]
+setnames(clus,2,"clusid")
+anno <- fread("processed-data/08_validitycheck_25hdg75svg_louv1/10-25hdg75svg_louv1_annots.txt")
+
+clus <- merge.data.table(clus,anno,by="clusid",all.x=T)
+clus <- DataFrame(clus,row.names=clus$rn)[colnames(lc3),]
+
+lc3$label <- clus$anno
+
+lc3 <- lc3[,lc3$label=="LC"]
+
+lclct <- logcounts(lc3)
+lcrn <- rownames(lclct)
+lccn <- colnames(lclct)
+
+# get gene metadata to add symbol info later
+rddt <- as.data.table(rowData(lc3)) 
+```
+
+
+## run NMF using Erik Nelson's final parameter set for some of these args (1k max iters, L1 penalty 0.1, diag = T) https://github.com/LieberInstitute/spatial_hpc/blob/main/snRNAseq_hpc/code/nmf/nmf.R
+
+but let's set tol lower for more precision, which we can afford since we only have a few thousands spots here, and contempl8 a granular k
+```{r}
+setDTthreads(1,restore_after_fork = FALSE)
+
+# let's suppose 10 factors per group that are distinct in each group. 2 sex * 4 apoe * 2 predominant ancestries = 16 groupings * 10 = 160 factors. stringency-ize tol from 10-6 to 10-9.
+setRcppMLthreads(11)
+lc.nmf <-nmf(lclct,
+    k=160,
+    tol = 1e-09, 
+    maxit = 5000,
+    verbose = T,
+    L1 = 0.1,
+    seed = 42,
+    mask_zeros = FALSE,
+    diag = TRUE,
+    nonneg = TRUE
+)
+
+w <- as.data.frame(lc.nmf$w)
+rownames(w) <- lcrn
+colnames(w) <- paste0("LCnmf",c(1:160))
+
+h <- as.data.frame(lc.nmf$h)
+rownames(h) <- paste0("LCnmf",c(1:160))
+colnames(h) <- colnames(lclct)
+
+lc.nmf2 <- list(w=w,h=h)
+saveRDS(lc.nmf2,"processed-data/10_subclustering/07-lcnmf160_tol1e-9.RDS")
+```
+
+repinfo
+```{r}
+sessionInfo()
+sessioninfo::session_info()
+```

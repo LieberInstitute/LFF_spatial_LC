@@ -1,0 +1,195 @@
+---
+title: "06-LC_NMF_msigdbAndTFtarg_GSEA"
+author: "Bernie Mulvey"
+date: "2025-05-17"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(fig.height = 10,fig.width = 7,include = FALSE)
+#### sets tab autocompletion for directories to begin from the directory containing the .Rproj session, instead of the script's directory if different
+knitr::opts_knit$set(root.dir = here::here())
+
+library(data.table)
+library(clusterProfiler)
+library(fgsea)
+library(msigdbr)
+library(SpatialExperiment)
+
+## rstudio GUI tweaks
+require(colorout)
+ColorOut()
+options("styler.addins_style_transformer" = "biocthis::bioc_style()")
+##
+
+## enable forked parallel processing with BiocParallel::multicoreParam, future::, etc. seemed to need this a couple times, but otherwise havent so its here as a preventative measure. part of this is adding the line 
+# OBJC_DISABLE_INITIALIZE_FORK_SAFETY=YES
+# to Renviron.site. see e.g. top response on https://stackoverflow.com/questions/73638290/python-on-mac-is-it-safe-to-set-objc-disable-initialize-fork-safety-yes-globall 
+library(parallelly)
+options(parallelly.supportsMulticore.disableOn="")
+options(parallelly.fork.enable=TRUE)
+library(BiocParallel)
+options(bphost="localhost")
+
+## last of all, unload the base package datasets, whose data keep getting in the way of autocompletions (e.g., Theoph is priortized over TRUE)
+unloadNamespace("datasets")
+```
+
+## load the NMF results from LC spots; identify factors with relatively factor-specific gene loadings for many genes
+```{r}
+# get gene metadata
+lc3 <- readRDS("processed-data/06-countsOnly_noImgData_QCed_SPE_split_to_tissSections.RDS")
+rddt <- as.data.table(rowData(lc3)) 
+rm(lc3)
+gc(full=T)
+
+
+### now we can load and tackle the nmf results
+lc.nmf2 <- readRDS("processed-data/10_subclustering/07-lcnmf160_tol1e-9.RDS")
+w2 <- as.data.table(lc.nmf2$w,keep.rownames=T)
+w2 <- merge.data.table(w2,rddt[,.(gene_id,gene_name)],by.x="rn",by.y="gene_id")
+nameord <- c("rn","gene_name",paste0("LCnmf",c(1:160)))
+w2 <- w2[,..nameord]
+setnames(w2,"rn","gene_id")
+
+## find factors with a "factor-specific"ish gene based on the loading for that factor and median abs deviation of that genes loadings across all factors.
+
+w2m <- melt.data.table(w2,id.vars=c("gene_id","gene_name"),variable.name = "factor")
+w2m[,medianloading:=median(value),by="gene_id"]
+w2m[,factorGene:=ifelse(value>1.5*mad(value,constant=1,na.rm = T),"y","n")]
+
+w2m.sub <- w2m[factorGene=="y"]
+
+## get genes that are "factor specific" in 3 or fewer factors
+fewfactorgenes <- w2m.sub[,.N,by="gene_id"][N<=3,gene_id]
+# 1566 genes total there
+
+# now subset to these genes and identify factors with at least 25 such  factor specific-ish genes -- by only considering genes that meet the factor-specificish condition
+w2m.select <- w2m.sub[gene_id %in% fewfactorgenes]
+## how many factors have more than, say, 25 genes?
+keepfacts <- w2m.select[,.N,by="factor"][N>=25,as.character(factor)]
+## 15 factors, nice
+w2m.select <- w2m.select[factor %in% factor] # these are our factors of interest AND their specific-ish genes
+
+rm(w2m.sub,)
+```
+
+now, we can look at factors with ≥25 specific-ish genes, and run one-sided GSEA on using the full set of loadings for that factor to identify any pathways etc that are enriched in that factor's genes. the enrichment analyses, by nature of GSEA, will be weighted toward the genes with the highest loadings, and our pre-selection of factors here has ensured that these factors have relatively unique and strong loadings for numerous genes.
+```{r}
+# drop duplicated genes for running fgsea
+keepg <- w2[,.N,by="gene_name"][N==1,gene_name]
+keepi <- w2[,.N,by="gene_id"][N==1,gene_id]
+w2b <- w2[gene_name %in% keepg&gene_id %in% keepi]
+
+## get loadings in descending order for each factor of interest, name with gene ids for msigdb or with gene symbols for TF-target testing
+fgnmfs <- lapply(keepfacts,function(k){
+    setorderv(w2b,cols = k,-1)
+   
+    # get the descending order loading vector, clone it to name by gene id or symb
+    g.id <- unlist(w2b[!is.na(k),..k])
+    g.name <- g.id
+    
+    names(g.id) <- w2b[!is.na(k),gene_id]
+    names(g.name) <- w2b[!is.na(k),gene_name]
+    
+    retlist <- list(g.id=g.id,g.name=g.name)
+    return(retlist)
+})
+names(fgnmfs) <- keepfacts
+
+### clean up before GSEA runs
+rm(w2,w2b,w2m,w2m.sub,fewfactorgenes,keepg,keepi,nameord,lc.nmf2,rddt)
+gc(full=T)
+```
+
+### get gene sets to be tested with GSEA: msigdb and previously collected TF-targ sets from enrichr
+```{r}
+tfsets <- readRDS("raw-data/ref_data/00a-enrichrTFsets_forfgseainput_121823.RDS")
+
+###
+allsigs <- msigdbr("Homo sapiens",category="C1")
+
+# tack on the others, make d.t.
+msigs <- paste0("C",c(2,3,5,6,8))
+for (msig in msigs){
+    allsigs <- rbind(allsigs,msigdbr("Homo sapiens",category=msig))
+}
+rm(msig,msigs)
+allsigs <- as.data.table(allsigs)
+
+# remove legacy sets
+allsigs <- allsigs[gs_subcat %in% grep(gs_subcat,pattern="legacy|LEGACY|Legacy",value=T,invert=T)]
+
+# make a list object of identifiers per  gene set
+# we can map these back to the msigdb table later for reference purposes by their list name (gs_name)...
+msigsets <- split(allsigs$ensembl_gene,allsigs$gs_name)
+
+rm(allsigs)
+gc(full=T)
+```
+
+### important to recall: as NMF is NON-NEGATIVE, genes can only be "enriched", not "depleted" in a factor. so our GSEA tests one-way tests looking for enrichments in toward the top (highest) of the descending-order factor loadings. thus, our fgsea arg specifies scoreType="pos".
+
+## analysis 1: msigdb sets (using ensembl ids)
+```{r}
+fgnmf.ids <- lapply(fgnmfs,function(x){x$g.id})
+names(fgnmf.ids) <- names(fgnmfs)
+
+nmf.msig.res <- mapply(X=fgnmf.ids,Y=names(fgnmf.ids),SIMPLIFY=FALSE,FUN=function(X,Y){
+   register(MulticoreParam())
+   
+   # get factor-weighted-enriched results
+   z1<-fgseaMultilevel(pathways=msigsets,stats = X,minSize = 15,maxSize = 500,eps=0.0,nPermSimple = 50000,nproc=10,scoreType = "pos")
+   # coonvert leadingedge to one long string (it's returned as a list which is not compatible with data.table)
+   z1$leadingEdge <- as.character(z1$leadingEdge)
+   z1$leadingEdge <- gsub(z1$leadingEdge,pattern="^c\\((.*)\\)$",replacement="\\1")
+   z1$leadingEdge <- gsub(z1$leadingEdge,pattern='"',replacement='')
+   # drop newlines from leadingEdge
+   z1$leadingEdge <- gsub(z1$leadingEdge,pattern=", \n",replacement=", ")
+   # belt and suspenders
+   z1$leadingEdge <- gsub(z1$leadingEdge,pattern=", \n",replacement=", ")
+   
+   z1 <- as.data.table(z1)
+   z1[,nmfFactor:=Y]
+   z1[,dir:="factor_spec"]
+
+return(z1)})
+```
+
+## analysis 2: TF-targ sets (using gene symbols)
+```{r}
+fgnmf.symbs <- lapply(fgnmfs,function(x){x$g.name})
+names(fgnmf.symbs) <- names(fgnmfs)
+
+nmf.tftarg.res <- mapply(X=fgnmf.symbs,Y=names(fgnmf.symbs),SIMPLIFY=FALSE,FUN=function(X,Y){
+   register(MulticoreParam())
+   
+   # get factor-weighted-enriched results
+   z1<-fgseaMultilevel(pathways=tfsets,stats = X,minSize = 15,maxSize = 500,eps=0.0,nPermSimple = 50000,nproc=10,scoreType = "pos")
+   # coonvert leadingedge to one long string (it's returned as a list which is not compatible with data.table)
+   z1$leadingEdge <- as.character(z1$leadingEdge)
+   z1$leadingEdge <- gsub(z1$leadingEdge,pattern="^c\\((.*)\\)$",replacement="\\1")
+   z1$leadingEdge <- gsub(z1$leadingEdge,pattern='"',replacement='')
+   # drop newlines from leadingEdge
+   z1$leadingEdge <- gsub(z1$leadingEdge,pattern=", \n",replacement=", ")
+   # belt and suspenders
+   z1$leadingEdge <- gsub(z1$leadingEdge,pattern=", \n",replacement=", ")
+   
+   z1 <- as.data.table(z1)
+   z1[,nmfFactor:=Y]
+   z1[,dir:="factor_spec"]
+
+return(z1)})
+```
+
+combine and save
+```{r}
+outlist <- list(msigdbres=nmf.msig.res,tftargres=nmf.tftarg.res)
+saveRDS(outlist,"processed-data/12_DEanalyses_removedsampsAndFinalNMseg/06-LC_NMF_specificallyLoadedFactors_GSEA_msigdbAndTFtarg.RDS")
+```
+
+repinf
+```{r}
+sessionInfo()
+sessioninfo::session_info()
+```
