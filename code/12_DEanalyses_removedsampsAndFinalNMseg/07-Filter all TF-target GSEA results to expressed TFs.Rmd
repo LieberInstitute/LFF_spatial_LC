@@ -1,0 +1,387 @@
+---
+title: "07-Filter all TF-target GSEA results to expressed TFs"
+author: "Bernie Mulvey"
+date: "2025-05-18"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(fig.height = 10,fig.width = 7,include = FALSE)
+knitr::opts_chunk$set(fig.width=7,fig.height=10)
+#### sets tab autocompletion for directories to begin from the directory containing the .Rproj session, instead of the script's directory if different
+knitr::opts_knit$set(root.dir = here::here())
+
+library(data.table)
+library(SpatialExperiment)
+require(colorout)
+ColorOut()
+options("styler.addins_style_transformer" = "biocthis::bioc_style()")
+
+## change write.table to output a TSV without quotes or rownames by default
+library(default)
+default(write.table) <- list(row.names=F,col.names=T,sep='\t',quote=F)
+
+## enable forked parallel processing with BiocParallel::multicoreParam, future::, etc
+library(parallelly)
+options(parallelly.supportsMulticore.disableOn="")
+options(parallelly.fork.enable=TRUE)
+library(BiocParallel)
+options(bphost="localhost")
+library(parallel)
+
+
+## last of all, unload the base package datasets, whose data keep getting in the way of autocompletions (e.g., Theoph is priortized over TRUE)
+unloadNamespace("datasets")
+```
+
+load TFtarg GSEA result sets and the SPE (which we need for filtering on expression)
+```{r}
+degsea <- readRDS("processed-data/12_DEanalyses_removedsampsAndFinalNMseg/03bii-MulticlusterDE_OneInterxnPerModel_dropMixClusts_GSEA_TFtargs.RDS")
+### add a cluster-only column to each result table
+degsea <- lapply(degsea,FUN=function(x){
+    x[test %in% grep(test,pattern="_Sex",value=T),anno:=gsub(test,pattern="_Sex",replacement="\\1")]
+    x[test %in% grep(test,pattern="_Sex",value=T,invert=T),anno:=gsub(test,pattern="^(.*)_E.*$",replacement="\\1")]
+    return(x)
+})
+
+degsea.unsign <- readRDS("processed-data/12_DEanalyses_removedsampsAndFinalNMseg/03bii-MulticlusterDE_OneInterxnPerModel_dropMixClusts_GSEA_TFtargs_UNsigned.RDS")
+names(degsea.unsign) <- paste0("unsigned_",names(degsea.unsign))
+### add a cluster-only column to each result table
+degsea.unsign <- lapply(degsea.unsign,FUN=function(x){
+    x[test %in% grep(test,pattern="_Sex",value=T),anno:=gsub(test,pattern="_Sex",replacement="\\1")]
+    x[test %in% grep(test,pattern="_Sex",value=T,invert=T),anno:=gsub(test,pattern="^(.*)_E.*$",replacement="\\1")]
+    return(x)
+})
+
+lcnmdegsea <- readRDS("processed-data/12_DEanalyses_removedsampsAndFinalNMseg/05-LCNMposVsNeg_msigdb_and_tftarg_GSEAs.RDS")
+lcnmdegsea <- lcnmdegsea[c("tftarg_signed","tftarg_unsigned")]
+names(lcnmdegsea) <- paste0("LCNM_",names(lcnmdegsea))
+## add an NM subcluster column for these ones
+lcnmdegsea$LCNM_tftarg_signed[dir=="LCNM_pos_up",subanno:="LC_NMpos"]
+lcnmdegsea$LCNM_tftarg_signed[dir=="LCNM_neg_up",subanno:="LC_NMneg"]
+lcnmdegsea$LCNM_tftarg_unsigned[,anno:="LC"] # because we're looking for enrichment in DE regardless of direction
+
+nmfgsea <- readRDS("processed-data/12_DEanalyses_removedsampsAndFinalNMseg/06-LC_NMF_specificallyLoadedFactors_GSEA_msigdbAndTFtarg.RDS")
+nmfgsea <- nmfgsea$tftargres
+nmfgsea <- lapply(nmfgsea,function(x){
+    x[,anno:="LC"]
+    return(x)
+})
+
+gseas <- c(degsea,degsea.unsign,lcnmdegsea,nmfgsea)
+rm(degsea,degsea.unsign,lcnmdegsea,nmfgsea)
+```
+
+SPE, append log counts on the fly, add cluster labels and NM cluster labels
+```{r}
+lc3 <- readRDS("processed-data/06-countsOnly_noImgData_QCed_SPE_split_to_tissSections.RDS")
+lc3 <- scater::computeLibraryFactors(lc3)
+lc3 <- scater::logNormCounts(lc3)
+
+louvs <- readRDS("processed-data/07_featureSelection_dimred_harmony_clustering/04-Initial_louvLeid_res0.5-1-2_clusterings.RDS")
+louvs <- louvs$HARMONYlmbna_HDG_SVG_2575[,.(rn,snnHARMONYlmbna_HDG_SVG_2575_louv_res1)]
+setnames(louvs,2,"clusid")
+
+anno <- fread("processed-data/08_validitycheck_25hdg75svg_louv1/10-25hdg75svg_louv1_annots.txt")
+louvs <- merge.data.table(louvs,anno,by="clusid")
+
+lcnmsub <- fread("processed-data/10_subclustering/04-LCsubclus-by-NM_otherclusts-by-LCorLCNMadjacency.txt")
+lcnmsub <- lcnmsub[,.(rn,NMseg_subclus)]
+lcnmsub[!(NMseg_subclus %in% c("LC_NMneg","LC_NMpos")),NMseg_subclus:=NA]
+louvs <- merge.data.table(louvs,lcnmsub,by="rn")
+louvs <- DataFrame(louvs,row.names=louvs$rn)[colnames(lc3),]
+
+colLabels(lc3) <- louvs$anno
+lc3$lcnm <- louvs$NMseg_subclus
+
+rm(lcnmsub,louvs,anno)
+```
+
+# drop duplicated gene ids/symbols; set rownames of spe to gene symbol, since those are the identifiers we're stuck with for TF-targ sets
+```{r}
+dropg <- as.data.table(rowData(lc3),keep.rownames=T)[,.(gene_id,gene_name)]
+dropg1 <- dropg[duplicated(gene_name)|duplicated(gene_id),] 
+
+lc3 <- lc3[!(rownames(lc3)%in%dropg1$gene_id),]
+rownames(lc3) <- rowData(lc3)$gene_name
+lc3 <- lc3[!(rownames(lc3)%in%dropg1$gene_name),]
+
+#### separate out the TF symbol from the full set name so we can filter the SPE accordingly
+gseas <- lapply(gseas,FUN=function(x){
+    
+    y <- x[!(pathway %in% grep(pathway,pattern="Rummagene",value=T))]
+    y[,tf:=apply(.SD,MARGIN = 1,FUN=function(h){strsplit(h,"_",1)[[1]][1]}),.SDcols="pathway"]
+    ### rummagene TFs are named differently:
+    z <- x[pathway %in% grep(pathway,pattern="Rummagene",value=T)]
+    # reverse the output of a strsplit of a strsplit o.0 to get the string immediately preceding "_Rummagene_.."
+    z[,tf:=apply(.SD,MARGIN=1,FUN=function(p){
+        rev.default(strsplit(
+            strsplit(p,"_Rummagene_transcription_factors",-1)[[1]][1],
+            "_")[[1]]
+        )[1]
+    }),.SDcols="pathway"]
+    #z[,tf:=gsub(pathway,pattern=".*-.*_(.*)_Rummagene_transcription_factors)",replacement="\\1")]
+    fix <- rbind(z,y)
+    # make all upper case
+    fix[,tf:=toupper(tf)]
+    return(fix)
+})
+
+keepgenes <- unique(unlist(lapply(gseas,FUN=function(x){x$tf})))
+keepgenes <- keepgenes[keepgenes %in% rownames(lc3)|keepgenes %in% toupper(rownames(lc3))]
+lc3 <- lc3[keepgenes,]
+
+rm(keepgenes,dropg,dropg1)
+gc(full=T)
+```
+
+### extract and filter to TFs detected in the cluster at >1% of spots in in one or more of the approp. DE groups {≥ 25% of samples with ≥ 1% of spots with TF detectable AND a mean % spots detected of >=0.75% for the entire group}
+```{r}
+## logcounts per spot in long format for TFs in the gsea results
+lc3.lct <- as.data.table(as.data.frame(as.matrix(logcounts(lc3))),keep.rownames=T)
+lc3.lct <- melt.data.table(lc3.lct,id.vars="rn",value.name="logcounts")
+setnames(lc3.lct,"rn","tf")
+
+## append pertinent metadata
+subcd <- as.data.table(colData(lc3),keep.rownames=T)[,.(rn,Sex,APOE,sample_id,label,lcnm)]
+subcd[APOE=="E4/ E4",APOE:="E4hom"]
+subcd[APOE=="E2/ E2",APOE:="E2hom"]
+subcd[APOE=="E3/ E4",APOE:="E4het"]
+subcd[APOE=="E2/ E3",APOE:="E2het"]
+subcd[,APOEsimple:=ifelse(APOE %in% c("E4hom","E4het"),yes="E4",no="E2")]
+lc3.lct <- merge.data.table(lc3.lct,subcd,by.x="variable",by.y="rn")
+
+rm(subcd,lc3)
+gc(full=T)
+
+# make a co-list indicating which DE test (sex, APOE discrete or APOE simple) based on the corresponding metadata columns
+degroups <- c(rep(
+    c(rep("Sex",5),rep("APOEsimple",5),rep("APOE",20)),2),
+    "lcnm", # NMpos vs. neg signed
+    rep("label",16) # "" unsigned; LCnmf
+)
+# and another indicating which cluster column to use
+cluscol <- c(rep("label",60),"none",rep("label",16))
+
+gseas.filt <- mapply(R=gseas,N=names(gseas),G=degroups,Clus=cluscol,SIMPLIFY=FALSE,FUN=function(R,N,G,Clus){
+    groupwise <- lapply(unique(lc3.lct[,get(G)]),FUN=function(S){
+            curdat <- lc3.lct[get(G)==S]
+            
+            ## filter to spots from current cluster
+            if (Clus=="none") {
+                # in this case, we're grouping by a subclustering column so no need to further subset here
+                curdat <- curdat
+            } else if (length(grep(N,pattern="nmf",value=T)>0)){
+                curclus <- "LC"
+                curdat <- curdat[label=="LC"]
+            } else {
+                curclus <- unique(R$anno)
+                curdat <- curdat[get(Clus)==curclus]
+            }
+            
+            curdat[,Nspot:=.N/length(unique(tf)),by="sample_id"] # each spot will have n rows, one row per TF, so we can get the # of spots by dividing
+            
+            # this is a clunky approach, but the TOTAL %age of spots expressing the TF in question (ie logcounts>0) for that sample will fill in for any rows where logcounts are >0. we can then get a table of unique combinations of sample X TF x %age of spots
+            curdat[logcounts>0,pctxpr:=.N/Nspot,by=c("tf","sample_id")]
+            # set NAs in pctxpr to 0
+            curdat[is.na(pctxpr),pctxpr:=0]
+            # get each unique pair of tf-sample-pctxpr, where we fetch the max row value of pctxpr for a tf-sample pair (which will be >0 and = the % of spots expressing in all rows where the gene was detected for that sample)
+            tffilt <- curdat[,max(pctxpr),by=c("tf","sample_id")]
+            # calculate mean % spots with TF detectable across all cluster spots in the group 
+            # and calculate number of samples with over 1% of cluster-spots with TF detectable. each tf-sample pair is a unique row now, so take the mean across rows with a given TF value for group-spots-detected mean, or tabulate the number of TF occurrences with the pctxpr filter to get the number of passing rows
+            setnames(tffilt,"V1","pctxpr")
+            tffilt[,meanxpr:=mean(pctxpr),by="tf"]
+            tffilt[pctxpr>0.01,Nxpr:=.N,by="tf"]
+            # na rows returned in Nxpr will be meaningless in this result, since we just will subset to max Nxpr analogous to what we did above, resulting in a table of X tfs with their mean + spot %age and number of samples over threshold. set na values to 0 to avoid errors relating to NAs here.
+            tffilt[is.na(Nxpr),Nxpr:=0]
+            tffilt2 <- tffilt[,max(Nxpr),by="tf"]
+            setnames(tffilt2,"V1","Nxpr")
+            ## add baack the mean expression to the number of threshold-passing samples by merging parts of the old data ttable to the above result
+            tffilt2 <- merge.data.table(tffilt2,unique(tffilt[,.(tf,meanxpr)],by="tf"))
+            
+            # FINALLY  get the TFs meeting criteria (expressed in at least 0.5% of spots of cluster for at least 25% of samples from the given group) back and filter the result table to them
+            minsamp <- floor(0.25*length(unique(curdat$sample_id)))
+            keeptfs <- tffilt2[Nxpr>=minsamp&meanxpr>0.0075,tf]
+            # return qualifying TFs for this sex
+            return(keeptfs)
+        })
+    names(groupwise) <- unique(lc3.lct[,get(G)])
+    
+    filtres <- copy(R[tf %in% unique(unlist(groupwise))|tf %in% toupper(unique(unlist(groupwise)))])
+    
+    i<-1
+    for (i in c(1:length(groupwise))){
+        filtres[,newcol:=ifelse(tf %in% groupwise[[i]],yes="yes",no="no")]
+        setnames(filtres,"newcol",paste0("TF_",names(groupwise)[i],"_Expr"))
+    }
+    return(filtres)
+})
+
+```
+
+### save
+```{r}
+saveRDS(gseas.filt,"processed-data/12_DEanalyses_removedsampsAndFinalNMseg/07-LCNM_APOESexDE_LCnmf_TFtarg_GSEA_filterToClusAndDEgroupExpressed.RDS")
+```
+
+```{r}
+sessionInfo()
+sessioninfo::session_info()
+```
+R version 4.4.3 (2025-02-28)
+Platform: aarch64-apple-darwin20
+Running under: macOS Sequoia 15.3.2
+
+Matrix products: default
+BLAS:   /System/Library/Frameworks/Accelerate.framework/Versions/A/Frameworks/vecLib.framework/Versions/A/libBLAS.dylib 
+LAPACK: /Library/Frameworks/R.framework/Versions/4.4-arm64/Resources/lib/libRlapack.dylib;  LAPACK version 3.12.0
+
+locale:
+[1] en_US.UTF-8/en_US.UTF-8/en_US.UTF-8/C/en_US.UTF-8/en_US.UTF-8
+
+time zone: America/Chicago
+tzcode source: internal
+
+attached base packages:
+[1] parallel  stats4    stats     graphics  grDevices utils     methods   base     
+
+other attached packages:
+ [1] BiocParallel_1.40.0         parallelly_1.43.0          
+ [3] default_1.0.0               colorout_1.3-0.2           
+ [5] SpatialExperiment_1.16.0    SingleCellExperiment_1.28.1
+ [7] SummarizedExperiment_1.36.0 Biobase_2.66.0             
+ [9] GenomicRanges_1.58.0        GenomeInfoDb_1.42.3        
+[11] IRanges_2.40.1              S4Vectors_0.44.0           
+[13] BiocGenerics_0.52.0         MatrixGenerics_1.18.1      
+[15] matrixStats_1.5.0           data.table_1.17.0          
+[17] rlang_1.1.5                
+
+loaded via a namespace (and not attached):
+ [1] beeswarm_0.4.0          gtable_0.3.6            rjson_0.2.23           
+ [4] xfun_0.52               ggplot2_3.5.2           ggrepel_0.9.6          
+ [7] lattice_0.22-6          generics_0.1.3          vctrs_0.6.5            
+[10] tools_4.4.3             tibble_3.2.1            pkgconfig_2.0.3        
+[13] BiocNeighbors_2.0.1     Matrix_1.7-3            RColorBrewer_1.1-3     
+[16] lifecycle_1.0.4         GenomeInfoDbData_1.2.13 compiler_4.4.3         
+[19] farver_2.1.2            codetools_0.2-20        vipor_0.4.7            
+[22] htmltools_0.5.8.1       yaml_2.3.10             pillar_1.10.2          
+[25] crayon_1.5.3            DelayedArray_0.32.0     viridis_0.6.5          
+[28] magick_2.8.6            abind_1.4-8             tidyselect_1.2.1       
+[31] rsvd_1.0.5              digest_0.6.37           dplyr_1.1.4            
+[34] BiocSingular_1.22.0     rprojroot_2.0.4         fastmap_1.2.0          
+[37] grid_4.4.3              here_1.0.1              cli_3.6.4              
+[40] SparseArray_1.6.2       scater_1.34.1           magrittr_2.0.3         
+[43] S4Arrays_1.6.0          dichromat_2.0-0.1       UCSC.utils_1.2.0       
+[46] scales_1.4.0            ggbeeswarm_0.7.2        rmarkdown_2.29         
+[49] XVector_0.46.0          httr_1.4.7              gridExtra_2.3          
+[52] ScaledMatrix_1.14.0     beachmat_2.22.0         evaluate_1.0.3         
+[55] knitr_1.50              viridisLite_0.4.2       irlba_2.3.5.1          
+[58] Rcpp_1.0.14             glue_1.8.0              scuttle_1.16.0         
+[61] rstudioapi_0.17.1       jsonlite_2.0.0          R6_2.6.1               
+[64] zlibbioc_1.52.0        
+> sessioninfo::session_info()
+─ Session info ─────────────────────────────────────────────────────────────────────
+ setting  value
+ version  R version 4.4.3 (2025-02-28)
+ os       macOS Sequoia 15.3.2
+ system   aarch64, darwin20
+ ui       RStudio
+ language (EN)
+ collate  en_US.UTF-8
+ ctype    en_US.UTF-8
+ tz       America/Chicago
+ date     2025-05-19
+ rstudio  2024.07.0-daily+219 Cranberry Hibiscus (desktop)
+ pandoc   3.1.11 @ /Applications/RStudio.app/Contents/Resources/app/quarto/bin/tools/aarch64/ (via rmarkdown)
+ quarto   1.4.555 @ /Applications/RStudio.app/Contents/Resources/app/quarto/bin/quarto
+
+─ Packages ─────────────────────────────────────────────────────────────────────────
+ !  package              * version date (UTC) lib source
+    abind                  1.4-8   2024-09-12 [1] CRAN (R 4.4.1)
+    beachmat               2.22.0  2024-11-08 [1] Bioconductor 3.20 (R 4.4.1)
+    beeswarm               0.4.0   2021-06-01 [1] CRAN (R 4.4.0)
+    Biobase              * 2.66.0  2024-11-08 [1] Bioconductor 3.20 (R 4.4.1)
+    BiocGenerics         * 0.52.0  2024-11-08 [1] Bioconductor 3.20 (R 4.4.1)
+    BiocNeighbors          2.0.1   2024-11-28 [1] Bioconductor 3.20 (R 4.4.2)
+    BiocParallel         * 1.40.0  2024-11-23 [1] Bioconductor 3.20 (R 4.4.2)
+    BiocSingular           1.22.0  2024-11-08 [1] Bioconductor 3.20 (R 4.4.1)
+ VP cli                    3.6.4   2025-04-23 [2] CRAN (R 4.4.1) (on disk 3.6.5)
+    codetools              0.2-20  2024-03-31 [1] CRAN (R 4.4.3)
+    colorout             * 1.3-0.2 2024-05-01 [1] Github (jalvesaq/colorout@c6113a2)
+    crayon                 1.5.3   2024-06-20 [1] CRAN (R 4.4.0)
+    data.table           * 1.17.0  2025-02-22 [1] CRAN (R 4.4.1)
+    default              * 1.0.0   2017-08-07 [1] CRAN (R 4.4.0)
+    DelayedArray           0.32.0  2024-11-08 [1] Bioconductor 3.20 (R 4.4.1)
+    dichromat              2.0-0.1 2022-05-02 [1] CRAN (R 4.4.0)
+    digest                 0.6.37  2024-08-19 [1] CRAN (R 4.4.1)
+    dplyr                  1.1.4   2023-11-17 [1] CRAN (R 4.4.0)
+    evaluate               1.0.3   2025-01-10 [1] CRAN (R 4.4.1)
+    farver                 2.1.2   2024-05-13 [1] CRAN (R 4.4.0)
+    fastmap                1.2.0   2024-05-15 [1] CRAN (R 4.4.0)
+    generics               0.1.3   2022-07-05 [1] CRAN (R 4.4.0)
+    GenomeInfoDb         * 1.42.3  2025-01-27 [1] Bioconductor 3.20 (R 4.4.2)
+    GenomeInfoDbData       1.2.13  2024-12-12 [1] Bioconductor
+    GenomicRanges        * 1.58.0  2024-11-08 [1] Bioconductor 3.20 (R 4.4.1)
+    ggbeeswarm             0.7.2   2023-04-29 [1] CRAN (R 4.4.0)
+    ggplot2                3.5.2   2025-04-09 [1] CRAN (R 4.4.1)
+    ggrepel                0.9.6   2024-09-07 [1] CRAN (R 4.4.1)
+    glue                   1.8.0   2024-09-30 [1] CRAN (R 4.4.1)
+    gridExtra              2.3     2017-09-09 [1] CRAN (R 4.4.0)
+    gtable                 0.3.6   2024-10-25 [1] CRAN (R 4.4.1)
+    here                   1.0.1   2020-12-13 [1] CRAN (R 4.4.0)
+    htmltools              0.5.8.1 2024-04-04 [1] CRAN (R 4.4.0)
+    httr                   1.4.7   2023-08-15 [1] CRAN (R 4.4.0)
+    IRanges              * 2.40.1  2024-12-05 [1] Bioconductor 3.20 (R 4.4.2)
+    irlba                  2.3.5.1 2022-10-03 [1] CRAN (R 4.4.0)
+    jsonlite               2.0.0   2025-03-27 [1] CRAN (R 4.4.1)
+    knitr                  1.50    2025-03-16 [1] CRAN (R 4.4.2)
+    lattice                0.22-6  2024-03-20 [1] CRAN (R 4.4.3)
+    lifecycle              1.0.4   2023-11-07 [1] CRAN (R 4.4.0)
+    magick                 2.8.6   2025-03-23 [1] CRAN (R 4.4.1)
+    magrittr               2.0.3   2022-03-30 [1] CRAN (R 4.4.0)
+    Matrix                 1.7-3   2025-03-11 [1] CRAN (R 4.4.1)
+    MatrixGenerics       * 1.18.1  2025-01-09 [1] Bioconductor 3.20 (R 4.4.2)
+    matrixStats          * 1.5.0   2025-01-07 [1] CRAN (R 4.4.1)
+    parallelly           * 1.43.0  2025-03-24 [1] CRAN (R 4.4.1)
+    pillar                 1.10.2  2025-04-05 [1] CRAN (R 4.4.1)
+    pkgconfig              2.0.3   2019-09-22 [1] CRAN (R 4.4.0)
+    R6                     2.6.1   2025-02-15 [1] CRAN (R 4.4.1)
+    RColorBrewer           1.1-3   2022-04-03 [1] CRAN (R 4.4.0)
+    Rcpp                   1.0.14  2025-01-12 [1] CRAN (R 4.4.1)
+    rjson                  0.2.23  2024-09-16 [1] CRAN (R 4.4.1)
+ VP rlang                * 1.1.5   2025-04-11 [2] CRAN (R 4.4.1) (on disk 1.1.6)
+    rmarkdown              2.29    2024-11-04 [1] CRAN (R 4.4.1)
+    rprojroot              2.0.4   2023-11-05 [1] CRAN (R 4.4.0)
+    rstudioapi             0.17.1  2024-10-22 [1] CRAN (R 4.4.1)
+    rsvd                   1.0.5   2021-04-16 [1] CRAN (R 4.4.0)
+    S4Arrays               1.6.0   2024-11-08 [1] Bioconductor 3.20 (R 4.4.1)
+    S4Vectors            * 0.44.0  2024-11-08 [1] Bioconductor 3.20 (R 4.4.1)
+    ScaledMatrix           1.14.0  2024-11-08 [1] Bioconductor 3.20 (R 4.4.1)
+    scales                 1.4.0   2025-04-24 [1] CRAN (R 4.4.1)
+    scater                 1.34.1  2025-03-03 [1] Bioconductor 3.20 (R 4.4.2)
+    scuttle                1.16.0  2024-11-08 [1] Bioconductor 3.20 (R 4.4.1)
+    sessioninfo            1.2.3   2025-02-05 [1] CRAN (R 4.4.1)
+    SingleCellExperiment * 1.28.1  2024-11-23 [1] Bioconductor 3.20 (R 4.4.2)
+    SparseArray            1.6.2   2025-02-20 [1] Bioconductor 3.20 (R 4.4.2)
+    SpatialExperiment    * 1.16.0  2024-11-08 [1] Bioconductor 3.20 (R 4.4.1)
+    SummarizedExperiment * 1.36.0  2024-11-08 [1] Bioconductor 3.20 (R 4.4.1)
+    tibble                 3.2.1   2023-03-20 [1] CRAN (R 4.4.0)
+    tidyselect             1.2.1   2024-03-11 [1] CRAN (R 4.4.0)
+    UCSC.utils             1.2.0   2024-11-08 [1] Bioconductor 3.20 (R 4.4.1)
+    vctrs                  0.6.5   2023-12-01 [1] CRAN (R 4.4.0)
+    vipor                  0.4.7   2023-12-18 [1] CRAN (R 4.4.0)
+    viridis                0.6.5   2024-01-29 [1] CRAN (R 4.4.0)
+    viridisLite            0.4.2   2023-05-02 [1] CRAN (R 4.4.0)
+    xfun                   0.52    2025-04-02 [1] CRAN (R 4.4.1)
+    XVector                0.46.0  2024-11-08 [1] Bioconductor 3.20 (R 4.4.1)
+    yaml                   2.3.10  2024-07-26 [1] CRAN (R 4.4.0)
+    zlibbioc               1.52.0  2024-11-08 [1] Bioconductor 3.20 (R 4.4.1)
+
+ [1] /Library/Frameworks/R.framework/Versions/4.4-arm64/Resources/library
+ [2] /Users/bmulvey/Library/R/arm64/4.4/library
+
+ * ── Packages attached to the search path.
+ V ── Loaded and on-disk version mismatch.
+ P ── Loaded and on-disk path mismatch.
+
+────────────────────────────────────────────────────────────────────────────────────

@@ -13,7 +13,7 @@ knitr::opts_knit$set(root.dir = here::here())
 library(data.table)
 library(clusterProfiler) # otherwise fgsea parallelization doesnt seem to work
 library(fgsea)
-library(msigdbr)
+library(SpatialExperiment)
 
 require(colorout)
 ColorOut()
@@ -40,9 +40,14 @@ sets <- readRDS("raw-data/ref_data/00a-enrichrTFsets_forfgseainput_121823.RDS")
 
 # PART 1: get signed DE t stat vectors per cluster per test
 ```{r}
+## need to use gene symbols for compatibility with the TF-target sets
+lc3 <- readRDS("processed-data/06-countsOnly_noImgData_QCed_SPE_split_to_tissSections.RDS")
+rddt <- as.data.table(rowData(lc3))
+rm(lc3)
+
 de2b <- readRDS("processed-data/12_DEanalyses_removedsampsAndFinalNMseg/02b-voomLmFit_objs_and_DE_tables_LabSex_LabE2vE4_LabSingleGenos_LabYRI_noMixClusts.RDS")
 
-de2b <- lapply(de2b,FUN=function(x){x[[6]]})
+de2b <- lapply(de2b,FUN=function(x){x[[6]]}) # de tables are in a list in sixth slot for each contrast
 de2b2 <- list()
 i<-1
 for (i in c(1:length(de2b))){
@@ -73,15 +78,20 @@ i<-1
 for (i in c(1:length(de2b))){
     setnames(de2b[[i]],"t","tstat")
     tmp <- copy(de2b[[i]])[,.(gene_id,tstat)]
+    tmp <- merge.data.table(tmp,rddt[,.(gene_id,gene_name)],by="gene_id",all.x=T)
+    ## drop duplicated genes
+    dropg <- tmp[,.N,by="gene_id"][N>1,gene_id]
+    dropg2 <- tmp[,.N,by="gene_name"][N>1,gene_name]
+    tmp <- tmp[!(gene_id %in% dropg)&!(gene_name %in% dropg2)]
     setorderv(tmp,"tstat",-1)
     ## get the stat column as a vector and give it the gene ids as names for fgsea
     ## note that since data.table (invisibly) uses list() for column data, its cleaner to just make the working table a data frame for this last bit
     tmp <- as.data.frame(tmp)
     v <- tmp$tstat
-    names(v) <- tmp$gene_id
+    names(v) <- tmp$gene_name
     deres[[length(deres)+1]] <- v
     names(deres)[length(deres)] <- names(de2b)[i]
-    rm(v,tmp)
+    rm(v,tmp,dropg,dropg2)
 }
 rm(i,de2b)
 ```
@@ -186,13 +196,19 @@ i<-1
 for (i in c(1:length(de2b))){
     setnames(de2b[[i]],"t","tstat")
     tmp <- copy(de2b[[i]])[,.(gene_id,abs(tstat))]
+    tmp <- merge.data.table(tmp,rddt[,.(gene_id,gene_name)],by="gene_id",all.x=T)
+    
+    dropg <- tmp[,.N,by="gene_id"][N>1,gene_id]
+    dropg2 <- tmp[,.N,by="gene_name"][N>1,gene_name]
+    tmp <- tmp[!(gene_id %in% dropg)&!(gene_name %in% dropg2)]
+    
     setnames(tmp,2,"tstat")
     setorderv(tmp,"tstat",-1)
     ## get the stat column as a vector and give it the gene ids as names for fgsea
     ## note that since data.table (invisibly) uses list() for column data, its cleaner to just make the working table a data frame for this last bit
     tmp <- as.data.frame(tmp)
     v <- tmp$tstat
-    names(v) <- tmp$gene_id
+    names(v) <- tmp$gene_name
     deres[[length(deres)+1]] <- v
     names(deres)[length(deres)] <- names(de2b)[i]
     rm(v,tmp)
