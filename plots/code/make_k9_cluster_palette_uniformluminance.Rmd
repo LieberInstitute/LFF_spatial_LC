@@ -6,6 +6,7 @@ date: 04-05-25
 ---
 
 ```{r}
+knitr::opts_knit$set(root.dir = here::here())
 library(Polychrome)
 library(data.table)
 ```
@@ -38,7 +39,34 @@ swatch(pal3)
 anno$anno
 # make the more blueish green ACHE..npeps since this is the cluster that had a lot of indicators of minority LC-related content and kinda trended behind LC on proportions of spots expressing various genes of interest
 # make oligo_3 (the APLP1 marked one) the stark purple, since that's the real interesting oligo cluster here
-names(pal3) <- c("LC.1","ACHE_SERT_SLC17A6_Npeps","Oligo_3","ACHE_SERT_SLC17A6_ADCYAP1","Oligo_1","Oligo_2","Vascular","Astro_2_APOE","Astro_1")
+# names(pal3) <- c("LC.1","ACHE_SERT_SLC17A6_Npeps","Oligo_3","ACHE_SERT_SLC17A6_ADCYAP1","Oligo_1","Oligo_2","Vascular","Astro_2_APOE","Astro_1")
+names(pal3) <- c("LC","ACHE_SERT_LC_WM","Oligo_Complex","ACHE_SERT_Npep","Oligo_Astro","Oligo","Vascular","Astro_Oligo","Astro")
 swatch(pal3)
 saveRDS(pal3,"plots/cluster_palette_narrowluminance.RDS")
+
+### make a second one where the astros get the more vibrant colors from above (Oligo_1 and Oligo_3), oligos get the duller/greiges. need one more color for the oligos in this setup
+pal4 <- pal3[c(1:5,7:9)]
+names(pal4)[3] <- "Astro"
+names(pal4)[5] <- "Astro_Oligo"
+names(pal4)[7] <- "Oligo"
+names(pal4)[8] <- "Oligo_Astro"
+swatch(pal4)
+
+## make a big old palette to draw a greige from, seeding with the non-yellow/beiges
+set.seed(42)
+findgreige <- Polychrome::createPalette(seedcolors = pal4[1:6], N = 50,M=2500000,range = c(74:77)) # 007ba7 : cerulean. obviously; color samplespace 50x default
+swatch(findgreige)
+
+pal4 <- c(pal4,findgreige[20])
+names(pal4)[7] <- "Oligo_Complex"
+names(pal4)[9] <- "Oligo"
+pal4 <- c(pal4[1:6],pal4[9],pal4[8],pal4[7])
+## reorder so clusters are by type for swatching
+pal4 <- pal4[c(1,2,4,3,5,6:9)]
+swatch(pal4)
+
+saveRDS(pal4,"plots/cluster_palette_narrowluminance_v2.RDS")
+## 4 clusters are being excluded from DE analyses, so also plot how this looks with only those 5 colors considered
+pal5 <- pal4[c(1,2,3,4,8)]
+swatch(pal5)
 ```

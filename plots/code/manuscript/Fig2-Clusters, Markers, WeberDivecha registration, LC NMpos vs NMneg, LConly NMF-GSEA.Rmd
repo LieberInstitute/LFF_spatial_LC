@@ -1,6 +1,7 @@
 ---
 title: "Fig2-Clusters, Markers, WeberDivecha registration, LC NMpos vs NMneg, LConly NMF-GSEA"
 format: html
+date: "05-19-2025"
 ---
 
 ```{r setup, include=FALSE}
@@ -13,7 +14,13 @@ library(ggplot2)
 library(ggtext)
 library(gridExtra)
 library(SpatialExperiment)
-# library(SpatialFeatureExperiment)
+library(spatialLIBD)
+library(ggrastr)
+library(ComplexHeatmap)
+library(Cairo) # pdf device for ^ to properly save; also used for complexheatmap raster functions
+library(circlize) #colorRamp2
+library(viridis) # magma
+library(ggrepel) # volcano point labeling
 
 ## rstudio GUI tweaks
 require(colorout)
@@ -38,3 +45,346 @@ theme_set(theme_bw()+theme(axis.text.x = element_text(size = 9), axis.title.x = 
 unloadNamespace('datasets')
 ```
 
+## For the clustering spotplots, we want to use the H&E images and plot by capture area, so we will need to load the big daddy SPE
+```{r}
+lc2 <- readRDS("processed-data/04_QC/04-lffLC_noEdges_noLocOutliers_remainder1pctileUMIorGene-removed.RDS")
+
+# load clustering and the split-sections coldata, which has a column with pre-split spot ids we can use to match everything back to capture level
+louvs <- readRDS("processed-data/07_featureSelection_dimred_harmony_clustering/04-Initial_louvLeid_res0.5-1-2_clusterings.RDS")
+louvs <- louvs$HARMONYlmbna_HDG_SVG_2575[,.(rn,snnHARMONYlmbna_HDG_SVG_2575_louv_res1)]
+setnames(louvs,2,"clusid")
+
+anno <- fread("processed-data/08_validitycheck_25hdg75svg_louv1/10-25hdg75svg_louv1_annots.txt")
+louvs <- merge.data.table(louvs,anno,by="clusid")
+
+splitcd <- fread("processed-data/06-QCed_SPE_splitToTissSect_colData.txt")
+splitcd <- splitcd[,.(rowname,original_spot_id)]
+
+louvs <- merge.data.table(louvs,splitcd,by.x="rn",by.y="rowname") # split section ids
+
+## also attach LCnm subsets because we will use them in this figure
+lcnm <- fread("processed-data/10_subclustering/04-LCsubclus-by-NM_otherclusts-by-LCorLCNMadjacency.txt")
+lcnm <- lcnm[,.(rn,NMseg_subclus)]
+
+louvs <- merge.data.table(louvs,lcnm,by="rn",all.x=T) 
+
+louvs <- DataFrame(louvs,row.names=louvs$original_spot_id)[colnames(lc2),]
+stopifnot(nrow(louvs)==ncol(lc2))
+
+colLabels(lc2) <- louvs$anno
+lc2$lcnm_subclus <- louvs$NMseg_subclus
+
+rm(splitcd,lcnm)
+gc(full=T)
+```
+
+## load cluster 9-color palette
+```{r}
+pal <- readRDS("plots/cluster_palette_narrowluminance_v2.RDS")
+```
+
+### custom function to extrct legend from one plot to extend to all ###
+```{r}
+extract_legend <- function(my_ggp) {
+    step1 <- ggplot_gtable(ggplot_build(my_ggp))
+    step2 <- which(sapply(step1$grobs, function(x) x$name) == "guide-box")
+    step3 <- step1$grobs[[step2]]
+    return(step3)
+}
+```
+
+## Fig 2A: 2x2 grid of plots with the clusters indicated
+show the following captures: V13M06-331_A1, V13M06-333_B1, V13M06-404_B1, V13M06-403_D1. But first make a shared legend to extract
+```{r}
+tmpdat <- as.data.table(colData(lc2[,lc2$sample_id=="V13M06-331_A1"])[,c("label","array_row","array_col")])
+
+tmpplt <- ggplot(tmpdat,aes(x=array_col,y=array_row,col=label))+
+    geom_point()+
+    scale_color_manual(values = pal)+
+    theme(legend.key.height = unit(0.083,"in"),
+          legend.key.width = unit(0.156,"in"),
+          legend.text=element_text(size=7,margin=margin(0,0,0,-0.025,unit="in")),
+          legend.title=element_blank(),
+          legend.key=element_blank(),
+          legend.background = element_blank())
+
+leg.tmp <- extract_legend(tmpplt)
+dev.off()
+####
+
+samps <- c("V13M06-331_A1","V13M06-333_B1","V13M06-404_B1","V13M06-403_D1")
+
+plts <- lapply(samps,function(s){
+    p <- vis_clus(lc2,sampleid=s,spatial = T,na_color = NA,auto_crop = T,point_size = 0.6,alpha=0.65,clustervar = "label",colors = pal,image_id = "lowres")+
+        guides(color="none",fill="none")+
+    #ggtitle("NPY")+
+        theme(plot.title = element_text(size = 9, hjust = 0.5,margin=margin(0,0,0,0)),
+          panel.border = element_blank(),
+          plot.margin = margin(-0.1,0.025,-0.475,-0.45,unit="in"))
+    p <- rasterize(p,layers="Points",dpi=300,dev="cairo_png")
+    return(p)
+
+})
+### arrangeGrob() on the spotplot list --> 2x1 of plots from that list only, constituting the "first column" of the parent; leg.tmp2 is an additional thing being plotted in the second column of the parent.
+pdf("plots/manuscript/Fig2/2A-Cluster_spotplots.pdf",height=3.5,width=4.25)
+do.call("grid.arrange", list(arrangeGrob(grobs = plts, ncol = 2, nrow = 2), leg.tmp, ncol = 2, widths = c(2.8, 1.2)))
+dev.off()
+
+rm(plts,tmpdat,tmpplt,leg.tmp,samps)
+gc(full=T)
+```
+
+Fig 2B: marker heatmap
+```{r}
+### get markers
+globalmk <- readRDS("processed-data/07_featureSelection_dimred_harmony_clustering/05a-init_nonspat_marker_tables.RDS")
+
+globalmk <- globalmk$snnHARMONYlmbna_HDG_SVG_2575_louv_res1
+
+globalmk <- melt.data.table(as.data.table(globalmk),id.vars=c("gene","ensembl","rn"))
+globalmk[,rn:=NULL]
+
+globalmk[,clusid:=gsub(pattern="^.*_(X.*)$",replacement="\\1",x=variable)]
+globalmk[,stat:=gsub(pattern="^(.*)_X.*$",replacement="\\1",x=variable)]
+
+globalmk <- merge.data.table(globalmk,anno,by="clusid")
+globalmk[,clusid:=NULL]
+
+globalmk <- globalmk[stat %in% c("fdr","logFC")]
+
+globalmk.f <- globalmk[stat=="fdr"]
+globalmk.f[,stat:=NULL]
+globalmk.f[,variable:=NULL]
+setnames(globalmk.f,"value","fdr")
+globalmk.f <- globalmk.f[fdr<0.05,]
+
+globalmk.l <- globalmk[stat=="logFC"]
+globalmk.l[,stat:=NULL]
+globalmk.l[,variable:=NULL]
+setnames(globalmk.l,"value","logFC")
+globalmk.l <- globalmk.l[logFC>0]
+
+globalmk <- merge.data.table(globalmk.f,globalmk.l,by=c("ensembl","anno","gene"))
+
+## get top 5 genes per cluster
+mkg <- unique(globalmk[ , .SD[order(fdr) , ][1:5] , by = "anno"][,ensembl])
+rm(globalmk,globalmk.f,globalmk.l,,clustab)
+
+# global marker heatmap: top 5 genes by FDR per cluster x 9 clusters = 45 genes (max)
+
+# get scaled expression data for global heatmap
+## define function to z-scale expression
+# z scale rows, from tony https://github.com/LieberInstitute/spatial_DG_lifespan/blob/9419eb91453cda1df494d93dc91156d819042c66/code/Pseudobulk/top_infant_DE_heatmap_enrichment.R#L106
+
+scale_rows <- function(x) {
+    m <- apply(x, 1, mean, na.rm = T)
+    s <- apply(x, 1, sd, na.rm = T)
+    return((x - m) / s)
+}
+
+clusord <- names(pal)
+
+lc2$label <- factor(lc2$label,levels=clusord)
+
+    
+# make an spe with reordering of the columns to be in the order of the clusters we want plotted, then disable column clustering in the heatmap. (thatll make the plotting quicker too).
+i <- 1
+for (i in c(1:length(levels(lc2$label)))) {
+    curlev <- levels(lc2$label)[i]
+    if (i == 1) {
+        cnames <- colnames(lc2[, lc2$label == curlev])
+    } else {
+        cnames <- c(cnames, colnames(lc2[, lc2$label == curlev]))
+    }
+}
+rm(i, curlev)
+
+### extract log counts per marker, z-normalize, hang onto both
+lc2 <- scater::computeLibraryFactors(lc2)
+lc2 <- scater::logNormCounts(lc2)
+pltdat <- SingleCellExperiment(lc2[mkg, cnames],rowData=rowData(lc2[mkg,])) 
+
+# ^ gets rid of imagedata here but screws up assays somehow
+assays(pltdat)$counts <- assays(lc2[mkg,cnames])$counts
+assays(pltdat)$logcounts <- assays(lc2[mkg,cnames])$logcounts
+
+# dump the screwed up assays in slot 1
+assays(pltdat) <- assays(pltdat)[c(2:3)]
+
+# change rownames to gene symbols
+rownames(pltdat) <- rowData(pltdat)$gene_name
+pltdat2 <- scale_rows(as.matrix(logcounts(pltdat)))
+
+## labels also got bllown away here -_-
+louvs2 <- louvs[colnames(pltdat),]
+pltdat$label <- louvs2$anno
+pltdat$label <- factor(pltdat$label,levels=names(pal))
+```
+
+# 2B-continued make the plot.
+```{r}
+nclus <- length(unique(lc2$label))
+# z score 99 %ile is 3point something. So we can just plot a symmetric -3,0,3 to get most of the variation in the significant things  
+
+htmap <- ComplexHeatmap::Heatmap(
+    pltdat2,
+    top_annotation = HeatmapAnnotation(
+        `Visium Cluster` = pltdat$label,
+        show_annotation_name = FALSE,
+        gap = 0,
+        col = list(`Visium Cluster`=pal),
+        gp = gpar(alpha = 1,cex=0.35)
+    ),
+    show_column_names = FALSE,
+    show_column_dend = FALSE,
+    show_row_dend = FALSE,
+    show_row_names = TRUE,
+    col = colorRamp2(
+        colors=c("blue","white","orange"),
+        breaks = c(-3,0,3)
+    ),
+    cluster_columns = F, # handled by ordering the collumns of the spe above
+    heatmap_legend_param = list(
+        title = "Z scored spot log counts",
+        direction = "horizontal",
+        title_position = "topcenter",
+        at=c(-5,0,5) 
+        # at argument forces the - region of the legend to show, it won't by default due to the long positive end 
+    ),
+    row_names_gp = gpar(fontsize = 5.5),
+    raster_device = "CairoPNG",
+    raster_quality = 10
+)
+
+
+### save plot; add title 
+
+# unstack the legends in illustator; ital the gene names in illustrator.
+CairoPDF("plots/manuscript/Fig2/2B-topFDRmarkers_heatmap.pdf", height = 4.5, width = 3.5)
+
+draw(htmap,
+    annotation_legend_side = "right",
+    heatmap_legend_side = "bottom",
+    legend_grouping = "original"
+)
+dev.off()
+
+rm(pltdat,pltdat2,gns,cnames,clusts,nclus,wms)
+```
+
+
+Fig 2C: Show one of the previous samples, now with only LC NM+ and - labeled. V13M06-404_B1 looks like a good sample for illustrating
+```{r}
+fig2c <- lc2[,lc2$sample_id=="V13M06-404_B1"]
+fig2c <- fig2c[,fig2c$lcnm_subclus %in% c("LC_NMpos","LC_NMneg")]
+fig2c$lcnm_subclus <- gsub(fig2c$lcnm_subclus,pattern="_",replacement=" ")
+fig2c$lcnm_subclus <- gsub(fig2c$lcnm_subclus,pattern="pos",replacement="+")
+fig2c$lcnm_subclus <- gsub(fig2c$lcnm_subclus,pattern="neg",replacement="-")
+
+lcnmpal <- c(pal[1],"#9a9a9a")
+names(lcnmpal) <- c("LC NM+","LC NM-")
+
+# point size of 0.9175 at this pdf size (2.4 x 3) and theme/legend parameter set gives spots nearly touching; the center-to-center distance between visium spots is 100µm (i.e., 100-(27.5µm radii of two spots)=45µm between spots). So we want to use approx (1-0.45)*0.9175 for point_size to accurately represent dead space (and NM overlap)
+
+## that comes out a little small. use 0.55 straight up
+
+## finally, spatialLIBD's autocrop is still including the vast majority of the image (whereas LC is a much smaller area of it, and despite us throwing out all the spots that aren't LC here. so some post-adjusting in illustrator will be required; triple all the parameters for sizes and themes besides legend so that we can rework it later).
+
+plotfact <- 3
+p <- vis_clus(fig2c,sampleid="V13M06-404_B1",spatial = T,na_color = NULL,auto_crop = T,point_size = 0.55*plotfact,alpha=0.45,clustervar = "lcnm_subclus",colors = lcnmpal,image_id = "hires")+
+    theme(plot.title = element_text(size = 9, hjust = 0.5,margin=margin(0,0,0,0)),
+          panel.border = element_blank(),
+          plot.margin = margin(-0.15*plotfact,
+                               0.0375*plotfact,
+                               -0.7125*plotfact,
+                               -0.675*plotfact,unit="in"),
+          legend.key.height = unit(0.083,"in"),
+          legend.key.width = unit(0.156,"in"),
+          legend.text=element_text(size=7,margin=margin(0,0,0,-0.025,unit="in")),
+          legend.title=element_text(size=8),
+          legend.key=element_blank(),
+          legend.background = element_blank())+
+    scale_fill_manual(values=lcnmpal)+
+    labs(fill="LC Spot Type")+
+    guides(fill=guide_legend(override.aes=list(size=1.25,alpha=0.45)))
+
+## also plot in higher res than would otherwise be necessary so we have good resolution of the illustrator-cropped out LC zoone
+p <- rasterize(p,layers="Points",dpi=600,dev="cairo_png")
+
+pdf("plots/manuscript/Fig2/Fig2C_needs_illust_postproc.pdf",height=plotfact*2.4,width=plotfact*3)
+p
+dev.off()
+
+rm(fig2c,p,plotfact)
+```
+
+Fig 2D: LC NM+- DE volcano
+```{r}
+nmde <- fread("processed-data/12_DEanalyses_removedsampsAndFinalNMseg/04-LCNMpos_vs_LCNMneg_DE.txt")
+
+nmde[,yval:=-log10(adj.P.Val)]
+nmde[,uptype:=ifelse(logFC>0,yes="LC NM+",no="LC NM-")]
+
+## illustrate glial and inhibitory genes for NM- enrichment; LC markers and GPX3 (NM-assoc gene) for NM+ enrichment
+nmde[gene_name %in% c("GAD1","GAD2","TCN","GJB6","VCAN","PHOX2B","SLC6A2","SLC18A2","TH","GPX3"),label:=gene_name]
+
+p <- ggplot(nmde,aes(x=logFC,y=yval,col=uptype,alpha=ifelse(nmde$adj.P.Val<0.05,yes=1,no=0.4)))+
+    geom_point(size=0.6,stroke = 0)+
+    geom_hline(yintercept=-log10(0.05),linetype="dashed",col="red",linewidth=0.5)+
+    labs(x="logFC\n(NM+ vs NM-)",y="-log10 (FDR)",col="LC\nSpot Type")+
+    scale_color_manual(values=lcnmpal)+
+        geom_text_repel(seed = 23942,aes(y = -log10(P.Value),
+                x = logFC,
+                label = ifelse(is.na(label), "", label)),
+            min.segment.length = 0,
+            size = 1.5,
+            show.legend=FALSE,
+            #nudge_x=1.25*sign(nudges$logFC),
+            #seed=10403, 
+            max.iter=100000,
+            max.overlaps=10000,
+            max.time=3,
+            segment.size=0.25)+
+    guides(alpha="none",color=guide_legend(override.aes=list(size=1.25,alpha=1)))+
+    theme(axis.text.x=element_text(size=8),
+          axis.text.y=element_text(size=8),
+          axis.title.x=element_text(size=9),
+          axis.title.y = element_text(size=9),
+          legend.title=element_text(size=8,hjust=0.5),
+          legend.text=element_text(size=7,margin=margin(0,0,0,-0.025,unit="in")),
+          axis.ticks = element_line(linewidth=0.5),
+          panel.grid.major = element_line(linewidth=0.5),
+          panel.grid.minor = element_line(linewidth=0.25),
+          legend.margin = margin(-0.25,0,0,-0.25,unit="in"),
+          legend.background = element_blank(),
+          legend.box.background = element_blank(),
+          legend.key.height = unit(0.083,"in"),
+          legend.key.width = unit(0.156,"in"),
+          legend.key=element_blank())
+
+p <- rasterize(p,layers="Points",dpi=300,dev="cairo_png")
+
+
+## point labels are wildly screwed up and will need fixing in illustrator.
+pdf("plots/manuscript/Fig2/2D-LCnmDE_volcano.pdf",height=2.5,width=3)
+p
+dev.off()
+
+rm(p,nmde)
+gc(full=T)
+```
+
+Fig 2E: LC NMF GSEA
+```{r}
+nmfgsea <- readRDS("processed-data/12_DEanalyses_removedsampsAndFinalNMseg/06-LC_NMF_specificallyLoadedFactors_GSEA_msigdbAndTFtarg.RDS")
+
+factspec <- fread("processed-data/12_DEanalyses_removedsampsAndFinalNMseg/06-LCNMF_factors_and_factorSpecGenes_min25specGenes.txt")
+
+
+
+
+
+
+
+
+```

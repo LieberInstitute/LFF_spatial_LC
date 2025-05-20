@@ -1,0 +1,365 @@
+---
+title: "07-LCnmf_GSEA_for_LC_DEG_enrichment"
+author: "Bernie Mulvey"
+date: "2025-05-19"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(fig.height = 10,fig.width = 7,include = FALSE)
+#### sets tab autocompletion for directories to begin from the directory containing the .Rproj session, instead of the script's directory if different
+knitr::opts_knit$set(root.dir = here::here())
+
+library(data.table)
+library(clusterProfiler) # else fgsea parallelization doesn't work
+library(fgsea)
+
+## rstudio GUI tweaks
+require(colorout)
+ColorOut()
+options("styler.addins_style_transformer" = "biocthis::bioc_style()")
+##
+
+## enable forked parallel processing with BiocParallel::multicoreParam, future::, etc. seemed to need this a couple times, but otherwise havent so its here as a preventative measure. part of this is adding the line 
+# OBJC_DISABLE_INITIALIZE_FORK_SAFETY=YES
+# to Renviron.site. see e.g. top response on https://stackoverflow.com/questions/73638290/python-on-mac-is-it-safe-to-set-objc-disable-initialize-fork-safety-yes-globall 
+library(parallelly)
+options(parallelly.supportsMulticore.disableOn="")
+options(parallelly.fork.enable=TRUE)
+library(BiocParallel)
+options(bphost="localhost")
+
+## last of all, unload the base package datasets, whose data keep getting in the way of autocompletions (e.g., Theoph is priortized over TRUE)
+unloadNamespace("datasets")
+```
+
+## for the NMF itself, we need to rerun the code from 12/06 (identifying and subsetting to factors of interest), and then make them into ranked lists as before
+```{r}
+### load the nmf results
+lc.nmf2 <- readRDS("processed-data/10_subclustering/07-lcnmf160_tol1e-9.RDS")
+w2 <- as.data.table(lc.nmf2$w,keep.rownames=T)
+nameord <- c("rn",paste0("LCnmf",c(1:160)))
+w2 <- w2[,..nameord]
+setnames(w2,"rn","gene_id")
+
+## find factors with a "factor-specific"ish gene based on the loading for that factor and median abs deviation of that genes loadings across all factors.
+
+w2m <- melt.data.table(w2,id.vars="gene_id",variable.name = "factor")
+w2m[,medianloading:=median(value),by="gene_id"]
+w2m[,factorGene:=ifelse(value>1.5*mad(value,constant=1,na.rm = T),"y","n")]
+
+w2m.sub <- w2m[factorGene=="y"]
+
+## get genes that are "factor specific" in 3 or fewer factors
+fewfactorgenes <- w2m.sub[,.N,by="gene_id"][N<=3,gene_id]
+# 1563 genes total there
+
+# now subset to these genes and identify factors with at least 25 such  factor specific-ish genes -- by only considering genes that meet the factor-specificish condition
+w2m.select <- w2m.sub[gene_id %in% fewfactorgenes]
+## how many factors have more than, say, 25 genes?
+keepfacts <- w2m.select[,.N,by="factor"][N>=25,as.character(factor)]
+## 15 factors, nice
+w2m.select <- w2m.select[factor %in% keepfacts] # these are our factors of interest AND their specific-ish genes
+
+rm(w2m.sub,fewfactorgenes,w2m)
+```
+
+now, we can look at factors with ≥25 specific-ish genes, and run one-sided GSEA on using the full set of loadings for that factor to identify any pathways etc that are enriched in that factor's genes. the enrichment analyses, by nature of GSEA, will be weighted toward the genes with the highest loadings, and our pre-selection of factors here has ensured that these factors have relatively unique and strong loadings for numerous genes.
+```{r}
+# drop duplicated genes for running fgsea
+keepi <- w2[,.N,by="gene_id"][N==1,gene_id]
+w2b <- w2[gene_id %in% keepi]
+
+## get loadings in descending order for each factor of interest, name with gene ids for msigdb or with gene symbols for TF-target testing
+fgnmfs <- lapply(keepfacts,function(k){
+    setorderv(w2b,cols = k,-1)
+   
+    # get the descending order loading vector, clone it to name by gene id or symb
+    g.id <- unlist(w2b[!is.na(k),..k])
+
+    names(g.id) <- w2b[!is.na(k),gene_id]
+    
+    return(g.id)
+})
+names(fgnmfs) <- keepfacts
+
+### clean up before GSEA runs
+rm(w2,w2b,w2m,w2m.sub,fewfactorgenes,keepg,keepi,nameord,lc.nmf2,rddt,keepfacts)
+gc(full=T)
+```
+
+
+## load DE test results and subset to results for LC cluster; define two DE sets per test (nominal or FDR<0.05 DEGs)
+```{r}
+detabs <- readRDS("processed-data/12_DEanalyses_removedsampsAndFinalNMseg/02a-voomLmFit_objs_and_DE_tables_LabSex_LabE2vE4_LabSingleGenos_LabYRI.RDS")
+## don't use YRI tests for now
+detabs <- detabs[1:3]
+## get list of only for LC toptable outputs (all toptable outs in  slot 6 in all cases)
+detabs <- list(detabs$SexByLabel$sexlabel_detabs$LC_Sex,
+               detabs$E2E4ByLabel$E2E4label_detabs$LC_E4vE2,
+               detabs$ApoAllelesByLabel$ApoAllelesLabel_detabs$LC_E2het_vs_anyE4,
+               detabs$ApoAllelesByLabel$ApoAllelesLabel_detabs$LC_E2hom_vs_anyE4,
+               detabs$ApoAllelesByLabel$ApoAllelesLabel_detabs$LC_E4het_vs_anyE2,
+               detabs$ApoAllelesByLabel$ApoAllelesLabel_detabs$LC_E4hom_vs_anyE2)
+
+names(detabs) <- c("LC_Sex",
+                   "LC_E4vE2",
+                   "LC_E2het_vs_anyE4",
+                   "LC_E2hom_vs_anyE4",
+                   "LC_E4het_vs_anyE2",
+                   "LC_E4hom_vs_anyE2")
+
+gseade <- mapply(x=detabs,n=names(detabs),SIMPLIFY=FALSE,function(x,n){
+    fdrset.up <- as.data.table(x[adj.P.Val<0.05&logFC>0,gene_id])
+    fdrset.up[,set:=paste0(n,"_fdr_up")]
+    
+    fdrset.dn <- as.data.table(x[adj.P.Val<0.05&logFC<0,gene_id])
+    fdrset.dn[,set:=paste0(n,"_fdr_dn")]
+    
+    nomset.up <- as.data.table(x[P.Value<0.05&logFC>0,gene_id])
+    nomset.up[,set:=paste0(n,"_nominal_up")]
+    
+    nomset.dn <- as.data.table(x[P.Value<0.05&logFC<0,gene_id])
+    nomset.dn[,set:=paste0(n,"_nominal_down")]
+    
+    fdrset.all <- as.data.table(x[adj.P.Val<0.05,gene_id])
+    fdrset.all[,set:=paste0(n,"_fdr_bidir")]    
+    
+    nomset.all <- as.data.table(x[P.Value<0.05,gene_id])
+    nomset.all[,set:=paste0(n,"_nominal_bidir")]
+    
+    restab <- rbind(fdrset.up,fdrset.dn,fdrset.all,nomset.up,nomset.dn,nomset.all)
+    return(restab)
+})
+gseade <- rbindlist(gseade)
+
+## make into gsea format
+gseadesets <- split(gseade$V1,gseade$set)
+
+rm(gseade,detabs)
+```
+
+## run gsea per NMF factor--bump up the maxsize to 1000. (LC sex nominal bidirectional will not pass this threshold but w/e)
+```{r}
+nmf.lcde.res <- mapply(X=fgnmfs,Y=names(fgnmfs),SIMPLIFY=FALSE,FUN=function(X,Y){
+   register(MulticoreParam())
+   
+   # get factor-weighted-enriched results
+   z1<-fgseaMultilevel(pathways=gseadesets,stats = X,minSize = 15,maxSize = 1000,eps=0.0,nPermSimple = 50000,nproc=10,scoreType = "pos")
+   # coonvert leadingedge to one long string (it's returned as a list which is not compatible with data.table)
+   z1$leadingEdge <- as.character(z1$leadingEdge)
+   z1$leadingEdge <- gsub(z1$leadingEdge,pattern="^c\\((.*)\\)$",replacement="\\1")
+   z1$leadingEdge <- gsub(z1$leadingEdge,pattern='"',replacement='')
+   # drop newlines from leadingEdge
+   z1$leadingEdge <- gsub(z1$leadingEdge,pattern=", \n",replacement=", ")
+   # belt and suspenders
+   z1$leadingEdge <- gsub(z1$leadingEdge,pattern=", \n",replacement=", ")
+   
+   z1 <- as.data.table(z1)
+   z1[,nmfFactor:=Y]
+   z1[,dir:="factor_spec"]
+
+return(z1)})
+```
+
+save
+```{r}
+saveRDS(nmf.lcde.res,"processed-data/12_DEanalyses_removedsampsAndFinalNMseg/07-LCnmf_factor_GSEA_for_DEGsets.RDS")
+
+# also save a table of FDR-significant enrichments for up/downreg gene sets
+tmp <- rbindlist(nmf.lcde.res,idcol="NMFfactor")
+tmp <- tmp[pathway %in% grep(pathway,pattern="up|dn",value=T)&padj<0.05]
+setnames(tmp,"pathway","DE_set")
+fwrite(tmp,"processed-data/12_DEanalyses_removedsampsAndFinalNMseg/07-LCnmfFactor_signif_enrichments_for_directionalDEG_sets.txt",sep='\t',quote=F,row.names=F,col.names=T)
+```
+
+repinf
+```{r}
+sessionInfo()
+sessioninfo::session_info()
+```
+R version 4.4.3 (2025-02-28)
+Platform: aarch64-apple-darwin20
+Running under: macOS Sequoia 15.3.2
+
+Matrix products: default
+BLAS:   /System/Library/Frameworks/Accelerate.framework/Versions/A/Frameworks/vecLib.framework/Versions/A/libBLAS.dylib 
+LAPACK: /Library/Frameworks/R.framework/Versions/4.4-arm64/Resources/lib/libRlapack.dylib;  LAPACK version 3.12.0
+
+locale:
+[1] en_US.UTF-8/en_US.UTF-8/en_US.UTF-8/C/en_US.UTF-8/en_US.UTF-8
+
+time zone: America/Chicago
+tzcode source: internal
+
+attached base packages:
+[1] stats     graphics  grDevices utils     methods   base     
+
+other attached packages:
+[1] edgeR_4.4.2            limma_3.62.2           BiocParallel_1.40.0   
+[4] parallelly_1.43.0      colorout_1.3-0.2       fgsea_1.32.4          
+[7] clusterProfiler_4.14.6 data.table_1.17.0      rlang_1.1.5           
+
+loaded via a namespace (and not attached):
+ [1] DBI_1.2.3               gson_0.1.0              magrittr_2.0.3         
+ [4] DOSE_4.0.0              compiler_4.4.3          RSQLite_2.3.9          
+ [7] png_0.1-8               vctrs_0.6.5             reshape2_1.4.4         
+[10] stringr_1.5.1           pkgconfig_2.0.3         crayon_1.5.3           
+[13] fastmap_1.2.0           XVector_0.46.0          rmarkdown_2.29         
+[16] sessioninfo_1.2.3       enrichplot_1.26.6       UCSC.utils_1.2.0       
+[19] purrr_1.0.4             bit_4.6.0               xfun_0.52              
+[22] zlibbioc_1.52.0         cachem_1.1.0            aplot_0.2.5            
+[25] GenomeInfoDb_1.42.3     jsonlite_2.0.0          blob_1.2.4             
+[28] parallel_4.4.3          R6_2.6.1                stringi_1.8.7          
+[31] RColorBrewer_1.1-3      GOSemSim_2.32.0         Rcpp_1.0.14            
+[34] knitr_1.50              ggtangle_0.0.6          R.utils_2.13.0         
+[37] IRanges_2.40.1          Matrix_1.7-3            splines_4.4.3          
+[40] igraph_2.1.4            tidyselect_1.2.1        qvalue_2.38.0          
+[43] rstudioapi_0.17.1       dichromat_2.0-0.1       yaml_2.3.10            
+[46] codetools_0.2-20        lattice_0.22-6          tibble_3.2.1           
+[49] plyr_1.8.9              Biobase_2.66.0          treeio_1.30.0          
+[52] KEGGREST_1.46.0         evaluate_1.0.3          gridGraphics_0.5-1     
+[55] Biostrings_2.74.1       pillar_1.10.2           ggtree_3.14.0          
+[58] stats4_4.4.3            ggfun_0.1.8             generics_0.1.3         
+[61] rprojroot_2.0.4         S4Vectors_0.44.0        ggplot2_3.5.2          
+[64] scales_1.4.0            tidytree_0.4.6          glue_1.8.0             
+[67] lazyeval_0.2.2          tools_4.4.3             locfit_1.5-9.12        
+[70] fs_1.6.6                fastmatch_1.1-6         cowplot_1.1.3          
+[73] grid_4.4.3              tidyr_1.3.1             ape_5.8-1              
+[76] AnnotationDbi_1.68.0    colorspace_2.1-1        nlme_3.1-167           
+[79] GenomeInfoDbData_1.2.13 patchwork_1.3.0         cli_3.6.4              
+[82] dplyr_1.1.4             gtable_0.3.6            R.methodsS3_1.8.2      
+[85] yulab.utils_0.2.0       digest_0.6.37           BiocGenerics_0.52.0    
+[88] ggrepel_0.9.6           ggplotify_0.1.2         farver_2.1.2           
+[91] memoise_2.0.1           htmltools_0.5.8.1       R.oo_1.27.0            
+[94] lifecycle_1.0.4         httr_1.4.7              here_1.0.1             
+[97] statmod_1.5.0           GO.db_3.20.0            bit64_4.6.0-1          
+> sessioninfo::session_info()
+─ Session info ────────────────────────────────────────────────────────────────────
+ setting  value
+ version  R version 4.4.3 (2025-02-28)
+ os       macOS Sequoia 15.3.2
+ system   aarch64, darwin20
+ ui       RStudio
+ language (EN)
+ collate  en_US.UTF-8
+ ctype    en_US.UTF-8
+ tz       America/Chicago
+ date     2025-05-19
+ rstudio  2024.07.0-daily+219 Cranberry Hibiscus (desktop)
+ pandoc   3.1.11 @ /Applications/RStudio.app/Contents/Resources/app/quarto/bin/tools/aarch64/ (via rmarkdown)
+ quarto   1.4.555 @ /Applications/RStudio.app/Contents/Resources/app/quarto/bin/quarto
+
+─ Packages ────────────────────────────────────────────────────────────────────────
+ !  package          * version  date (UTC) lib source
+    AnnotationDbi      1.68.0   2024-11-08 [1] Bioconductor 3.20 (R 4.4.1)
+    ape                5.8-1    2024-12-16 [1] CRAN (R 4.4.1)
+    aplot              0.2.5    2025-02-27 [1] CRAN (R 4.4.1)
+    Biobase            2.66.0   2024-11-08 [1] Bioconductor 3.20 (R 4.4.1)
+    BiocGenerics       0.52.0   2024-11-08 [1] Bioconductor 3.20 (R 4.4.1)
+    BiocParallel     * 1.40.0   2024-11-23 [1] Bioconductor 3.20 (R 4.4.2)
+    Biostrings         2.74.1   2024-12-16 [1] Bioconductor 3.20 (R 4.4.2)
+    bit                4.6.0    2025-03-06 [1] CRAN (R 4.4.1)
+    bit64              4.6.0-1  2025-01-16 [1] CRAN (R 4.4.1)
+    blob               1.2.4    2023-03-17 [1] CRAN (R 4.4.0)
+    cachem             1.1.0    2024-05-16 [1] CRAN (R 4.4.0)
+ VP cli                3.6.4    2025-04-23 [2] CRAN (R 4.4.1) (on disk 3.6.5)
+    clusterProfiler  * 4.14.6   2025-02-27 [1] Bioconductor 3.20 (R 4.4.2)
+    codetools          0.2-20   2024-03-31 [1] CRAN (R 4.4.3)
+    colorout         * 1.3-0.2  2024-05-01 [1] Github (jalvesaq/colorout@c6113a2)
+    colorspace         2.1-1    2024-07-26 [1] CRAN (R 4.4.0)
+    cowplot            1.1.3    2024-01-22 [1] CRAN (R 4.4.0)
+    crayon             1.5.3    2024-06-20 [1] CRAN (R 4.4.0)
+    data.table       * 1.17.0   2025-02-22 [1] CRAN (R 4.4.1)
+    DBI                1.2.3    2024-06-02 [1] CRAN (R 4.4.0)
+    dichromat          2.0-0.1  2022-05-02 [1] CRAN (R 4.4.0)
+    digest             0.6.37   2024-08-19 [1] CRAN (R 4.4.1)
+    DOSE               4.0.0    2024-11-08 [1] Bioconductor 3.20 (R 4.4.1)
+    dplyr              1.1.4    2023-11-17 [1] CRAN (R 4.4.0)
+    edgeR            * 4.4.2    2025-01-27 [1] Bioconductor 3.20 (R 4.4.2)
+    enrichplot         1.26.6   2025-01-09 [1] Bioconductor 3.20 (R 4.4.2)
+    evaluate           1.0.3    2025-01-10 [1] CRAN (R 4.4.1)
+    farver             2.1.2    2024-05-13 [1] CRAN (R 4.4.0)
+    fastmap            1.2.0    2024-05-15 [1] CRAN (R 4.4.0)
+    fastmatch          1.1-6    2024-12-23 [1] CRAN (R 4.4.1)
+    fgsea            * 1.32.4   2025-03-20 [1] Bioconductor 3.20 (R 4.4.3)
+    fs                 1.6.6    2025-04-12 [1] CRAN (R 4.4.1)
+    generics           0.1.3    2022-07-05 [1] CRAN (R 4.4.0)
+    GenomeInfoDb       1.42.3   2025-01-27 [1] Bioconductor 3.20 (R 4.4.2)
+    GenomeInfoDbData   1.2.13   2024-12-12 [1] Bioconductor
+    ggfun              0.1.8    2024-12-03 [1] CRAN (R 4.4.1)
+    ggplot2            3.5.2    2025-04-09 [1] CRAN (R 4.4.1)
+    ggplotify          0.1.2    2023-08-09 [1] CRAN (R 4.4.0)
+    ggrepel            0.9.6    2024-09-07 [1] CRAN (R 4.4.1)
+    ggtangle           0.0.6    2024-12-18 [1] CRAN (R 4.4.1)
+    ggtree             3.14.0   2024-11-08 [1] Bioconductor 3.20 (R 4.4.1)
+    glue               1.8.0    2024-09-30 [1] CRAN (R 4.4.1)
+    GO.db              3.20.0   2024-12-12 [1] Bioconductor
+    GOSemSim           2.32.0   2024-11-08 [1] Bioconductor 3.20 (R 4.4.1)
+    gridGraphics       0.5-1    2020-12-13 [1] CRAN (R 4.4.0)
+    gson               0.1.0    2023-03-07 [1] CRAN (R 4.4.0)
+    gtable             0.3.6    2024-10-25 [1] CRAN (R 4.4.1)
+    here               1.0.1    2020-12-13 [1] CRAN (R 4.4.0)
+    htmltools          0.5.8.1  2024-04-04 [1] CRAN (R 4.4.0)
+    httr               1.4.7    2023-08-15 [1] CRAN (R 4.4.0)
+    igraph             2.1.4    2025-01-23 [1] CRAN (R 4.4.1)
+    IRanges            2.40.1   2024-12-05 [1] Bioconductor 3.20 (R 4.4.2)
+    jsonlite           2.0.0    2025-03-27 [1] CRAN (R 4.4.1)
+    KEGGREST           1.46.0   2024-11-08 [1] Bioconductor 3.20 (R 4.4.1)
+    knitr              1.50     2025-03-16 [1] CRAN (R 4.4.2)
+    lattice            0.22-6   2024-03-20 [1] CRAN (R 4.4.3)
+    lazyeval           0.2.2    2019-03-15 [1] CRAN (R 4.4.0)
+    lifecycle          1.0.4    2023-11-07 [1] CRAN (R 4.4.0)
+    limma            * 3.62.2   2025-01-09 [1] Bioconductor 3.20 (R 4.4.2)
+    locfit             1.5-9.12 2025-03-05 [1] CRAN (R 4.4.1)
+    magrittr           2.0.3    2022-03-30 [1] CRAN (R 4.4.0)
+    Matrix             1.7-3    2025-03-11 [1] CRAN (R 4.4.1)
+    memoise            2.0.1    2021-11-26 [1] CRAN (R 4.4.0)
+    nlme               3.1-167  2025-01-27 [1] CRAN (R 4.4.3)
+    parallelly       * 1.43.0   2025-03-24 [1] CRAN (R 4.4.1)
+    patchwork          1.3.0    2024-09-16 [1] CRAN (R 4.4.1)
+    pillar             1.10.2   2025-04-05 [1] CRAN (R 4.4.1)
+    pkgconfig          2.0.3    2019-09-22 [1] CRAN (R 4.4.0)
+    plyr               1.8.9    2023-10-02 [1] CRAN (R 4.4.0)
+    png                0.1-8    2022-11-29 [1] CRAN (R 4.4.0)
+    purrr              1.0.4    2025-02-05 [1] CRAN (R 4.4.1)
+    qvalue             2.38.0   2024-11-08 [1] Bioconductor 3.20 (R 4.4.1)
+    R.methodsS3        1.8.2    2022-06-13 [1] CRAN (R 4.4.0)
+    R.oo               1.27.0   2024-11-01 [1] CRAN (R 4.4.1)
+    R.utils            2.13.0   2025-02-24 [1] CRAN (R 4.4.1)
+    R6                 2.6.1    2025-02-15 [1] CRAN (R 4.4.1)
+    RColorBrewer       1.1-3    2022-04-03 [1] CRAN (R 4.4.0)
+    Rcpp               1.0.14   2025-01-12 [1] CRAN (R 4.4.1)
+    reshape2           1.4.4    2020-04-09 [1] CRAN (R 4.4.0)
+ VP rlang            * 1.1.5    2025-04-11 [2] CRAN (R 4.4.1) (on disk 1.1.6)
+    rmarkdown          2.29     2024-11-04 [1] CRAN (R 4.4.1)
+    rprojroot          2.0.4    2023-11-05 [1] CRAN (R 4.4.0)
+    RSQLite            2.3.9    2024-12-03 [1] CRAN (R 4.4.1)
+    rstudioapi         0.17.1   2024-10-22 [1] CRAN (R 4.4.1)
+    S4Vectors          0.44.0   2024-11-08 [1] Bioconductor 3.20 (R 4.4.1)
+    scales             1.4.0    2025-04-24 [1] CRAN (R 4.4.1)
+    sessioninfo        1.2.3    2025-02-05 [1] CRAN (R 4.4.1)
+    statmod            1.5.0    2023-01-06 [1] CRAN (R 4.4.0)
+    stringi            1.8.7    2025-03-27 [1] CRAN (R 4.4.1)
+    stringr            1.5.1    2023-11-14 [1] CRAN (R 4.4.0)
+    tibble             3.2.1    2023-03-20 [1] CRAN (R 4.4.0)
+    tidyr              1.3.1    2024-01-24 [1] CRAN (R 4.4.0)
+    tidyselect         1.2.1    2024-03-11 [1] CRAN (R 4.4.0)
+    tidytree           0.4.6    2023-12-12 [1] CRAN (R 4.4.0)
+    treeio             1.30.0   2024-11-08 [1] Bioconductor 3.20 (R 4.4.1)
+    UCSC.utils         1.2.0    2024-11-08 [1] Bioconductor 3.20 (R 4.4.1)
+    vctrs              0.6.5    2023-12-01 [1] CRAN (R 4.4.0)
+    xfun               0.52     2025-04-02 [1] CRAN (R 4.4.1)
+    XVector            0.46.0   2024-11-08 [1] Bioconductor 3.20 (R 4.4.1)
+    yaml               2.3.10   2024-07-26 [1] CRAN (R 4.4.0)
+    yulab.utils        0.2.0    2025-01-29 [1] CRAN (R 4.4.1)
+    zlibbioc           1.52.0   2024-11-08 [1] Bioconductor 3.20 (R 4.4.1)
+
+ [1] /Library/Frameworks/R.framework/Versions/4.4-arm64/Resources/library
+ [2] /Users/bmulvey/Library/R/arm64/4.4/library
+
+ * ── Packages attached to the search path.
+ V ── Loaded and on-disk version mismatch.
+ P ── Loaded and on-disk path mismatch.
+
+───────────────────────────────────────────────────────────────────────────────────

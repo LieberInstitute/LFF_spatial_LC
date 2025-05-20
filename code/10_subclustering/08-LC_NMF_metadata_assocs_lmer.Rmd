@@ -26,10 +26,13 @@ library(parallel)
 unloadNamespace("datasets")
 ```
 
-load nmf, get h matrix; load metadata table
+load nmf and gene-filtered nmf, get h matrices; load metadata table
 ```{r}
 lcnmf <- readRDS("processed-data/10_subclustering/07-lcnmf160_tol1e-9.RDS")
 h <- as.data.table(t(lcnmf$h),keep.rownames=T)
+
+lcnmffilt <- readRDS("processed-data/10_subclustering/07b-lcnmf160_tol1e-9_rowSumLogctFilt18.RDS")
+hfilt <- as.data.table(t(lcnmffilt$h),keep.rownames=T)
 
 cd <- fread("processed-data/06-QCed_SPE_splitToTissSect_colData.txt")
 cd <- cd[rowname %in% h$rn]
@@ -47,8 +50,10 @@ rm(flares)
 join the spot weights and metadata 
 ```{r}
 mdvars <- names(cd)[names(cd)!="rowname"]
-facts <- grep(names(h),pattern="nmf",value=T)
+facts <- grep(names(h),pattern="nmf",value=T) # same in both matrices
 h <- merge.data.table(h,cd,by.x="rn",by.y="rowname")
+
+hfilt <- merge.data.table(hfilt,cd,by.x="rn",by.y="rowname")
 ```
 
 run lmer models one variable at a time, accounting for nested structure as we do for NM-gene associations (within sample within donor).
@@ -72,20 +77,52 @@ assocs <- lapply(mdvars,FUN=function(metavar){
         res[,warns:=paste0("'",summary(m)$optinfo$conv$lme4$messages,"'",collapse=" ; ")]
         return(res)
     })
+    
+    ## and again for filtered
+    subres.filt <- mclapply(facts,mc.cores=8,FUN=function(fact){
+        setDTthreads(1,restore_after_fork=FALSE) # prevent resource overcommitment
+        if(is.character(hfilt[[metavar]])){
+            set(hfilt,j = metavar,value = as.factor(hfilt[[metavar]]))
+        }
+        form <- as.formula(paste0(fact," ~ ",metavar," + (1|sample_id) + (1|brnum:sample_id)"))
+        m <- lmer(form,data=hfilt,control=lmerControl(optimizer="Nelder_Mead"),REML = T)
+        res <- as.data.table(car::Anova(m))
+        setnames(res,3,"p")
+        res[,variable:=metavar]
+        res[,weights:=fact]
+        res[,warns:=paste0("'",summary(m)$optinfo$conv$lme4$messages,"'",collapse=" ; ")]
+        return(res)
+    })
     res <- rbindlist(subres)
-    return(res)
+    res.filt <- rbindlist(subres.filt)
+    
+    retlist <- list(res=res,res.filt=res.filt)
+    return(retlist)
 })
-assocs2 <- rbindlist(assocs)
+
+assocs2 <- lapply(assocs,FUN=function(x){x$res})
+assocs2 <- rbindlist(assocs2)
+
+assocs.filt <- lapply(assocs,FUN=function(x){x$res.filt})
+assocs.filt <- rbindlist(assocs.filt)
+
+assocs.filt[warns=="''",warns:=""]
 assocs2[warns=="''",warns:=""]
 
 ## calculate bonferroni corrected vals for non-warned tests
 assocs2[warns=="",bonf:=p*(nrow(assocs2[warns==""]))]
+assocs.filt[warns=="",bonf:=p*(nrow(assocs2[warns==""]))]
+
 unique(assocs2[bonf<0.05])
+unique(assocs.filt[bonf<0.05])
+
 ```
 
 ## save
 ```{r}
 fwrite(assocs2,"processed-data/10_subclustering/08-lcnmf_spotweights_metadata_assocs_singleVar_lmer_tests.txt",sep="\t",quote=F,row.names=F)
+
+fwrite(assocs.filt,"processed-data/10_subclustering/08b-lcnmf_rowSumLogctFilt18_spotweights_metadata_assocs_singleVar_lmer_tests_.txt",sep="\t",quote=F,row.names=F)
 ```
 
 repinf

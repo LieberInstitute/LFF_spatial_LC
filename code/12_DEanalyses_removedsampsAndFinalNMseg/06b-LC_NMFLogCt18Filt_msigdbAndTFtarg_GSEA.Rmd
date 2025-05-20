@@ -1,0 +1,472 @@
+---
+title: "06b-LC_NMFLogCt18Filt_msigdbAndTFtarg_GSEA"
+author: "Bernie Mulvey"
+date: "2025-05-17"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(fig.height = 10,fig.width = 7,include = FALSE)
+#### sets tab autocompletion for directories to begin from the directory containing the .Rproj session, instead of the script's directory if different
+knitr::opts_knit$set(root.dir = here::here())
+
+library(data.table)
+library(clusterProfiler)
+library(fgsea)
+library(msigdbr)
+library(SpatialExperiment)
+
+## rstudio GUI tweaks
+require(colorout)
+ColorOut()
+options("styler.addins_style_transformer" = "biocthis::bioc_style()")
+##
+
+## enable forked parallel processing with BiocParallel::multicoreParam, future::, etc. seemed to need this a couple times, but otherwise havent so its here as a preventative measure. part of this is adding the line 
+# OBJC_DISABLE_INITIALIZE_FORK_SAFETY=YES
+# to Renviron.site. see e.g. top response on https://stackoverflow.com/questions/73638290/python-on-mac-is-it-safe-to-set-objc-disable-initialize-fork-safety-yes-globall 
+library(parallelly)
+options(parallelly.supportsMulticore.disableOn="")
+options(parallelly.fork.enable=TRUE)
+library(parallel)
+library(BiocParallel)
+options(bphost="localhost")
+
+## last of all, unload the base package datasets, whose data keep getting in the way of autocompletions (e.g., Theoph is priortized over TRUE)
+unloadNamespace("datasets")
+```
+
+## load the PRE-GENE-FILTERED NMF results from LC spots; identify factors with relatively factor-specific gene loadings for many genes
+```{r}
+# get gene metadata
+lc3 <- readRDS("processed-data/06-countsOnly_noImgData_QCed_SPE_split_to_tissSections.RDS")
+rddt <- as.data.table(rowData(lc3)) 
+rm(lc3)
+gc(full=T)
+
+
+### now we can load and tackle the GENE FILTERED nmf results
+lc.nmf2 <- readRDS("processed-data/10_subclustering/07b-lcnmf160_tol1e-9_rowSumLogctFilt18.RDS")
+w2 <- as.data.table(lc.nmf2$w,keep.rownames=T)
+w2 <- merge.data.table(w2,rddt[,.(gene_id,gene_name)],by.x="rn",by.y="gene_id")
+nameord <- c("rn","gene_name",paste0("LCnmf",c(1:160)))
+w2 <- w2[,..nameord]
+setnames(w2,"rn","gene_id")
+
+## find factors with a "factor-specific"ish gene based on the loading for that factor and median abs deviation of that genes loadings across all factors.
+
+w2m <- melt.data.table(w2,id.vars=c("gene_id","gene_name"),variable.name = "factor")
+w2m[,medianloading:=median(value),by="gene_id"]
+w2m[,factorGene:=ifelse(value>1.5*mad(value,constant=1,na.rm = T),"y","n")]
+
+w2m.sub <- w2m[factorGene=="y"]
+
+## get genes that are "factor specific" in 3 or fewer factors
+fewfactorgenes <- w2m.sub[,.N,by="gene_id"][N<=3,gene_id]
+# 2054 genes total there
+
+# now subset to these genes and identify factors with at least 25 such  factor specific-ish genes -- by only considering genes that meet the factor-specificish condition
+w2m.select <- w2m.sub[gene_id %in% fewfactorgenes]
+## how many factors have more than, say, 25 genes?
+keepfacts <- w2m.select[,.N,by="factor"][N>=25,as.character(factor)]
+## 17 factors, nice
+w2m.select <- w2m.select[factor %in% keepfacts] # these are our factors of interest AND their specific-ish genes
+
+rm(w2m.sub,fewfactorgenes,w2m)
+```
+
+now, we can look at factors with ≥25 specific-ish genes, and run one-sided GSEA on using the full set of loadings for that factor to identify any pathways etc that are enriched in that factor's genes. the enrichment analyses, by nature of GSEA, will be weighted toward the genes with the highest loadings, and our pre-selection of factors here has ensured that these factors have relatively unique and strong loadings for numerous genes.
+```{r}
+# drop duplicated genes for running fgsea
+keepg <- w2[,.N,by="gene_name"][N==1,gene_name]
+keepi <- w2[,.N,by="gene_id"][N==1,gene_id]
+w2b <- w2[gene_name %in% keepg&gene_id %in% keepi]
+
+## get loadings in descending order for each factor of interest, name with gene ids for msigdb or with gene symbols for TF-target testing
+fgnmfs.filt <- lapply(keepfacts,function(k){
+    setorderv(w2b,cols = k,-1)
+   
+    # get the descending order loading vector, clone it to name by gene id or symb
+    g.id <- unlist(w2b[!is.na(k),..k])
+    g.name <- g.id
+    
+    names(g.id) <- w2b[!is.na(k),gene_id]
+    names(g.name) <- w2b[!is.na(k),gene_name]
+    
+    retlist <- list(g.id=g.id,g.name=g.name)
+    return(retlist)
+})
+names(fgnmfs.filt) <- keepfacts
+
+### clean up before GSEA runs
+rm(w2,w2b,w2m,w2m.sub,fewfactorgenes,keepg,keepi,nameord,lc.nmf2,rddt)
+gc(full=T)
+```
+
+### get gene sets to be tested with GSEA: msigdb and previously collected TF-targ sets from enrichr
+```{r}
+tfsets <- readRDS("raw-data/ref_data/00a-enrichrTFsets_forfgseainput_121823.RDS")
+
+###
+allsigs <- msigdbr("Homo sapiens",category="C1")
+
+# tack on the others, make d.t.
+msigs <- paste0("C",c(2,3,5,6,8))
+for (msig in msigs){
+    allsigs <- rbind(allsigs,msigdbr("Homo sapiens",category=msig))
+}
+rm(msig,msigs)
+allsigs <- as.data.table(allsigs)
+
+# remove legacy sets
+allsigs <- allsigs[gs_subcat %in% grep(gs_subcat,pattern="legacy|LEGACY|Legacy",value=T,invert=T)]
+
+# make a list object of identifiers per  gene set
+# we can map these back to the msigdb table later for reference purposes by their list name (gs_name)...
+msigsets <- split(allsigs$ensembl_gene,allsigs$gs_name)
+
+rm(allsigs)
+gc(full=T)
+```
+
+### important to recall: as NMF is NON-NEGATIVE, genes can only be "enriched", not "depleted" in a factor. so our GSEA tests one-way tests looking for enrichments in toward the top (highest) of the descending-order factor loadings. thus, our fgsea arg specifies scoreType="pos".
+
+## analysis 1: msigdb sets (using loadings named by ensembl id)
+```{r}
+fgnmf.ids <- lapply(fgnmfs.filt,function(x){x$g.id})
+names(fgnmf.ids) <- names(fgnmfs.filt)
+
+setDTthreads(1,restore_after_fork=FALSE) # prevent resource competition while parallelizing
+
+nmf.msig.res <- mapply(X=fgnmf.ids,Y=names(fgnmf.ids),SIMPLIFY=FALSE,FUN=function(X,Y){
+   register(MulticoreParam())
+   
+   # get factor-weighted-enriched results
+   z1<-fgseaMultilevel(pathways=msigsets,stats = X,minSize = 15,maxSize = 500,eps=0.0,nPermSimple = 50000,nproc=10,scoreType = "pos")
+   # coonvert leadingedge to one long string (it's returned as a list which is not compatible with data.table)
+   z1$leadingEdge <- as.character(z1$leadingEdge)
+   z1$leadingEdge <- gsub(z1$leadingEdge,pattern="^c\\((.*)\\)$",replacement="\\1")
+   z1$leadingEdge <- gsub(z1$leadingEdge,pattern='"',replacement='')
+   # drop newlines from leadingEdge
+   z1$leadingEdge <- gsub(z1$leadingEdge,pattern=", \n",replacement=", ")
+   # belt and suspenders
+   z1$leadingEdge <- gsub(z1$leadingEdge,pattern=", \n",replacement=", ")
+   
+   z1 <- as.data.table(z1)
+   z1[,nmfFactor:=Y]
+   z1[,dir:="factor_spec"]
+
+return(z1)})
+```
+
+## analysis 2: TF-targ sets (using loadings named by gene symbol for compatibility with the TF-target data)
+```{r}
+fgnmf.symbs <- lapply(fgnmfs.filt,function(x){x$g.name})
+names(fgnmf.symbs) <- names(fgnmfs.filt)
+
+nmf.tftarg.res <- mapply(X=fgnmf.symbs,Y=names(fgnmf.symbs),SIMPLIFY=FALSE,FUN=function(X,Y){
+   register(MulticoreParam())
+   
+   # get factor-weighted-enriched results
+   z1<-fgseaMultilevel(pathways=tfsets,stats = X,minSize = 15,maxSize = 500,eps=0.0,nPermSimple = 50000,nproc=10,scoreType = "pos")
+   # coonvert leadingedge to one long string (it's returned as a list which is not compatible with data.table)
+   z1$leadingEdge <- as.character(z1$leadingEdge)
+   z1$leadingEdge <- gsub(z1$leadingEdge,pattern="^c\\((.*)\\)$",replacement="\\1")
+   z1$leadingEdge <- gsub(z1$leadingEdge,pattern='"',replacement='')
+   # drop newlines from leadingEdge
+   z1$leadingEdge <- gsub(z1$leadingEdge,pattern=", \n",replacement=", ")
+   # belt and suspenders
+   z1$leadingEdge <- gsub(z1$leadingEdge,pattern=", \n",replacement=", ")
+   
+   z1 <- as.data.table(z1)
+   z1[,nmfFactor:=Y]
+   z1[,dir:="factor_spec"]
+
+return(z1)})
+
+# make results into list
+outlist <- list(msigdbres=nmf.msig.res,tftargres=nmf.tftarg.res)
+```
+
+```{r}
+## tabulate how many of the factor-specific genes are among leadingEdge genes (i.e., the extent of the enrichment attributable to anything factor-specific). this process is surprisingly slow, so parallelize it across tables of factor results.
+
+## initialize parent list
+outlist2 <- list()
+i<-1
+for (i in c(1:length(outlist))){
+   if (i==1){use="gene_id"} else {use="gene_name"} # use ids for msig, symbs for TF
+   
+   # initialize sublist for geneset group
+   outlist2[[i]] <- list()
+   
+   setDTthreads(1,restore_after_fork=FALSE) # prevent resource overcommitment during parallelization
+   
+   # iterate through each tested NMF factor
+   outlist2[[i]] <- mclapply(outlist[[i]],mc.cores=10,FUN=function(x){
+      setDTthreads(1,restore_after_fork=FALSE) # belt and suspenders for resource use
+
+      x[,N_factor_genes_in_leadingedge:=apply(.SD,MARGIN=1,simplify=F,FUN=function(z){
+         # get appropriate vector of gene ids/names that are specific to the current row's factor. z[1]=row's value in $nmfFactor, z[2]=row's value in $leadingEdge (see .SDcols arg after the apply call)
+         factg <- copy(w2m.select[factor==z[1],get(use)]) 
+         # search leadingEdge for the symbol or ID of each factor-spec-ish gene
+         matched <- lapply(factg,FUN=function(g){ 
+            ret <- length(grep(z[2],pattern=g,value=T))
+            if(ret>1){ret<-1} ## not that there should be any duplicated genes
+            return(ret)
+         })
+         # 
+         totmatch <- sum(unlist(matched),na.rm=T)
+         return(totmatch)
+      }),.SDcols=c("nmfFactor","leadingEdge")]
+      ## still comes back as a list which causes other problems, so fix that
+      x[,N_factor_genes_in_leadingedge:=as.numeric(N_factor_genes_in_leadingedge)]
+      
+      ## additional column: number of genes in leading edge
+      x[,N_leadEdge_genes:=apply(.SD,MARGIN=1,simplify=FALSE,function(x){1+length(unlist(strsplit(x,split=", ")))}),.SDcols="leadingEdge"]
+      ## again, fix list-ness
+      x[,N_leadEdge_genes:=as.numeric(N_leadEdge_genes)]
+      
+      return(x)
+   })
+   #for(j in c(1:length(outlist[[i]]))){}
+   names(outlist2[[i]]) <- names(outlist[[i]])
+   rm(use)
+}
+rm(i)
+
+names(outlist2) <- names(outlist)
+## append a column with the total number of factor-specish genes for the factor
+w2m.select.ng <- w2m.select[,.N,by="factor"]
+setnames(w2m.select.ng,c("factor","N"),c("nmfFactor","N_factor_specific_genes"))
+
+outlist2 <- lapply(outlist2,function(x){
+   ret <- lapply(x,function(y){
+      y <- merge.data.table(y,w2m.select.ng,by="nmfFactor",all.x=T)
+      return(y)
+   })
+   return(ret)
+})
+
+## save
+saveRDS(outlist2,"processed-data/12_DEanalyses_removedsampsAndFinalNMseg/06b-LC_NMFLogCt18Filt_specificallyLoadedFactors_GSEA_msigdbAndTFtarg.RDS")
+
+## also save our table of factors with 25+ specific genes and which genes go with each
+fwrite(w2m.select,"processed-data/12_DEanalyses_removedsampsAndFinalNMseg/06b-LCNMFLogCt18Filt_factors_and_factorSpecGenes_min25specGenes.txt",sep='\t',quote=F,row.names=F,col.names=T)
+```
+
+
+repinf
+```{r}
+sessionInfo()
+sessioninfo::session_info()
+```
+R version 4.4.3 (2025-02-28)
+Platform: aarch64-apple-darwin20
+Running under: macOS Sequoia 15.3.2
+
+Matrix products: default
+BLAS:   /System/Library/Frameworks/Accelerate.framework/Versions/A/Frameworks/vecLib.framework/Versions/A/libBLAS.dylib 
+LAPACK: /Library/Frameworks/R.framework/Versions/4.4-arm64/Resources/lib/libRlapack.dylib;  LAPACK version 3.12.0
+
+locale:
+[1] en_US.UTF-8/en_US.UTF-8/en_US.UTF-8/C/en_US.UTF-8/en_US.UTF-8
+
+time zone: America/Chicago
+tzcode source: internal
+
+attached base packages:
+[1] parallel  stats4    stats     graphics  grDevices utils     methods   base     
+
+other attached packages:
+ [1] BiocParallel_1.40.0         parallelly_1.43.0          
+ [3] colorout_1.3-0.2            SpatialExperiment_1.16.0   
+ [5] SingleCellExperiment_1.28.1 SummarizedExperiment_1.36.0
+ [7] Biobase_2.66.0              GenomicRanges_1.58.0       
+ [9] GenomeInfoDb_1.42.3         IRanges_2.40.1             
+[11] S4Vectors_0.44.0            BiocGenerics_0.52.0        
+[13] MatrixGenerics_1.18.1       matrixStats_1.5.0          
+[15] msigdbr_10.0.1              fgsea_1.32.4               
+[17] clusterProfiler_4.14.6      data.table_1.17.0          
+[19] rlang_1.1.5                
+
+loaded via a namespace (and not attached):
+  [1] DBI_1.2.3               gson_0.1.0              magrittr_2.0.3         
+  [4] DOSE_4.0.0              compiler_4.4.3          RSQLite_2.3.9          
+  [7] png_0.1-8               vctrs_0.6.5             reshape2_1.4.4         
+ [10] stringr_1.5.1           pkgconfig_2.0.3         crayon_1.5.3           
+ [13] fastmap_1.2.0           magick_2.8.6            XVector_0.46.0         
+ [16] rmarkdown_2.29          tzdb_0.5.0              enrichplot_1.26.6      
+ [19] UCSC.utils_1.2.0        purrr_1.0.4             bit_4.6.0              
+ [22] xfun_0.52               zlibbioc_1.52.0         cachem_1.1.0           
+ [25] aplot_0.2.5             jsonlite_2.0.0          blob_1.2.4             
+ [28] DelayedArray_0.32.0     R6_2.6.1                stringi_1.8.7          
+ [31] RColorBrewer_1.1-3      msigdbdf_24.1.1         GOSemSim_2.32.0        
+ [34] assertthat_0.2.1        Rcpp_1.0.14             knitr_1.50             
+ [37] ggtangle_0.0.6          R.utils_2.13.0          readr_2.1.5            
+ [40] Matrix_1.7-3            splines_4.4.3           igraph_2.1.4           
+ [43] tidyselect_1.2.1        abind_1.4-8             qvalue_2.38.0          
+ [46] rstudioapi_0.17.1       dichromat_2.0-0.1       yaml_2.3.10            
+ [49] codetools_0.2-20        lattice_0.22-6          tibble_3.2.1           
+ [52] plyr_1.8.9              withr_3.0.2             treeio_1.30.0          
+ [55] KEGGREST_1.46.0         evaluate_1.0.3          gridGraphics_0.5-1     
+ [58] Biostrings_2.74.1       pillar_1.10.2           ggtree_3.14.0          
+ [61] ggfun_0.1.8             generics_0.1.3          rprojroot_2.0.4        
+ [64] hms_1.1.3               ggplot2_3.5.2           scales_1.4.0           
+ [67] tidytree_0.4.6          glue_1.8.0              lazyeval_0.2.2         
+ [70] tools_4.4.3             babelgene_22.9          fs_1.6.6               
+ [73] fastmatch_1.1-6         cowplot_1.1.3           grid_4.4.3             
+ [76] tidyr_1.3.1             ape_5.8-1               AnnotationDbi_1.68.0   
+ [79] colorspace_2.1-1        nlme_3.1-167            GenomeInfoDbData_1.2.13
+ [82] patchwork_1.3.0         cli_3.6.4               S4Arrays_1.6.0         
+ [85] dplyr_1.1.4             gtable_0.3.6            R.methodsS3_1.8.2      
+ [88] yulab.utils_0.2.0       digest_0.6.37           SparseArray_1.6.2      
+ [91] ggrepel_0.9.6           ggplotify_0.1.2         rjson_0.2.23           
+ [94] farver_2.1.2            memoise_2.0.1           htmltools_0.5.8.1      
+ [97] R.oo_1.27.0             lifecycle_1.0.4         httr_1.4.7             
+[100] here_1.0.1              GO.db_3.20.0            bit64_4.6.0-1          
+> sessioninfo::session_info()
+─ Session info ────────────────────────────────────────────────────────────────────
+ setting  value
+ version  R version 4.4.3 (2025-02-28)
+ os       macOS Sequoia 15.3.2
+ system   aarch64, darwin20
+ ui       RStudio
+ language (EN)
+ collate  en_US.UTF-8
+ ctype    en_US.UTF-8
+ tz       America/Chicago
+ date     2025-05-17
+ rstudio  2024.07.0-daily+219 Cranberry Hibiscus (desktop)
+ pandoc   3.1.11 @ /Applications/RStudio.app/Contents/Resources/app/quarto/bin/tools/aarch64/ (via rmarkdown)
+ quarto   1.4.555 @ /Applications/RStudio.app/Contents/Resources/app/quarto/bin/quarto
+
+─ Packages ────────────────────────────────────────────────────────────────────────
+ !  package              * version date (UTC) lib source
+    abind                  1.4-8   2024-09-12 [1] CRAN (R 4.4.1)
+    AnnotationDbi          1.68.0  2024-11-08 [1] Bioconductor 3.20 (R 4.4.1)
+    ape                    5.8-1   2024-12-16 [1] CRAN (R 4.4.1)
+    aplot                  0.2.5   2025-02-27 [1] CRAN (R 4.4.1)
+    assertthat             0.2.1   2019-03-21 [1] CRAN (R 4.4.0)
+    babelgene              22.9    2022-09-29 [1] CRAN (R 4.4.0)
+    Biobase              * 2.66.0  2024-11-08 [1] Bioconductor 3.20 (R 4.4.1)
+    BiocGenerics         * 0.52.0  2024-11-08 [1] Bioconductor 3.20 (R 4.4.1)
+    BiocParallel         * 1.40.0  2024-11-23 [1] Bioconductor 3.20 (R 4.4.2)
+    Biostrings             2.74.1  2024-12-16 [1] Bioconductor 3.20 (R 4.4.2)
+    bit                    4.6.0   2025-03-06 [1] CRAN (R 4.4.1)
+    bit64                  4.6.0-1 2025-01-16 [1] CRAN (R 4.4.1)
+    blob                   1.2.4   2023-03-17 [1] CRAN (R 4.4.0)
+    cachem                 1.1.0   2024-05-16 [1] CRAN (R 4.4.0)
+ VP cli                    3.6.4   2025-04-23 [2] CRAN (R 4.4.1) (on disk 3.6.5)
+    clusterProfiler      * 4.14.6  2025-02-27 [1] Bioconductor 3.20 (R 4.4.2)
+    codetools              0.2-20  2024-03-31 [1] CRAN (R 4.4.3)
+    colorout             * 1.3-0.2 2024-05-01 [1] Github (jalvesaq/colorout@c6113a2)
+    colorspace             2.1-1   2024-07-26 [1] CRAN (R 4.4.0)
+    cowplot                1.1.3   2024-01-22 [1] CRAN (R 4.4.0)
+    crayon                 1.5.3   2024-06-20 [1] CRAN (R 4.4.0)
+    data.table           * 1.17.0  2025-02-22 [1] CRAN (R 4.4.1)
+    DBI                    1.2.3   2024-06-02 [1] CRAN (R 4.4.0)
+    DelayedArray           0.32.0  2024-11-08 [1] Bioconductor 3.20 (R 4.4.1)
+    dichromat              2.0-0.1 2022-05-02 [1] CRAN (R 4.4.0)
+    digest                 0.6.37  2024-08-19 [1] CRAN (R 4.4.1)
+    DOSE                   4.0.0   2024-11-08 [1] Bioconductor 3.20 (R 4.4.1)
+    dplyr                  1.1.4   2023-11-17 [1] CRAN (R 4.4.0)
+    enrichplot             1.26.6  2025-01-09 [1] Bioconductor 3.20 (R 4.4.2)
+    evaluate               1.0.3   2025-01-10 [1] CRAN (R 4.4.1)
+    farver                 2.1.2   2024-05-13 [1] CRAN (R 4.4.0)
+    fastmap                1.2.0   2024-05-15 [1] CRAN (R 4.4.0)
+    fastmatch              1.1-6   2024-12-23 [1] CRAN (R 4.4.1)
+    fgsea                * 1.32.4  2025-03-20 [1] Bioconductor 3.20 (R 4.4.3)
+    fs                     1.6.6   2025-04-12 [1] CRAN (R 4.4.1)
+    generics               0.1.3   2022-07-05 [1] CRAN (R 4.4.0)
+    GenomeInfoDb         * 1.42.3  2025-01-27 [1] Bioconductor 3.20 (R 4.4.2)
+    GenomeInfoDbData       1.2.13  2024-12-12 [1] Bioconductor
+    GenomicRanges        * 1.58.0  2024-11-08 [1] Bioconductor 3.20 (R 4.4.1)
+    ggfun                  0.1.8   2024-12-03 [1] CRAN (R 4.4.1)
+    ggplot2                3.5.2   2025-04-09 [1] CRAN (R 4.4.1)
+    ggplotify              0.1.2   2023-08-09 [1] CRAN (R 4.4.0)
+    ggrepel                0.9.6   2024-09-07 [1] CRAN (R 4.4.1)
+    ggtangle               0.0.6   2024-12-18 [1] CRAN (R 4.4.1)
+    ggtree                 3.14.0  2024-11-08 [1] Bioconductor 3.20 (R 4.4.1)
+    glue                   1.8.0   2024-09-30 [1] CRAN (R 4.4.1)
+    GO.db                  3.20.0  2024-12-12 [1] Bioconductor
+    GOSemSim               2.32.0  2024-11-08 [1] Bioconductor 3.20 (R 4.4.1)
+    gridGraphics           0.5-1   2020-12-13 [1] CRAN (R 4.4.0)
+    gson                   0.1.0   2023-03-07 [1] CRAN (R 4.4.0)
+    gtable                 0.3.6   2024-10-25 [1] CRAN (R 4.4.1)
+    here                   1.0.1   2020-12-13 [1] CRAN (R 4.4.0)
+    hms                    1.1.3   2023-03-21 [1] CRAN (R 4.4.0)
+    htmltools              0.5.8.1 2024-04-04 [1] CRAN (R 4.4.0)
+    httr                   1.4.7   2023-08-15 [1] CRAN (R 4.4.0)
+    igraph                 2.1.4   2025-01-23 [1] CRAN (R 4.4.1)
+    IRanges              * 2.40.1  2024-12-05 [1] Bioconductor 3.20 (R 4.4.2)
+    jsonlite               2.0.0   2025-03-27 [1] CRAN (R 4.4.1)
+    KEGGREST               1.46.0  2024-11-08 [1] Bioconductor 3.20 (R 4.4.1)
+    knitr                  1.50    2025-03-16 [1] CRAN (R 4.4.2)
+    lattice                0.22-6  2024-03-20 [1] CRAN (R 4.4.3)
+    lazyeval               0.2.2   2019-03-15 [1] CRAN (R 4.4.0)
+    lifecycle              1.0.4   2023-11-07 [1] CRAN (R 4.4.0)
+    magick                 2.8.6   2025-03-23 [1] CRAN (R 4.4.1)
+    magrittr               2.0.3   2022-03-30 [1] CRAN (R 4.4.0)
+    Matrix                 1.7-3   2025-03-11 [1] CRAN (R 4.4.1)
+    MatrixGenerics       * 1.18.1  2025-01-09 [1] Bioconductor 3.20 (R 4.4.2)
+    matrixStats          * 1.5.0   2025-01-07 [1] CRAN (R 4.4.1)
+    memoise                2.0.1   2021-11-26 [1] CRAN (R 4.4.0)
+    msigdbdf               24.1.1  2025-04-16 [1] https://igordot.r-universe.dev (R 4.4.3)
+    msigdbr              * 10.0.1  2025-03-19 [1] CRAN (R 4.4.3)
+    nlme                   3.1-167 2025-01-27 [1] CRAN (R 4.4.3)
+    parallelly           * 1.43.0  2025-03-24 [1] CRAN (R 4.4.1)
+    patchwork              1.3.0   2024-09-16 [1] CRAN (R 4.4.1)
+    pillar                 1.10.2  2025-04-05 [1] CRAN (R 4.4.1)
+    pkgconfig              2.0.3   2019-09-22 [1] CRAN (R 4.4.0)
+    plyr                   1.8.9   2023-10-02 [1] CRAN (R 4.4.0)
+    png                    0.1-8   2022-11-29 [1] CRAN (R 4.4.0)
+    purrr                  1.0.4   2025-02-05 [1] CRAN (R 4.4.1)
+    qvalue                 2.38.0  2024-11-08 [1] Bioconductor 3.20 (R 4.4.1)
+    R.methodsS3            1.8.2   2022-06-13 [1] CRAN (R 4.4.0)
+    R.oo                   1.27.0  2024-11-01 [1] CRAN (R 4.4.1)
+    R.utils                2.13.0  2025-02-24 [1] CRAN (R 4.4.1)
+    R6                     2.6.1   2025-02-15 [1] CRAN (R 4.4.1)
+    RColorBrewer           1.1-3   2022-04-03 [1] CRAN (R 4.4.0)
+    Rcpp                   1.0.14  2025-01-12 [1] CRAN (R 4.4.1)
+    readr                  2.1.5   2024-01-10 [1] CRAN (R 4.4.0)
+    reshape2               1.4.4   2020-04-09 [1] CRAN (R 4.4.0)
+    rjson                  0.2.23  2024-09-16 [1] CRAN (R 4.4.1)
+ VP rlang                * 1.1.5   2025-04-11 [2] CRAN (R 4.4.1) (on disk 1.1.6)
+    rmarkdown              2.29    2024-11-04 [1] CRAN (R 4.4.1)
+    rprojroot              2.0.4   2023-11-05 [1] CRAN (R 4.4.0)
+    RSQLite                2.3.9   2024-12-03 [1] CRAN (R 4.4.1)
+    rstudioapi             0.17.1  2024-10-22 [1] CRAN (R 4.4.1)
+    S4Arrays               1.6.0   2024-11-08 [1] Bioconductor 3.20 (R 4.4.1)
+    S4Vectors            * 0.44.0  2024-11-08 [1] Bioconductor 3.20 (R 4.4.1)
+    scales                 1.4.0   2025-04-24 [1] CRAN (R 4.4.1)
+    sessioninfo            1.2.3   2025-02-05 [1] CRAN (R 4.4.1)
+    SingleCellExperiment * 1.28.1  2024-11-23 [1] Bioconductor 3.20 (R 4.4.2)
+    SparseArray            1.6.2   2025-02-20 [1] Bioconductor 3.20 (R 4.4.2)
+    SpatialExperiment    * 1.16.0  2024-11-08 [1] Bioconductor 3.20 (R 4.4.1)
+    stringi                1.8.7   2025-03-27 [1] CRAN (R 4.4.1)
+    stringr                1.5.1   2023-11-14 [1] CRAN (R 4.4.0)
+    SummarizedExperiment * 1.36.0  2024-11-08 [1] Bioconductor 3.20 (R 4.4.1)
+    tibble                 3.2.1   2023-03-20 [1] CRAN (R 4.4.0)
+    tidyr                  1.3.1   2024-01-24 [1] CRAN (R 4.4.0)
+    tidyselect             1.2.1   2024-03-11 [1] CRAN (R 4.4.0)
+    tidytree               0.4.6   2023-12-12 [1] CRAN (R 4.4.0)
+    treeio                 1.30.0  2024-11-08 [1] Bioconductor 3.20 (R 4.4.1)
+    tzdb                   0.5.0   2025-03-15 [1] CRAN (R 4.4.3)
+    UCSC.utils             1.2.0   2024-11-08 [1] Bioconductor 3.20 (R 4.4.1)
+    vctrs                  0.6.5   2023-12-01 [1] CRAN (R 4.4.0)
+    withr                  3.0.2   2024-10-28 [1] CRAN (R 4.4.1)
+    xfun                   0.52    2025-04-02 [1] CRAN (R 4.4.1)
+    XVector                0.46.0  2024-11-08 [1] Bioconductor 3.20 (R 4.4.1)
+    yaml                   2.3.10  2024-07-26 [1] CRAN (R 4.4.0)
+    yulab.utils            0.2.0   2025-01-29 [1] CRAN (R 4.4.1)
+    zlibbioc               1.52.0  2024-11-08 [1] Bioconductor 3.20 (R 4.4.1)
+
+ [1] /Library/Frameworks/R.framework/Versions/4.4-arm64/Resources/library
+ [2] /Users/bmulvey/Library/R/arm64/4.4/library
+
+ * ── Packages attached to the search path.
+ V ── Loaded and on-disk version mismatch.
+ P ── Loaded and on-disk path mismatch.
+
+───────────────────────────────────────────────────────────────────────────────────

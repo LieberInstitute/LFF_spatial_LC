@@ -84,6 +84,64 @@ lc.nmf2 <- list(w=w,h=h)
 saveRDS(lc.nmf2,"processed-data/10_subclustering/07-lcnmf160_tol1e-9.RDS")
 ```
 
+### 5/20/25 second run: same parameters, but dropping low/no detection genes
+```{r}
+check <- hist(log10(rowSums(logcounts(lc3))),breaks=seq(-2,8,0.25))
+plot(check)
+## looks like the minimum we want is somewhere around log10 1 to log10 2
+View(cbind(check$breaks[2:length(check$breaks)],check$counts))
+# 0.75-1: 1392; 1-1.25: 1254 
+# <10^1.25 is the last major drop-off point, so let's set total gene logcounts 10^1.25 as the cutoff
+dev.off()
+
+## drop genes w less than 56 counts
+keepg <- rownames(lc3)[rowSums(logcounts(lc3))>=10^1.25]
+length(keepg) ## 15170
+lc3 <- lc3[keepg,]
+
+## clean up for second run
+rm(h,lc.nmf2,w,lc.nmf,lclct,lcrn,lccn,check,keepg,rddt)
+gc(full=T)
+
+## get new logcount matrix, rownames colnames and gene info
+lclct <- logcounts(lc3)
+lcrn <- rownames(lclct)
+lccn <- colnames(lclct)
+
+# get gene metadata to add symbol info later
+rddt <- as.data.table(rowData(lc3)) 
+```
+
+run again
+# let's suppose 10 factors per group that are distinct in each group. 2 sex * 4 apoe * 2 predominant ancestries = 16 groupings * 10 = 160 factors. stringency-ize tol from 10-6 to 10-9.
+```{r}
+setDTthreads(1,restore_after_fork = FALSE)
+setRcppMLthreads(11)
+
+lc.nmf <-nmf(lclct,
+    k=160,
+    tol = 1e-09, 
+    maxit = 5000,
+    verbose = T,
+    L1 = 0.1,
+    seed = 42,
+    mask_zeros = FALSE,
+    diag = TRUE,
+    nonneg = TRUE
+)
+
+w <- as.data.frame(lc.nmf$w)
+rownames(w) <- lcrn
+colnames(w) <- paste0("LCnmf",c(1:160))
+
+h <- as.data.frame(lc.nmf$h)
+rownames(h) <- paste0("LCnmf",c(1:160))
+colnames(h) <- colnames(lclct)
+
+lc.nmf2 <- list(w=w,h=h)
+saveRDS(lc.nmf2,"processed-data/10_subclustering/07b-lcnmf160_tol1e-9_rowSumLogctFilt18.RDS")
+```
+
 repinfo
 ```{r}
 sessionInfo()
