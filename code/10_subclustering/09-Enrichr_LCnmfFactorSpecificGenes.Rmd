@@ -12,7 +12,8 @@ knitr::opts_knit$set(root.dir = here::here())
 
 library(data.table)
 library(enrichR)
-# library(SpatialFeatureExperiment)
+library(SpatialExperiment)
+library(biomaRt)
 
 ## rstudio GUI tweaks
 require(colorout)
@@ -30,9 +31,345 @@ library(BiocParallel)
 options(bphost="localhost")
 
 
-## ggplot defaults
-theme_set(theme_bw()+theme(axis.text.x = element_text(size = 9), axis.title.x = element_text(size = 8), axis.text.y = element_text(size = 8), axis.title.y = element_text(size =9), plot.title = element_markdown(size = 11,hjust=0.5), strip.text = element_text(size=11), legend.text = element_text(size=8), legend.title = element_text(size=9,hjust=0.5),plot.title.position="plot"))
-
 ## last of all, unload the base package datasets, whose data keep getting in the way of autocompletions (e.g., Theoph is priortized over TRUE)
 unloadNamespace("datasets")
 ```
+
+
+##### FOR THE PRE-GENE-FILTERED NMF: factors that seem to be interesting cell types or suggestive of LC proper based on a prelim look at factor-specific genes in enrichr were factor 2 (subcoeruleus in mouse allen atlas), factor 3 ("DNA damage bypass" ontology term), factors 4, 5, 6, 7, 103, 156, and 157. factor 1 was a little ambiguous on a quick pass. one of these factors corresponded to T-cells and another was enriched for "acetylcholine synthesis" pathway genes. ######
+
+Regardless, we'll run all of the factors with specific genes from both unfilterd and pre-filtered NMF runs and see what there is to see. 
+
+```{r}
+unfilt <- fread("processed-data/12_DEanalyses_removedsampsAndFinalNMseg/06-LCNMF_factors_and_factorSpecGenes_min25specGenes.txt")
+
+filt <- fread("processed-data/12_DEanalyses_removedsampsAndFinalNMseg/06b-LCNMFLogCt18Filt_factors_and_factorSpecGenes_min25specGenes.txt")
+
+### we actually want the full NMF matrix and we need the SPE rowData to convert to entrez symbols
+lc3 <- readRDS("processed-data/06-countsOnly_noImgData_QCed_SPE_split_to_tissSections.RDS")
+rddt <- as.data.table(rowData(lc3))
+rm(lc3)
+
+### biomart query
+biomart <- useMart("ensembl",dataset="hsapiens_gene_ensembl")
+lut <- biomaRt::getBM(attributes=c("ensembl_gene_id",
+                                   "entrezgene_id",
+                                   "entrezgene_accession",
+                                   "entrezgene_description"),
+                      mart=biomart,
+                      filter="ensembl_gene_id",
+                      values=unique(rddt$gene_id)) # uh ok "accession" = symbol
+
+lut <- as.data.table(lut)
+rddt <- merge.data.table(rddt[,.(gene_id,chr)],lut[,.(ensembl_gene_id,entrezgene_accession)],by.x="gene_id",by.y="ensembl_gene_id")
+rm(biomart)
+
+## append these to the factor spec genes
+unfilt <- merge.data.table(unfilt,rddt[,.(gene_id,entrezgene_accession)],by="gene_id")
+
+filt <- merge.data.table(filt,rddt[,.(gene_id,entrezgene_accession)],by="gene_id")
+### this appears to have added some rows, so drop duplicated genes
+dupg <- unfilt[,.N,by=c("factor","gene_id")][N>1,gene_id]
+unfilt <- unfilt[!(gene_id %in% dupg)]
+
+dupg <- filt[,.N,by=c("factor","gene_id")][N>1,gene_id]
+filt <- filt[!(gene_id %in% dupg)]
+
+## temporarily load the NMF matrices to get the background genes for filt and unfilt
+nmf <- readRDS("processed-data/10_subclustering/07-lcnmf160_tol1e-9.RDS")
+nmfbg <- rddt[gene_id %in% rownames(nmf$w)&entrezgene_accession!="",unique(entrezgene_accession)]
+rm(nmf)
+
+nmffilt <- readRDS("processed-data/10_subclustering/07b-lcnmf160_tol1e-9_rowSumLogctFilt18.RDS")
+filtbg <- rddt[gene_id %in% rownames(nmffilt$w)&entrezgene_accession!="",unique(entrezgene_accession)]
+rm(nmffilt)
+
+### clean up
+rm(lut,dupg,rddt)
+```
+
+### enrichr setup
+## rummagenes don't work here unfortunately.
+```{r}
+checkdbs <- enrichR::listEnrichrDbs()
+enrichr_dbs <- grep(checkdbs$libraryName,pattern="Aging|Allen|ARCHS4|Azimuth|BioCarta_2016|BioPlex|CellMarker|ChEA_2022|CORUM|DepMap_CRISPR_GeneDependency_CellLines_2023|Descartes|DGIdb_Drug_Targets_2024|Disease_Perturbations|Disease_Signatures|Drug_Perturbations|DrugMatrix|Elsevier_Pathway|ENCODE_Histone_Modifications_2015|ENCODE_TF_ChIP-seq_2015|Roadmap|FANTOM6|Gene_Perturbations|GO_Biological_Process_2025|GO_Cellular_Component_2025|GO_Molecular_Function_2025|HMS_LINCS|HuBMAP|huMAP|IDG_Drug_Targs_2022|Jensen_DISEASES_Curated_2025|KEGG_2021_Human|Kinase_Perturbations|KOMP2|L1000|Ligand_Perturbations|lncHUB|MAGNET|MGI_Mammalian_Phenotype_Level_4_2024|NIBR_DRUGseq_2025|PerturbAtlas|PFOCR_Pathways_2023|PPI_Hub_Proteins|Proteomics|Reactome_Pathways_2024|SILAC|SubCell|SynGO_2024|Tabula_Muris|Tabula_Sapiens|TF_Perturbations|TF-LOF_Expression|TG_GATES_2020|The_Kinase_Library_2024|Tissue_Protein_Expression|Transcription_Factor_PPIs|TRANSFAC_and_JASPAR|TRRUST|WikiPathways_2024_Human|^DSigDB",value=T)
+
+## filter out the ARCHS4 predictions re: rare disease, NIH PIs--interesting but not useful here
+enrichr_dbs <- grep(enrichr_dbs,pattern="AutoRIF|GeneRIF",value=T,invert=T)
+
+rm(checkdbs)
+```
+
+Interestingly, enrichr allows for the gene sets to have a "membership value of 0-1" in the second column. we COULD test this later on by adjusting the w matrix of the factor specific-genes to range 0-1 by subsetting to a table of those genes and that factor's values, then dt[,LCnmfX_scaled:=(LCnmfX-min(LCnmfX))/(max(LCnmfX)-min(LCnmfX))]
+
+but for now, let's just feed the genes in as a straight-up vector (against the whole set of genes fed into the NMF run.)
+```{r}
+## need to run serially, otherwise server will start blocking requests and/or gene sets requested will get mixed up. plus other unexpected errors
+unfilt.res <- list()
+i <- 1
+for (i in c(1:length(unique(unfilt$factor)))){
+    f <- unique(unfilt$factor)[i]
+    tmpunfilt <- copy(unfilt[factor==f])
+    
+    ## drop any dbs that throw weird factor-geneset-specific errors
+    if(f=="LCnmf9"|f=="LCnmf22"|f=="LCnmf99"|f=="LCnmf19"|f=="LCnmf6"|f=="LCnmf7"){
+        cur_enrichr_dbs <- enrichr_dbs[enrichr_dbs!="HMS_LINCS_KinomeScan"]
+    } else {
+        cur_enrichr_dbs <- enrichr_dbs
+    }
+    
+    if(f=="LCnmf99"|f=="LCnmf19"){
+        cur_enrichr_dbs <- cur_enrichr_dbs[cur_enrichr_dbs!="CellMarker_2024"]
+    }
+    
+    factlist <- enrichr(genes=tmpunfilt[factor==f,entrezgene_accession],
+                        background = nmfbg,
+                        databases=cur_enrichr_dbs)
+    
+  
+    
+    factlist.dt <- rbindlist(factlist,idcol="Enrichr_database")
+    factlist.dt[,LCnmf_unfilt_factor:=f]
+    
+    unfilt.res[[i]] <- factlist.dt
+    names(unfilt.res)[i] <- f
+    
+    rm(f,factlist.dt,factlist,tmpunfilt,cur_enrichr_dbs)
+    gc(full=T)
+}
+rm(i)
+
+#concat and save
+unfilt.res2 <- rbindlist(unfilt.res)
+saveRDS(unfilt.res2,"processed-data/10_subclustering/09-LCnmfUNfilt_factorSpecGenes_enrichr_results.RDS")
+###
+```
+
+cleanup
+```{r}
+rm(unfilt,unfilt.res,unfilt.res2,nmfbg)
+gc(full=T)
+```
+
+### pre-filtered-genes NMF factors
+```{r}
+filt.res <- list()
+i<-1
+for (i in c(1:length(unique(filt$factor)))){
+    f <- unique(filt$factor)[i]
+    tmpfilt <- copy(filt[factor==f])
+    
+    # preempt weird one-off factor-db pairs that throw errors
+    if(f=="LCnmf4"){
+        cur_enrichr_dbs <- enrichr_dbs[enrichr_dbs!="Tabula_Sapiens"]
+    } else if (f=="LCnmf21"|f=="LCnmf103"|f=="LCnmf6"|f=="LCnmf17"|f=="LCnmf8"|f=="LCnmf5"|f=="LCnmf7") {
+        cur_enrichr_dbs <- enrichr_dbs[enrichr_dbs!="HMS_LINCS_KinomeScan"]
+    } else {
+        cur_enrichr_dbs <- enrichr_dbs
+    }
+    
+    if(f=="LCnmf6"|f=="LCnmf5"){
+        cur_enrichr_dbs <- cur_enrichr_dbs[cur_enrichr_dbs!="Tabula_Sapiens"]
+    }
+    
+    if(f=="LCnmf5"){
+        cur_enrichr_dbs <- cur_enrichr_dbs[cur_enrichr_dbs!="BioCarta_2016"]
+    }
+    
+    factlist <- enrichr(genes=tmpfilt[factor==f,entrezgene_accession],
+                        background = filtbg,
+                        databases=cur_enrichr_dbs)
+    
+    factlist.dt <- rbindlist(factlist,idcol="Enrichr_database")
+    factlist.dt[,LCnmf_filt_factor:=f]
+    
+    filt.res[[i]] <- factlist.dt
+    names(filt.res)[i] <- f
+    
+    rm(f,factlist.dt,factlist,tmpfilt)
+}
+rm(i)
+
+# concat and save
+filt.res2 <- rbindlist(filt.res)
+saveRDS(filt.res2,"processed-data/10_subclustering/09-LCnmfFilt_factorSpecGenes_enrichr_results.RDS")
+```
+
+rep inf
+```{r}
+sessionInfo()
+sessioninfo::session_info()
+```
+R version 4.4.3 (2025-02-28)
+Platform: aarch64-apple-darwin20
+Running under: macOS Sequoia 15.3.2
+
+Matrix products: default
+BLAS:   /System/Library/Frameworks/Accelerate.framework/Versions/A/Frameworks/vecLib.framework/Versions/A/libBLAS.dylib 
+LAPACK: /Library/Frameworks/R.framework/Versions/4.4-arm64/Resources/lib/libRlapack.dylib;  LAPACK version 3.12.0
+
+locale:
+[1] en_US.UTF-8/en_US.UTF-8/en_US.UTF-8/C/en_US.UTF-8/en_US.UTF-8
+
+time zone: America/Chicago
+tzcode source: internal
+
+attached base packages:
+[1] stats4    stats     graphics  grDevices utils     methods   base     
+
+other attached packages:
+ [1] biomaRt_2.62.1              SpatialExperiment_1.16.0   
+ [3] SingleCellExperiment_1.28.1 SummarizedExperiment_1.36.0
+ [5] Biobase_2.66.0              GenomicRanges_1.58.0       
+ [7] GenomeInfoDb_1.42.3         IRanges_2.40.1             
+ [9] S4Vectors_0.44.0            BiocGenerics_0.52.0        
+[11] MatrixGenerics_1.18.1       matrixStats_1.5.0          
+[13] BiocParallel_1.40.0         parallelly_1.43.0          
+[15] colorout_1.3-0.2            enrichR_3.4                
+[17] data.table_1.17.0           rlang_1.1.5                
+
+loaded via a namespace (and not attached):
+ [1] tidyselect_1.2.1        dplyr_1.1.4             farver_2.1.2           
+ [4] blob_1.2.4              filelock_1.0.3          Biostrings_2.74.1      
+ [7] fastmap_1.2.0           BiocFileCache_2.14.0    digest_0.6.37          
+[10] lifecycle_1.0.4         KEGGREST_1.46.0         RSQLite_2.3.9          
+[13] magrittr_2.0.3          compiler_4.4.3          progress_1.2.3         
+[16] tools_4.4.3             yaml_2.3.10             knitr_1.50             
+[19] prettyunits_1.2.0       S4Arrays_1.6.0          bit_4.6.0              
+[22] curl_6.2.2              here_1.0.1              DelayedArray_0.32.0    
+[25] xml2_1.3.8              RColorBrewer_1.1-3      abind_1.4-8            
+[28] withr_3.0.2             purrr_1.0.4             grid_4.4.3             
+[31] ggplot2_3.5.2           scales_1.4.0            dichromat_2.0-0.1      
+[34] cli_3.6.4               rmarkdown_2.29          crayon_1.5.3           
+[37] generics_0.1.3          rstudioapi_0.17.1       httr_1.4.7             
+[40] rjson_0.2.23            sessioninfo_1.2.3       DBI_1.2.3              
+[43] cachem_1.1.0            stringr_1.5.1           zlibbioc_1.52.0        
+[46] datasets_4.4.3          parallel_4.4.3          AnnotationDbi_1.68.0   
+[49] XVector_0.46.0          WriteXLS_6.7.0          vctrs_0.6.5            
+[52] Matrix_1.7-3            jsonlite_2.0.0          hms_1.1.3              
+[55] bit64_4.6.0-1           magick_2.8.6            glue_1.8.0             
+[58] codetools_0.2-20        stringi_1.8.7           gtable_0.3.6           
+[61] UCSC.utils_1.2.0        tibble_3.2.1            pillar_1.10.2          
+[64] rappdirs_0.3.3          htmltools_0.5.8.1       GenomeInfoDbData_1.2.13
+[67] dbplyr_2.5.0            R6_2.6.1                httr2_1.1.1            
+[70] rprojroot_2.0.4         evaluate_1.0.3          lattice_0.22-6         
+[73] png_0.1-8               memoise_2.0.1           Rcpp_1.0.14            
+[76] SparseArray_1.6.2       xfun_0.52               pkgconfig_2.0.3        
+> sessioninfo::session_info()
+─ Session info ────────────────────────────────────────────────────────────────────
+ setting  value
+ version  R version 4.4.3 (2025-02-28)
+ os       macOS Sequoia 15.3.2
+ system   aarch64, darwin20
+ ui       RStudio
+ language (EN)
+ collate  en_US.UTF-8
+ ctype    en_US.UTF-8
+ tz       America/Chicago
+ date     2025-05-20
+ rstudio  2024.07.0-daily+219 Cranberry Hibiscus (desktop)
+ pandoc   3.1.11 @ /Applications/RStudio.app/Contents/Resources/app/quarto/bin/tools/aarch64/ (via rmarkdown)
+ quarto   1.4.555 @ /Applications/RStudio.app/Contents/Resources/app/quarto/bin/quarto
+
+─ Packages ────────────────────────────────────────────────────────────────────────
+ !  package              * version date (UTC) lib source
+    abind                  1.4-8   2024-09-12 [1] CRAN (R 4.4.1)
+    AnnotationDbi          1.68.0  2024-11-08 [1] Bioconductor 3.20 (R 4.4.1)
+    Biobase              * 2.66.0  2024-11-08 [1] Bioconductor 3.20 (R 4.4.1)
+    BiocFileCache          2.14.0  2024-11-08 [1] Bioconductor 3.20 (R 4.4.1)
+    BiocGenerics         * 0.52.0  2024-11-08 [1] Bioconductor 3.20 (R 4.4.1)
+    BiocParallel         * 1.40.0  2024-11-23 [1] Bioconductor 3.20 (R 4.4.2)
+    biomaRt              * 2.62.1  2025-01-30 [1] Bioconductor 3.20 (R 4.4.2)
+    Biostrings             2.74.1  2024-12-16 [1] Bioconductor 3.20 (R 4.4.2)
+    bit                    4.6.0   2025-03-06 [1] CRAN (R 4.4.1)
+    bit64                  4.6.0-1 2025-01-16 [1] CRAN (R 4.4.1)
+    blob                   1.2.4   2023-03-17 [1] CRAN (R 4.4.0)
+    cachem                 1.1.0   2024-05-16 [1] CRAN (R 4.4.0)
+ VP cli                    3.6.4   2025-04-23 [2] CRAN (R 4.4.1) (on disk 3.6.5)
+    codetools              0.2-20  2024-03-31 [1] CRAN (R 4.4.3)
+    colorout             * 1.3-0.2 2024-05-01 [1] Github (jalvesaq/colorout@c6113a2)
+    crayon                 1.5.3   2024-06-20 [1] CRAN (R 4.4.0)
+    curl                   6.2.2   2025-03-24 [1] CRAN (R 4.4.1)
+    data.table           * 1.17.0  2025-02-22 [1] CRAN (R 4.4.1)
+    DBI                    1.2.3   2024-06-02 [1] CRAN (R 4.4.0)
+    dbplyr                 2.5.0   2024-03-19 [1] CRAN (R 4.4.0)
+    DelayedArray           0.32.0  2024-11-08 [1] Bioconductor 3.20 (R 4.4.1)
+    dichromat              2.0-0.1 2022-05-02 [1] CRAN (R 4.4.0)
+    digest                 0.6.37  2024-08-19 [1] CRAN (R 4.4.1)
+    dplyr                  1.1.4   2023-11-17 [1] CRAN (R 4.4.0)
+    enrichR              * 3.4     2025-02-02 [1] CRAN (R 4.4.1)
+    evaluate               1.0.3   2025-01-10 [1] CRAN (R 4.4.1)
+    farver                 2.1.2   2024-05-13 [1] CRAN (R 4.4.0)
+    fastmap                1.2.0   2024-05-15 [1] CRAN (R 4.4.0)
+    filelock               1.0.3   2023-12-11 [1] CRAN (R 4.4.0)
+    generics               0.1.3   2022-07-05 [1] CRAN (R 4.4.0)
+    GenomeInfoDb         * 1.42.3  2025-01-27 [1] Bioconductor 3.20 (R 4.4.2)
+    GenomeInfoDbData       1.2.13  2024-12-12 [1] Bioconductor
+    GenomicRanges        * 1.58.0  2024-11-08 [1] Bioconductor 3.20 (R 4.4.1)
+    ggplot2                3.5.2   2025-04-09 [1] CRAN (R 4.4.1)
+    glue                   1.8.0   2024-09-30 [1] CRAN (R 4.4.1)
+    gtable                 0.3.6   2024-10-25 [1] CRAN (R 4.4.1)
+    here                   1.0.1   2020-12-13 [1] CRAN (R 4.4.0)
+    hms                    1.1.3   2023-03-21 [1] CRAN (R 4.4.0)
+    htmltools              0.5.8.1 2024-04-04 [1] CRAN (R 4.4.0)
+    httr                   1.4.7   2023-08-15 [1] CRAN (R 4.4.0)
+    httr2                  1.1.1   2025-03-08 [1] CRAN (R 4.4.1)
+    IRanges              * 2.40.1  2024-12-05 [1] Bioconductor 3.20 (R 4.4.2)
+    jsonlite               2.0.0   2025-03-27 [1] CRAN (R 4.4.1)
+    KEGGREST               1.46.0  2024-11-08 [1] Bioconductor 3.20 (R 4.4.1)
+    knitr                  1.50    2025-03-16 [1] CRAN (R 4.4.2)
+    lattice                0.22-6  2024-03-20 [1] CRAN (R 4.4.3)
+    lifecycle              1.0.4   2023-11-07 [1] CRAN (R 4.4.0)
+    magick                 2.8.6   2025-03-23 [1] CRAN (R 4.4.1)
+    magrittr               2.0.3   2022-03-30 [1] CRAN (R 4.4.0)
+    Matrix                 1.7-3   2025-03-11 [1] CRAN (R 4.4.1)
+    MatrixGenerics       * 1.18.1  2025-01-09 [1] Bioconductor 3.20 (R 4.4.2)
+    matrixStats          * 1.5.0   2025-01-07 [1] CRAN (R 4.4.1)
+    memoise                2.0.1   2021-11-26 [1] CRAN (R 4.4.0)
+    parallelly           * 1.43.0  2025-03-24 [1] CRAN (R 4.4.1)
+    pillar                 1.10.2  2025-04-05 [1] CRAN (R 4.4.1)
+    pkgconfig              2.0.3   2019-09-22 [1] CRAN (R 4.4.0)
+    png                    0.1-8   2022-11-29 [1] CRAN (R 4.4.0)
+    prettyunits            1.2.0   2023-09-24 [1] CRAN (R 4.4.0)
+    progress               1.2.3   2023-12-06 [1] CRAN (R 4.4.0)
+    purrr                  1.0.4   2025-02-05 [1] CRAN (R 4.4.1)
+    R6                     2.6.1   2025-02-15 [1] CRAN (R 4.4.1)
+    rappdirs               0.3.3   2021-01-31 [1] CRAN (R 4.4.0)
+    RColorBrewer           1.1-3   2022-04-03 [1] CRAN (R 4.4.0)
+    Rcpp                   1.0.14  2025-01-12 [1] CRAN (R 4.4.1)
+    rjson                  0.2.23  2024-09-16 [1] CRAN (R 4.4.1)
+ VP rlang                * 1.1.5   2025-04-11 [2] CRAN (R 4.4.1) (on disk 1.1.6)
+    rmarkdown              2.29    2024-11-04 [1] CRAN (R 4.4.1)
+    rprojroot              2.0.4   2023-11-05 [1] CRAN (R 4.4.0)
+    RSQLite                2.3.9   2024-12-03 [1] CRAN (R 4.4.1)
+    rstudioapi             0.17.1  2024-10-22 [1] CRAN (R 4.4.1)
+    S4Arrays               1.6.0   2024-11-08 [1] Bioconductor 3.20 (R 4.4.1)
+    S4Vectors            * 0.44.0  2024-11-08 [1] Bioconductor 3.20 (R 4.4.1)
+    scales                 1.4.0   2025-04-24 [1] CRAN (R 4.4.1)
+    sessioninfo            1.2.3   2025-02-05 [1] CRAN (R 4.4.1)
+    SingleCellExperiment * 1.28.1  2024-11-23 [1] Bioconductor 3.20 (R 4.4.2)
+    SparseArray            1.6.2   2025-02-20 [1] Bioconductor 3.20 (R 4.4.2)
+    SpatialExperiment    * 1.16.0  2024-11-08 [1] Bioconductor 3.20 (R 4.4.1)
+    stringi                1.8.7   2025-03-27 [1] CRAN (R 4.4.1)
+    stringr                1.5.1   2023-11-14 [1] CRAN (R 4.4.0)
+    SummarizedExperiment * 1.36.0  2024-11-08 [1] Bioconductor 3.20 (R 4.4.1)
+    tibble                 3.2.1   2023-03-20 [1] CRAN (R 4.4.0)
+    tidyselect             1.2.1   2024-03-11 [1] CRAN (R 4.4.0)
+    UCSC.utils             1.2.0   2024-11-08 [1] Bioconductor 3.20 (R 4.4.1)
+    vctrs                  0.6.5   2023-12-01 [1] CRAN (R 4.4.0)
+    withr                  3.0.2   2024-10-28 [1] CRAN (R 4.4.1)
+    WriteXLS               6.7.0   2024-07-20 [1] CRAN (R 4.4.0)
+    xfun                   0.52    2025-04-02 [1] CRAN (R 4.4.1)
+    xml2                   1.3.8   2025-03-14 [1] CRAN (R 4.4.1)
+    XVector                0.46.0  2024-11-08 [1] Bioconductor 3.20 (R 4.4.1)
+    yaml                   2.3.10  2024-07-26 [1] CRAN (R 4.4.0)
+    zlibbioc               1.52.0  2024-11-08 [1] Bioconductor 3.20 (R 4.4.1)
+
+ [1] /Library/Frameworks/R.framework/Versions/4.4-arm64/Resources/library
+ [2] /Users/bmulvey/Library/R/arm64/4.4/library
+
+ * ── Packages attached to the search path.
+ V ── Loaded and on-disk version mismatch.
+ P ── Loaded and on-disk path mismatch.
+
+───────────────────────────────────────────────────────────────────────────────────

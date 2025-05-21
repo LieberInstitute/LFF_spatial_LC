@@ -232,7 +232,7 @@ gseas.filt <- mapply(R=gseas,N=names(gseas),G=degroups,Clus=cluscol,SIMPLIFY=FAL
 
 ### save
 ```{r}
-saveRDS(gseas.filt,"processed-data/12_DEanalyses_removedsampsAndFinalNMseg/08-LCNM_APOESexDE_LCnmf_TFtarg_GSEA_filterToClusAndDEgroupExpressed.RDS")
+saveRDS(gseas.filt,"processed-data/12_DEanalyses_removedsampsAndFinalNMseg/08-LCNM_APOESexDE_LCnmf_LCnmfLct18Filt_TFtarg_GSEA_filterToClusAndDEgroupExpressed.RDS")
 ```
 
 ```{r}

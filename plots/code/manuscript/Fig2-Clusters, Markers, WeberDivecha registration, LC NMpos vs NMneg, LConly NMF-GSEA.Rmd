@@ -374,7 +374,7 @@ rm(p,nmde)
 gc(full=T)
 ```
 
-Fig 2E: LC NMF GSEA
+Fig 2E: LC NMF GSEA didn't really yield anything. instead, use the enrichr results on factor-specific genes (with background sets fed in as all genes on which the respective NMFs were performed)
 ```{r}
 nmfgsea <- readRDS("processed-data/12_DEanalyses_removedsampsAndFinalNMseg/06-LC_NMF_specificallyLoadedFactors_GSEA_msigdbAndTFtarg.RDS")
 

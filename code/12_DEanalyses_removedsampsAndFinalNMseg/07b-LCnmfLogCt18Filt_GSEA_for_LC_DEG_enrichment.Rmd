@@ -35,6 +35,10 @@ unloadNamespace("datasets")
 
 ## for the NMF itself, we need to rerun the code from 12/06b (identifying and subsetting to factors of interest), and then make them into ranked lists as before
 ```{r}
+lc3 <- readRDS("processed-data/06-countsOnly_noImgData_QCed_SPE_split_to_tissSections.RDS")
+rddt <- as.data.table(rowData(lc3),keep.rownames=T)
+rm(lc3)
+
 ### load the PRE-GENE-FILTERED nmf results
 lc.nmf2 <- readRDS("processed-data/10_subclustering/07b-lcnmf160_tol1e-9_rowSumLogctFilt18.RDS")
 w2 <- as.data.table(lc.nmf2$w,keep.rownames=T)
@@ -68,9 +72,8 @@ rm(w2m.sub,fewfactorgenes,w2m)
 now, we can look at factors with ≥25 specific-ish genes, and run one-sided GSEA on using the full set of loadings for that factor to identify any pathways etc that are enriched in that factor's genes. the enrichment analyses, by nature of GSEA, will be weighted toward the genes with the highest loadings, and our pre-selection of factors here has ensured that these factors have relatively unique and strong loadings for numerous genes.
 ```{r}
 # drop duplicated genes for running fgsea
-keepg <- w2[,.N,by="gene_name"][N==1,gene_name]
 keepi <- w2[,.N,by="gene_id"][N==1,gene_id]
-w2b <- w2[gene_name %in% keepg&gene_id %in% keepi]
+w2b <- w2[gene_id %in% keepi]
 
 ## get loadings in descending order for each factor of interest, name with gene ids for msigdb or with gene symbols for TF-target testing
 fgnmfs.filt <- lapply(keepfacts,function(k){
@@ -78,18 +81,15 @@ fgnmfs.filt <- lapply(keepfacts,function(k){
    
     # get the descending order loading vector, clone it to name by gene id or symb
     g.id <- unlist(w2b[!is.na(k),..k])
-    g.name <- g.id
-    
+
     names(g.id) <- w2b[!is.na(k),gene_id]
-    names(g.name) <- w2b[!is.na(k),gene_name]
     
-    retlist <- list(g.id=g.id,g.name=g.name)
-    return(retlist)
+    return(g.id)
 })
 names(fgnmfs.filt) <- keepfacts
 
 ### clean up before GSEA runs
-rm(w2,w2b,w2m,w2m.sub,fewfactorgenes,keepg,keepi,nameord,lc.nmf2,rddt)
+rm(w2,w2b,w2m,w2m.sub,fewfactorgenes,keepg,keepi,nameord,lc.nmf2,rddt,keepfacts)
 gc(full=T)
 ```
 
@@ -169,7 +169,7 @@ return(z1)})
 
 save
 ```{r}
-saveRDS(nmffilt.lcde.res,"processed-data/12_DEanalyses_removedsampsAndFinalNMseg/07-LCnmf_factor_GSEA_for_DEGsets.RDS")
+saveRDS(nmffilt.lcde.res,"processed-data/12_DEanalyses_removedsampsAndFinalNMseg/07b-LCnmfLogCt18Filt_factor_GSEA_for_DEGsets.RDS")
 
 # also save a table of FDR-significant enrichments for up/downreg gene sets
 tmp <- rbindlist(nmffilt.lcde.res,idcol="NMFfactor")
