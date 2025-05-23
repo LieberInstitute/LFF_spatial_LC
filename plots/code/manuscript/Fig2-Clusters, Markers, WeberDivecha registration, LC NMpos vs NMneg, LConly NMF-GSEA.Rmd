@@ -137,40 +137,30 @@ gc(full=T)
 Fig 2B: marker heatmap
 ```{r}
 ### get markers
-globalmk <- readRDS("processed-data/07_featureSelection_dimred_harmony_clustering/05a-init_nonspat_marker_tables.RDS")
+globalmk <- fread("processed-data/13_markers_and_registration_final/01-HDGSVG2575louv1_regWrapOut_1vAll_markers.txt")
 
-globalmk <- globalmk$snnHARMONYlmbna_HDG_SVG_2575_louv_res1
+globalmk <- globalmk[fdr<0.05&logFC>0]
+# exclude mtrnrs and mitochondrials
+globalmk <- globalmk[!(gene %in% grep(gene,pattern="MTRNR|MT-",value=T))]
+## get top 5 genes, by logFC, per cluster
+mkg <- unique(globalmk[ , .SD[order(-logFC) , ][1:5] , by = "cluster"][,.(ensembl,cluster)])
 
-globalmk <- melt.data.table(as.data.table(globalmk),id.vars=c("gene","ensembl","rn"))
-globalmk[,rn:=NULL]
+## reorder the palette/clusters here so that the sort of gradations between glial clusters are apparent
+pal2 <- pal[c(1:5,8,7,9,6)]
 
-globalmk[,clusid:=gsub(pattern="^.*_(X.*)$",replacement="\\1",x=variable)]
-globalmk[,stat:=gsub(pattern="^(.*)_X.*$",replacement="\\1",x=variable)]
+## extract these genes in the reverse order of the palette'd clusters so that they appear top corner to bottom corner in resulting heatmap
+for (cl in names(pal2)){
+    if(cl==names(pal2)[1]){
+        mkg2 <- mkg[cluster==cl,ensembl]
+    } else {
+        mkg2 <- unique(c(mkg2,mkg[cluster==cl,ensembl]))
+    }
+}
+mkg<-mkg2
 
-globalmk <- merge.data.table(globalmk,anno,by="clusid")
-globalmk[,clusid:=NULL]
+rm(globalmk,mkg2,cl)
 
-globalmk <- globalmk[stat %in% c("fdr","logFC")]
-
-globalmk.f <- globalmk[stat=="fdr"]
-globalmk.f[,stat:=NULL]
-globalmk.f[,variable:=NULL]
-setnames(globalmk.f,"value","fdr")
-globalmk.f <- globalmk.f[fdr<0.05,]
-
-globalmk.l <- globalmk[stat=="logFC"]
-globalmk.l[,stat:=NULL]
-globalmk.l[,variable:=NULL]
-setnames(globalmk.l,"value","logFC")
-globalmk.l <- globalmk.l[logFC>0]
-
-globalmk <- merge.data.table(globalmk.f,globalmk.l,by=c("ensembl","anno","gene"))
-
-## get top 5 genes per cluster
-mkg <- unique(globalmk[ , .SD[order(fdr) , ][1:5] , by = "anno"][,ensembl])
-rm(globalmk,globalmk.f,globalmk.l,,clustab)
-
-# global marker heatmap: top 5 genes by FDR per cluster x 9 clusters = 45 genes (max)
+# global marker heatmap: top 5 genes by LFC per cluster x 9 clusters = 45 genes (max)
 
 # get scaled expression data for global heatmap
 ## define function to z-scale expression
@@ -182,10 +172,14 @@ scale_rows <- function(x) {
     return((x - m) / s)
 }
 
-clusord <- names(pal)
+
+## we reversed the order for the cluster-gene pairs, so use the original cluster order in pal for col ordering
+clusord <- names(pal2)
 
 lc2$label <- factor(lc2$label,levels=clusord)
 
+### drop uncertain samples
+lc2 <- lc2[,!(lc2$brnum %in% paste0("Br",c(5517,5276,5712)))]
     
 # make an spe with reordering of the columns to be in the order of the clusters we want plotted, then disable column clustering in the heatmap. (thatll make the plotting quicker too).
 i <- 1
@@ -200,6 +194,7 @@ for (i in c(1:length(levels(lc2$label)))) {
 rm(i, curlev)
 
 ### extract log counts per marker, z-normalize, hang onto both
+
 lc2 <- scater::computeLibraryFactors(lc2)
 lc2 <- scater::logNormCounts(lc2)
 pltdat <- SingleCellExperiment(lc2[mkg, cnames],rowData=rowData(lc2[mkg,])) 
@@ -218,12 +213,11 @@ pltdat2 <- scale_rows(as.matrix(logcounts(pltdat)))
 ## labels also got bllown away here -_-
 louvs2 <- louvs[colnames(pltdat),]
 pltdat$label <- louvs2$anno
-pltdat$label <- factor(pltdat$label,levels=names(pal))
+pltdat$label <- factor(pltdat$label,levels=clusord)
 ```
 
 # 2B-continued make the plot.
 ```{r}
-nclus <- length(unique(lc2$label))
 # z score 99 %ile is 3point something. So we can just plot a symmetric -3,0,3 to get most of the variation in the significant things  
 
 htmap <- ComplexHeatmap::Heatmap(
@@ -232,7 +226,7 @@ htmap <- ComplexHeatmap::Heatmap(
         `Visium Cluster` = pltdat$label,
         show_annotation_name = FALSE,
         gap = 0,
-        col = list(`Visium Cluster`=pal),
+        col = list(`Visium Cluster`=pal2),
         gp = gpar(alpha = 1,cex=0.35)
     ),
     show_column_names = FALSE,
@@ -244,6 +238,7 @@ htmap <- ComplexHeatmap::Heatmap(
         breaks = c(-3,0,3)
     ),
     cluster_columns = F, # handled by ordering the collumns of the spe above
+    cluster_rows = F, #ibid
     heatmap_legend_param = list(
         title = "Z scored spot log counts",
         direction = "horizontal",
@@ -260,7 +255,7 @@ htmap <- ComplexHeatmap::Heatmap(
 ### save plot; add title 
 
 # unstack the legends in illustator; ital the gene names in illustrator.
-CairoPDF("plots/manuscript/Fig2/2B-topFDRmarkers_heatmap.pdf", height = 4.5, width = 3.5)
+CairoPDF("plots/manuscript/Fig2/2B-topSignifMarkersByLFC_heatmap.pdf", height = 4.5, width = 3.5)
 
 draw(htmap,
     annotation_legend_side = "right",
@@ -269,11 +264,75 @@ draw(htmap,
 )
 dev.off()
 
-rm(pltdat,pltdat2,gns,cnames,clusts,nclus,wms)
+rm(pltdat,pltdat2,gns,cnames,clusts,pal2,clusord,mkg,htmap)
 ```
 
+Fig 2C: WeberDivecha registration. we ran this when vetting different clustering/feature approaches.
+```{r}
+webdivreg <- readRDS("processed-data/13_markers_and_registration_final/02-LC3_registration_to_WeberDivecha23_final.RDS")
 
-Fig 2C: Show one of the previous samples, now with only LC NM+ and - labeled. V13M06-404_B1 looks like a good sample for illustrating
+## get the registration values when using the max number of genes in both this dataset and the current webdiv dataset (slot 22 of the respective labeling approach for whichever data of theirs)
+pltdat <- list()
+i<-1
+for (i in c(1:length(webdivreg))){
+    out <- as.data.table(webdivreg[[i]][[22]])
+    out[,webdivdat:=names(webdivreg)[i]]
+    out <- melt.data.table(out,id.vars=c("LFF_clus","webdivdat"))
+    setnames(out,"variable","WebDiv_label")
+    pltdat[[i]] <- out
+}
+rm(i,out)
+
+pltdat <- rbindlist(pltdat)
+pltdat[,webdivdat:=as.character(webdivdat)]
+pltdat[,LFF_clus:=as.character(LFF_clus)]
+
+## subset to our main pure-ish clusters and their corresponding snuc/spatial types
+pltdat <- pltdat[
+    LFF_clus %in% c("LC","ACHE_SERT_LC_WM","ACHE_SERT_Npep","Astro","Oligo") 
+    & 
+    WebDiv_label %in% c("label_merged_x5HT","label_merged_xNE","label_merged_xastrocytes","label_merged_xinhibitory","label_merged_xexcitatory","label_merged_xoligodendrocytes","unsupervised_5HT_TRUE","supervised_NE_TRUE","annot_region_TRUE","annot_spot_TRUE")]
+
+## prettify
+pltdat[,WebDiv_label:=gsub(WebDiv_label,pattern="label_merged_x",replacement="snSeq ")]
+pltdat[WebDiv_label=="snSeq inhibitory",WebDiv_label:="snSeq Inhibitory"]
+pltdat[WebDiv_label=="snSeq excitatory",WebDiv_label:="snSeq Excitatory"]
+pltdat[WebDiv_label=="snSeq astrocytes",WebDiv_label:="snSeq Astrocytes"]
+pltdat[WebDiv_label=="snSeq oligodendrocytes",WebDiv_label:="snSeq Oligo"]
+
+pltdat[WebDiv_label=="supervised_NE_TRUE",WebDiv_label:="snSeq Manual NE"]
+pltdat[WebDiv_label=="unsupervised_5HT_TRUE",WebDiv_label:="snSeq Unsuperv. 5HT"]
+pltdat[WebDiv_label=="annot_region_TRUE",WebDiv_label:="Vis. LC Region, Manual"]
+pltdat[WebDiv_label=="annot_spot_TRUE",WebDiv_label:="Vis. LC Spot, Manual"]
+
+pltdat[,LFF_clus:=gsub(LFF_clus,pattern="_",replacement=" ")]
+
+pltdat[,WebDiv_label:=factor(WebDiv_label,levels=c(paste0("snSeq ",c("Oligo", "Astrocytes", "Unsuperv. 5HT", "5HT", "Inhibitory", "Excitatory", "NE","Manual NE")),"Vis. LC Spot, Manual","Vis. LC Region, Manual"))]
+pltdat[,LFF_clus:=factor(LFF_clus,levels=c("Oligo","Astro","ACHE SERT Npep","ACHE SERT LC WM","LC"))]
+
+## plot and save
+
+pdf("plots/manuscript/Fig2/2C-WeberDivecha_registration.pdf",height=3.5,width=3.5)
+ggplot(pltdat,aes(x=LFF_clus,y=WebDiv_label,fill=value))+
+    geom_tile()+
+    scale_x_discrete(expand = c(0,0)) +
+    scale_y_discrete(expand = c(0,0)) +
+    scale_fill_continuous(type="viridis",limits=c(min(pltdat$value),max(pltdat$value)))+
+    labs(x="Cluster (This Dataset)",y="LC-NE snSeq/Visium\n(Weber, Divecha 2023)",fill="Spearman Cor.\n(Top ~4500 En-\nriched Genes)")+
+    theme(
+        axis.text.x=element_text(angle=45,hjust=1,size=8,colour = "#000000"),
+        axis.text.y=element_text(size=8,colour = "#000000"),
+        axis.title.x=element_text(size=9,colour = "#000000"),
+        axis.title.y=element_text(size=9,colour = "#000000", margin=margin(0,0,0,-0.02,unit="in")),
+        legend.title=element_text(size=8,hjust=0.5,colour = "#000000"),
+        legend.text=element_text(size=7,colour = "#000000"),
+        legend.background=element_blank(),
+        legend.margin=margin(0,-0.08,0,-0.1,unit="in")
+    )
+dev.off()
+```
+
+Fig 2D: Show one of the previous samples, now with only LC NM+ and - labeled. V13M06-404_B1 looks like a good sample for illustrating
 ```{r}
 fig2c <- lc2[,lc2$sample_id=="V13M06-404_B1"]
 fig2c <- fig2c[,fig2c$lcnm_subclus %in% c("LC_NMpos","LC_NMneg")]
@@ -311,14 +370,14 @@ p <- vis_clus(fig2c,sampleid="V13M06-404_B1",spatial = T,na_color = NULL,auto_cr
 ## also plot in higher res than would otherwise be necessary so we have good resolution of the illustrator-cropped out LC zoone
 p <- rasterize(p,layers="Points",dpi=600,dev="cairo_png")
 
-pdf("plots/manuscript/Fig2/Fig2C_needs_illust_postproc.pdf",height=plotfact*2.4,width=plotfact*3)
+pdf("plots/manuscript/Fig2/Fig2D_needs_illust_postproc.pdf",height=plotfact*2.4,width=plotfact*3)
 p
 dev.off()
 
 rm(fig2c,p,plotfact)
 ```
 
-Fig 2D: LC NM+- DE volcano
+Fig 2E: LC NM+- DE volcano
 ```{r}
 nmde <- fread("processed-data/12_DEanalyses_removedsampsAndFinalNMseg/04-LCNMpos_vs_LCNMneg_DE.txt")
 
@@ -366,7 +425,7 @@ p <- rasterize(p,layers="Points",dpi=300,dev="cairo_png")
 
 
 ## point labels are wildly screwed up and will need fixing in illustrator.
-pdf("plots/manuscript/Fig2/2D-LCnmDE_volcano.pdf",height=2.5,width=3)
+pdf("plots/manuscript/Fig2/2E-LCnmDE_volcano.pdf",height=2.5,width=3)
 p
 dev.off()
 
@@ -374,7 +433,26 @@ rm(p,nmde)
 gc(full=T)
 ```
 
-Fig 2E: LC NMF GSEA didn't really yield anything. instead, use the enrichr results on factor-specific genes (with background sets fed in as all genes on which the respective NMFs were performed)
+Fig 2F: LC NMF GSEA didn't really yield anything. instead, use the enrichr results on factor-specific genes (with background sets fed in as all genes on which the respective NMFs were performed).
+
+Start by grabbing results for the following terms, which popped up in one or more factor-specific-gene set, then see how many we really have 
+postsynaptic (GO)
+presynaptic (GO)
+ubiquitin (GO, other pathway/ontol dbs)
+esr1
+mitochondrial (GO, other pathway/ontol dbs)
+calml3 (protein complexes)
+znf365 (TF coexp, TF ppi)
+LMTK3 (kinase coexp)
+subceruleus (allen atlas regions)
+COPS4 (protein complexes? or ppis? don't remember)
+BOLA3 (" or " or TF coexp dont recall)
+Sncg (mouse scseq type)
+ZNF444 (TF coexp)
+TCF25 (TF coexp)
+Sensory (cell types/tissues)
+Endothel (cell types/tissues)
+Olig2 (TF coexpression)
 ```{r}
 nmfgsea <- readRDS("processed-data/12_DEanalyses_removedsampsAndFinalNMseg/06-LC_NMF_specificallyLoadedFactors_GSEA_msigdbAndTFtarg.RDS")
 
