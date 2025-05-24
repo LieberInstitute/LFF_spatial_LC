@@ -289,8 +289,91 @@ saveRDS(keeplist_ApoAlleles_libsize,"processed-data/12_DEanalyses_removedsampsAn
 ```
 ############################
 
-model 4/test 7: label*YRI
-### LEFT OFF HERE: STILL NEED TO MAKE THE "COLLAPSED" YRI:LABEL columns. (should be coded in other draft scripts already)
+model 4/test 7: label*YRI (binned into predominant YRI or CEU groups)
+```{r}
+## make a copy of the dgelist for this analysis
+dgelYRI <- dgel
+
+## make a label-predom ancestry grouping column
+tmpsamp <- as.data.table(dgelYRI$samples,keep.rownames=T)
+tmpsamp <- tmpsamp[YRI<0.25|YRI>0.75]
+tmpsamp[,predomAncest:=ifelse(YRI>0.75,"YRI","CEU")]
+tmpsamp[,labAnces:=paste0(label,"_",predomAncest)]
+
+tmpsamp <- data.frame(tmpsamp,row.names=tmpsamp$rn)
+tmpsamp$rn <- NULL
+
+tmpcounts <- dgelYRI$counts
+tmpcounts <- tmpcounts[,rownames(tmpsamp)]
+tmpcounts <- as.data.frame(tmpcounts)
+
+dgelYRI <- DGEList(counts=tmpcounts,samples=tmpsamp,genes=dgelYRI$genes[rownames(tmpcounts),])
+
+rm(tmpsamp,tmpcounts)
+## full design matrix
+des <- model.matrix(~0 + labAnces +
+                        Sex +
+                        APOE +
+                        Age,
+                    data = dgelYRI$samples)
+
+## now filter expression. we DO want to get normalized lib sizes first, based on readme for the arguments for filterByExpr.DGEList (it will look for normalized lib sizes)
+dgelYRI <- edgeR::normLibSizes(dgelYRI)
+
+keep <- filterByExpr.DGEList(dgelYRI,design = des)
+dgelYRI <- dgelYRI[keep,,keep.lib.sizes=F]
+
+## recalc lib sizes
+dgelYRI <- edgeR::normLibSizes(dgelYRI)
+
+## specify contrasts
+for (cl in unique(dgel$samples$label)){
+    ret <- makeContrasts(
+        str2expression(
+            paste0(cl,"_YRI","=",paste0("labAnces",cl,"_YRI -","labAnces",cl,"_CEU"))),
+        levels=des)
+
+    colnames(ret) <- paste0(cl,"_YRI")
+
+    if(cl==unique(dgelYRI$samples$label)[1]){
+        trastmat <- ret
+    } else{
+        trastmat <- cbind(trastmat,ret)
+    }
+}
+rm(ret,cl,keep)
+```
+
+### model 4/test 7: label_YRI
+run DE ###
+```{r}
+v.swt <- voomLmFit(dgelYRI,design = des,block = as.factor(dgelYRI$samples$brnum),adaptive.span = T,sample.weights = T)
+
+## fit YRI effect for each label
+v.swt.fit <- contrasts.fit(v.swt,contrasts = trastmat)
+v.swt.fit.e <- eBayes(v.swt.fit,robust = T)
+
+keeplist_yrilabel_libsize <- list(voomLFt=v.swt,
+                 trastsFit=v.swt.fit,
+                 eBay=v.swt.fit.e,
+                 dgelYRI=dgelYRI,
+                 trasts=trastmat)
+
+yrilabel_detabs <- lapply(colnames(v.swt.fit),FUN=function(t){
+        restab <- as.data.table(topTable(v.swt.fit.e,coef = t,number=Inf,adjust.method = "BH"))
+    return(restab)
+})
+names(yrilabel_detabs) <- colnames(v.swt.fit)
+
+# rm(v.swt,v.swt.fit,v.swt.fit.e,dgelYRI,des,trastmat)
+# gc(full=T)
+
+keeplist_yrilabel_libsize$AncesGrpBylabel_detabs <- yrilabel_detabs
+saveRDS(keeplist_yrilabel_libsize,"processed-data/12_DEanalyses_removedsampsAndFinalNMseg/02bTMP_keeplist_AncesGroupByLabel_noMixClusts.RDS")
+```
+
+## NOT RUN:
+model 5/test 8: label*YRI (continuous)
 ```{r}
 ## make a copy of the dgelist for this analysis
 dgelYRI <- dgel
@@ -308,11 +391,8 @@ tmpsamp$rn <- NULL
 dgelYRI$samples <- tmpsamp
 rm(tmpsamp)
 ## full design matrix with colnames matching clus geno group values
-des <- model.matrix(~0 + ACHE_SERT_LC_WM_YRI +
-                        ACHE_SERT_Npep_YRI +
-                        Astro_YRI +
-                        LC_YRI +
-                        Oligo_Astro_YRI +
+des <- model.matrix(~ YRI*label +
+                        Sex +
                         APOE +
                         Age,
                     data = dgelYRI$samples)
@@ -327,7 +407,8 @@ dgelYRI <- dgelYRI[keep,,keep.lib.sizes=F]
 dgelYRI <- edgeR::normLibSizes(dgelYRI)
 ```
 
-### model 4/test 7: label_YRI
+## ALSO NOT RUN
+### model 5/test 8: label_YRI (continuous)
 run DE ###
 ```{r}
 v.swt <- voomLmFit(dgelYRI,design = des,block = as.factor(dgelYRI$samples$brnum),adaptive.span = T,sample.weights = T)
@@ -366,13 +447,13 @@ gc(full=T)
 sexlabel <- readRDS("processed-data/12_DEanalyses_removedsampsAndFinalNMseg/02bTMP_keeplist_sexlabel_noMixClusts.RDS")
 E2E4label <- readRDS("processed-data/12_DEanalyses_removedsampsAndFinalNMseg/02bTMP_keeplist_E2E4label_noMixClusts.RDS")
 ApoAllelesLabel <- readRDS("processed-data/12_DEanalyses_removedsampsAndFinalNMseg/02bTMP_keeplist_ApoAllelesLabel_noMixClusts.RDS")
-YRIlabel <- readRDS("processed-data/12_DEanalyses_removedsampsAndFinalNMseg/02bTMP_keeplist_YRIlabel_noMixClusts.RDS")
+YRIlabel.cat <- readRDS("processed-data/12_DEanalyses_removedsampsAndFinalNMseg/02bTMP_keeplist_AncesGroupByLabel_noMixClusts.RDS")
 
 ## combine into one metalist
 outlist <- list(SexByLabel=sexlabel,E2E4ByLabel=E2E4label,
-                ApoAllelesByLabel=ApoAllelesLabel,YRIByLabel=YRIlabel)
+                ApoAllelesByLabel=ApoAllelesLabel,AncesGrpByLabel=YRIlabel.cat)
 
-saveRDS(outlist,"processed-data/12_DEanalyses_removedsampsAndFinalNMseg/02b-voomLmFit_objs_and_DE_tables_LabSex_LabE2vE4_LabSingleGenos_LabYRI_noMixClusts.RDS")
+saveRDS(outlist,"processed-data/12_DEanalyses_removedsampsAndFinalNMseg/02b-voomLmFit_objs_and_DE_tables_LabSex_LabE2vE4_LabSingleGenos_LabAncesGrp_noMixClusts.RDS")
 ```
 ## can now delete 02bTMP RDSes.
 

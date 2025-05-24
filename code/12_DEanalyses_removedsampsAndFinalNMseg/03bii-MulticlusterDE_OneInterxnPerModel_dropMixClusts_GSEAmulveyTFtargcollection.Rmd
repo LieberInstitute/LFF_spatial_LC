@@ -1,7 +1,7 @@
 ---
 title: "03bii-MulticlusterDE_OneInterxnPerModel_dropMixClusts_GSEAmulveyTFtargcollection"
 author: "Bernie Mulvey"
-date: "2025-05-16"
+date: "2025-05-24"
 output: html_document
 ---
 ```{r setup, include=FALSE}
@@ -45,9 +45,9 @@ lc3 <- readRDS("processed-data/06-countsOnly_noImgData_QCed_SPE_split_to_tissSec
 rddt <- as.data.table(rowData(lc3))
 rm(lc3)
 
-de2b <- readRDS("processed-data/12_DEanalyses_removedsampsAndFinalNMseg/02b-voomLmFit_objs_and_DE_tables_LabSex_LabE2vE4_LabSingleGenos_LabYRI_noMixClusts.RDS")
+de2b <- readRDS("processed-data/12_DEanalyses_removedsampsAndFinalNMseg/02b-voomLmFit_objs_and_DE_tables_LabSex_LabE2vE4_LabSingleGenos_LabAncesGrp_noMixClusts.RDS")
 
-de2b <- lapply(de2b,FUN=function(x){x[[6]]}) # de tables are in a list in sixth slot for each contrast
+de2b <- lapply(de2b,FUN=function(x){x[[6]]})
 de2b2 <- list()
 i<-1
 for (i in c(1:length(de2b))){
@@ -60,40 +60,32 @@ for (i in c(1:length(de2b))){
 }
 rm(i)
 
-### YRI tests are fucked up don't use them
-de2b <- de2b2[grep(names(de2b2),pattern="YRI",value=T,invert=T)]
-rm(de2b2)
-
 ### drop sex chr genes from sex DE tests
-de2b[grep(names(de2b),pattern="sex",value=T)] <- lapply(de2b[grep(names(de2b),pattern="sex",value=T)],FUN=function(x){
+de2b2[grep(names(de2b2),pattern="sex",value=T)] <- lapply(de2b2[grep(names(de2b2),pattern="sex",value=T)],FUN=function(x){
     x[!(chr %in% grep(chr,pattern="chrX|chrY",value=T))]})
 
 ### drop mito genes from all tests
-de2b <- lapply(de2b,FUN=function(x){
+de2b2 <- lapply(de2b2,FUN=function(x){
     x[!(chr %in% grep(chr,pattern="chrMT",value=T))]})
 
 ### get named, SIGNED vectors of DE t-stats from each test
 deres <- list()
 i<-1
-for (i in c(1:length(de2b))){
-    setnames(de2b[[i]],"t","tstat")
-    tmp <- copy(de2b[[i]])[,.(gene_id,tstat)]
-    tmp <- merge.data.table(tmp,rddt[,.(gene_id,gene_name)],by="gene_id",all.x=T)
-    ## drop duplicated genes
-    dropg <- tmp[,.N,by="gene_id"][N>1,gene_id]
-    dropg2 <- tmp[,.N,by="gene_name"][N>1,gene_name]
-    tmp <- tmp[!(gene_id %in% dropg)&!(gene_name %in% dropg2)]
+for (i in c(1:length(de2b2))){
+    setnames(de2b2[[i]],"t","tstat")
+    tmp <- copy(de2b2[[i]])[,.(gene_id,tstat)]
     setorderv(tmp,"tstat",-1)
     ## get the stat column as a vector and give it the gene ids as names for fgsea
     ## note that since data.table (invisibly) uses list() for column data, its cleaner to just make the working table a data frame for this last bit
     tmp <- as.data.frame(tmp)
     v <- tmp$tstat
-    names(v) <- tmp$gene_name
+    names(v) <- tmp$gene_id
     deres[[length(deres)+1]] <- v
-    names(deres)[length(deres)] <- names(de2b)[i]
-    rm(v,tmp,dropg,dropg2)
+    names(deres)[length(deres)] <- names(de2b2)[i]
+    rm(v,tmp)
 }
 rm(i,de2b)
+gc(full=T)
 ```
 
 ### run fgsea-signed tests
@@ -122,6 +114,8 @@ tfgseares <- mapply(X=deres,Y=names(deres),SIMPLIFY=FALSE,FUN=function(X,Y){
        z1[,dir:="male_up"]
    } else if(length(grep(Y,pattern="E4vE2",value=T))>0){
        z1[,dir:="E4carriers_up"]
+   } else if(length(grep(Y,pattern="YRI",value=T))>0){
+       z1[,dir:="YRI_up"]
    } else {
        z1[,dir:=gsub(Y,pattern="^.*_(E....)_vs_(.*)",replacement=paste0("\\1","_up_vs_","\\2"))]
    }
@@ -146,11 +140,13 @@ tfgseares <- mapply(X=deres,Y=names(deres),SIMPLIFY=FALSE,FUN=function(X,Y){
        z2[,dir:="female_up"]
    } else if(length(grep(Y,pattern="E4vE2",value=T))>0){
        z2[,dir:="E4carriers_down"]
+   } else if(length(grep(Y,pattern="YRI",value=T))>0){
+       z2[,dir:="YRI_down"]
    } else {
        z2[,dir:=gsub(Y,pattern="^.*_(E....)_vs_(.*)",replacement=paste0("\\1","_down_vs_","\\2"))]
    }
    
-   z<-rbind(z1,z2)
+   z<- as.data.table(rbind(z1,z2))
    return(z)
 })
 names(tfgseares) <- names(deres)
@@ -163,39 +159,11 @@ rm(deres,tfgseares)
 
 ### PART 2: get UNsigned DE t stat vectors per cluster per test
 ```{r}
-de2b <- readRDS("processed-data/12_DEanalyses_removedsampsAndFinalNMseg/02b-voomLmFit_objs_and_DE_tables_LabSex_LabE2vE4_LabSingleGenos_LabYRI_noMixClusts.RDS")
-
-de2b <- lapply(de2b,FUN=function(x){x[[6]]})
-de2b2 <- list()
-i<-1
-for (i in c(1:length(de2b))){
-    j<-1
-    for (j in c(1:length(de2b[[i]]))){
-        de2b2[length(de2b2)+1] <- de2b[[i]][j]
-        names(de2b2)[length(de2b2)] <- names(de2b[[i]])[j]
-    }
-    rm(j)
-}
-rm(i)
-
-### YRI tests are fucked up don't use them
-de2b <- de2b2[grep(names(de2b2),pattern="YRI",value=T,invert=T)]
-rm(de2b2)
-
-### drop sex chr genes from sex DE tests
-de2b[grep(names(de2b),pattern="sex",value=T)] <- lapply(de2b[grep(names(de2b),pattern="sex",value=T)],FUN=function(x){
-    x[!(chr %in% grep(chr,pattern="chrX|chrY",value=T))]})
-
-### drop mito genes from all tests
-de2b <- lapply(de2b,FUN=function(x){
-    x[!(chr %in% grep(chr,pattern="chrMT",value=T))]})
-
 ### get named, UNsigned vectors of DE t-stats from each test
 deres <- list()
 i<-1
-for (i in c(1:length(de2b))){
-    setnames(de2b[[i]],"t","tstat")
-    tmp <- copy(de2b[[i]])[,.(gene_id,abs(tstat))]
+for (i in c(1:length(de2b2))){
+    tmp <- copy(de2b2[[i]])[,.(gene_id,abs(tstat))]
     tmp <- merge.data.table(tmp,rddt[,.(gene_id,gene_name)],by="gene_id",all.x=T)
     
     dropg <- tmp[,.N,by="gene_id"][N>1,gene_id]
@@ -210,7 +178,7 @@ for (i in c(1:length(de2b))){
     v <- tmp$tstat
     names(v) <- tmp$gene_name
     deres[[length(deres)+1]] <- v
-    names(deres)[length(deres)] <- names(de2b)[i]
+    names(deres)[length(deres)] <- names(de2b2)[i]
     rm(v,tmp)
 }
 rm(i,de2b)
