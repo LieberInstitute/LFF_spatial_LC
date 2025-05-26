@@ -1,7 +1,7 @@
 ---
 title: "08-Filter all TF-target GSEA results to expressed TFs"
 author: "Bernie Mulvey"
-date: "2025-05-20"
+date: "2025-05-24"
 output: html_document
 ---
 
@@ -39,8 +39,9 @@ load TFtarg GSEA result sets and the SPE (which we need for filtering on express
 degsea <- readRDS("processed-data/12_DEanalyses_removedsampsAndFinalNMseg/03bii-MulticlusterDE_OneInterxnPerModel_dropMixClusts_GSEA_TFtargs.RDS")
 ### add a cluster-only column to each result table
 degsea <- lapply(degsea,FUN=function(x){
-    x[test %in% grep(test,pattern="_Sex",value=T),anno:=gsub(test,pattern="_Sex",replacement="\\1")]
-    x[test %in% grep(test,pattern="_Sex",value=T,invert=T),anno:=gsub(test,pattern="^(.*)_E.*$",replacement="\\1")]
+    x[test %in% grep(test,pattern="_Sex",value=T),anno:=gsub(test,pattern="^(.*)_Sex",replacement="\\1")]
+    x[test %in% grep(test,pattern="_YRI",value=T),anno:=gsub(test,pattern="^(.*)_YRI",replacement="\\1")]
+    x[test %in% grep(test,pattern="_Sex",value=T,invert=T)&test %in% grep(test,pattern="_YRI",value=T,invert=T),anno:=gsub(test,pattern="^(.*)_E.*$",replacement="\\1")]
     return(x)
 })
 
@@ -48,8 +49,9 @@ degsea.unsign <- readRDS("processed-data/12_DEanalyses_removedsampsAndFinalNMseg
 names(degsea.unsign) <- paste0("unsigned_",names(degsea.unsign))
 ### add a cluster-only column to each result table
 degsea.unsign <- lapply(degsea.unsign,FUN=function(x){
-    x[test %in% grep(test,pattern="_Sex",value=T),anno:=gsub(test,pattern="_Sex",replacement="\\1")]
-    x[test %in% grep(test,pattern="_Sex",value=T,invert=T),anno:=gsub(test,pattern="^(.*)_E.*$",replacement="\\1")]
+    x[test %in% grep(test,pattern="_Sex",value=T),anno:=gsub(test,pattern="^(.*)_Sex",replacement="\\1")]
+    x[test %in% grep(test,pattern="_YRI",value=T),anno:=gsub(test,pattern="^(.*)_YRI",replacement="\\1")]
+    x[test %in% grep(test,pattern="_Sex",value=T,invert=T)&test %in% grep(test,pattern="_YRI",value=T,invert=T),anno:=gsub(test,pattern="^(.*)_E.*$",replacement="\\1")]
     return(x)
 })
 
@@ -81,9 +83,13 @@ gseas <- c(degsea,degsea.unsign,lcnmdegsea,nmfgsea,nmfgsea.filt)
 rm(degsea,degsea.unsign,lcnmdegsea,nmfgsea,nmfgsea.filt)
 ```
 
-SPE, append log counts on the fly, add cluster labels and NM cluster labels
+SPE, append log counts on the fly, add cluster labels and NM cluster labels; append FLARE ancestry estimates
 ```{r}
 lc3 <- readRDS("processed-data/06-countsOnly_noImgData_QCed_SPE_split_to_tissSections.RDS")
+
+# drop samples that were excluded from all DE analyses
+lc3 <- lc3[,!(lc3$brnum %in% paste0("Br",c(5517,5276,5712)))]
+
 lc3 <- scater::computeLibraryFactors(lc3)
 lc3 <- scater::logNormCounts(lc3)
 
@@ -103,7 +109,20 @@ louvs <- DataFrame(louvs,row.names=louvs$rn)[colnames(lc3),]
 colLabels(lc3) <- louvs$anno
 lc3$lcnm <- louvs$NMseg_subclus
 
-rm(lcnmsub,louvs,anno)
+## append YRI estimates and make categorical predominant ancestry grouping for corresponding DE analyses
+flares <- fread("raw-data/ancestryAndHaplotypes/FLARE/global_ancestry_estimates.txt")
+flares[ID=="Br6119",ID:="Br6119(re-dis)"]
+stopifnot(nrow(flares[ID %in% lc3$brnum])==30)
+
+tmpcd <- as.data.table(colData(lc3),keep.rownames=T)
+tmpcd <- merge.data.table(tmpcd,flares[,.(ID,YRI)],by.x="brnum",by.y="ID")
+stopifnot(nrow(tmpcd)==ncol(lc3))
+tmpcd[,predomAncest:=NA]
+tmpcd[,predomAncest:=ifelse(YRI<0.25,yes="CEU",no=predomAncest)]
+tmpcd[,predomAncest:=ifelse(YRI>0.75,yes="YRI",no=predomAncest)]
+colData(lc3) <- DataFrame(tmpcd,row.names=tmpcd$rn)[colnames(lc3),]
+
+rm(lcnmsub,louvs,anno,tmpcd,flares)
 ```
 
 # drop duplicated gene ids/symbols; set rownames of spe to gene symbol, since those are the identifiers we're stuck with for TF-targ sets
@@ -139,7 +158,7 @@ gseas <- lapply(gseas,FUN=function(x){
 
 # filter SPE to TFs that were tested in GSEA
 keepgenes <- unique(unlist(lapply(gseas,FUN=function(x){x$tf})))
-keepgenes <- keepgenes[keepgenes %in% rownames(lc3)|keepgenes %in% toupper(rownames(lc3))]
+keepgenes <- keepgenes[keepgenes %in% rownames(lc3)|keepgenes %in% toupper(rownames(lc3))|toupper(keepgenes) %in% rownames(lc3)|toupper(keepgenes) %in% toupper(rownames(lc3))]
 lc3 <- lc3[keepgenes,]
 
 rm(keepgenes,dropg,dropg1)
@@ -154,7 +173,7 @@ lc3.lct <- melt.data.table(lc3.lct,id.vars="rn",value.name="logcounts")
 setnames(lc3.lct,"rn","tf")
 
 ## append pertinent metadata
-subcd <- as.data.table(colData(lc3),keep.rownames=T)[,.(rn,Sex,APOE,sample_id,label,lcnm)]
+subcd <- as.data.table(colData(lc3),keep.rownames=T)[,.(rn,Sex,APOE,sample_id,label,lcnm,YRI,predomAncest)]
 subcd[APOE=="E4/ E4",APOE:="E4hom"]
 subcd[APOE=="E2/ E2",APOE:="E2hom"]
 subcd[APOE=="E3/ E4",APOE:="E4het"]
@@ -165,17 +184,21 @@ lc3.lct <- merge.data.table(lc3.lct,subcd,by.x="variable",by.y="rn")
 rm(subcd,lc3)
 gc(full=T)
 
-# make a co-list indicating which DE test (sex, APOE discrete or APOE simple) based on the corresponding metadata columns
+# make a co-list indicating which DE test (sex, APOE discrete, APOE simple, or categorized YRI) based on the corresponding metadata columns
 degroups <- c(rep(
-    c(rep("Sex",5),rep("APOEsimple",5),rep("APOE",20)),2),
-    "lcnm", # NMpos vs. neg signed
-    rep("label",16) # "" unsigned; LCnmf
+    c(rep("Sex",5),rep("APOEsimple",5),rep("APOE",20),rep("predomAncest",5)),2),
+    "lcnm","lcnm", # NMpos vs. neg signed and unsigned
+    rep("label",32) # "" unsigned; LCnmf filt (15 factors) and unfilt (17 factors)
 )
 # and another indicating which cluster column to use
-cluscol <- c(rep("label",60),"none",rep("label",16))
+cluscol <- c(rep("label",70),"none","none",rep("label",32))
+
+stopifnot(length(degroups)==length(cluscol)&length(gseas)==length(degroups))
 
 gseas.filt <- mapply(R=gseas,N=names(gseas),G=degroups,Clus=cluscol,SIMPLIFY=FALSE,FUN=function(R,N,G,Clus){
-    groupwise <- lapply(unique(lc3.lct[,get(G)]),FUN=function(S){
+    ## exclude spots not assigned anything in the given grouping (is.na(G))
+    ## for example, spots from samples that aren't at either extreme of the YRI proportion estimate and thus not assigned either CEU or YRI as predomAncest
+    groupwise <- lapply(unique(lc3.lct[!is.na(G),get(G)]),FUN=function(S){
             curdat <- lc3.lct[get(G)==S]
             
             ## filter to spots from current cluster
@@ -218,7 +241,10 @@ gseas.filt <- mapply(R=gseas,N=names(gseas),G=degroups,Clus=cluscol,SIMPLIFY=FAL
         })
     names(groupwise) <- unique(lc3.lct[,get(G)])
     
-    filtres <- copy(R[tf %in% unique(unlist(groupwise))|tf %in% toupper(unique(unlist(groupwise)))])
+    filtres <- copy(R[tf %in% unique(unlist(groupwise))|
+                          tf %in% toupper(unique(unlist(groupwise)))|
+                          toupper(tf) %in% unique(unlist(groupwise))|
+                          toupper(tf) %in% toupper(unique(unlist(groupwise)))])
     
     i<-1
     for (i in c(1:length(groupwise))){
@@ -232,7 +258,7 @@ gseas.filt <- mapply(R=gseas,N=names(gseas),G=degroups,Clus=cluscol,SIMPLIFY=FAL
 
 ### save
 ```{r}
-saveRDS(gseas.filt,"processed-data/12_DEanalyses_removedsampsAndFinalNMseg/08-LCNM_APOESexDE_LCnmf_LCnmfLct18Filt_TFtarg_GSEA_filterToClusAndDEgroupExpressed.RDS")
+saveRDS(gseas.filt,"processed-data/12_DEanalyses_removedsampsAndFinalNMseg/08-LCNM_APOESexDE_PredomAncesDE_LCnmf_LCnmfLct18Filt_TFtarg_GSEA_filterToClusAndDEgroupExpressed.RDS")
 ```
 
 ```{r}
@@ -301,7 +327,7 @@ loaded via a namespace (and not attached):
  collate  en_US.UTF-8
  ctype    en_US.UTF-8
  tz       America/Chicago
- date     2025-05-19
+ date     2025-05-24
  rstudio  2024.07.0-daily+219 Cranberry Hibiscus (desktop)
  pandoc   3.1.11 @ /Applications/RStudio.app/Contents/Resources/app/quarto/bin/tools/aarch64/ (via rmarkdown)
  quarto   1.4.555 @ /Applications/RStudio.app/Contents/Resources/app/quarto/bin/quarto

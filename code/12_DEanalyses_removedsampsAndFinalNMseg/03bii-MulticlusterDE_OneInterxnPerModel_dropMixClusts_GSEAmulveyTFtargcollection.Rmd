@@ -40,10 +40,6 @@ sets <- readRDS("raw-data/ref_data/00a-enrichrTFsets_forfgseainput_121823.RDS")
 
 # PART 1: get signed DE t stat vectors per cluster per test
 ```{r}
-## need to use gene symbols for compatibility with the TF-target sets
-lc3 <- readRDS("processed-data/06-countsOnly_noImgData_QCed_SPE_split_to_tissSections.RDS")
-rddt <- as.data.table(rowData(lc3))
-rm(lc3)
 
 de2b <- readRDS("processed-data/12_DEanalyses_removedsampsAndFinalNMseg/02b-voomLmFit_objs_and_DE_tables_LabSex_LabE2vE4_LabSingleGenos_LabAncesGrp_noMixClusts.RDS")
 
@@ -69,22 +65,27 @@ de2b2 <- lapply(de2b2,FUN=function(x){
     x[!(chr %in% grep(chr,pattern="chrMT",value=T))]})
 
 ### get named, SIGNED vectors of DE t-stats from each test
+### need to use gene symbols for compatibility with the TF-target sets
 deres <- list()
 i<-1
 for (i in c(1:length(de2b2))){
     setnames(de2b2[[i]],"t","tstat")
-    tmp <- copy(de2b2[[i]])[,.(gene_id,tstat)]
+    tmp <- copy(de2b2[[i]])[,.(gene_name,tstat)]
+    
+    dropg <- tmp[,.N,by="gene_name"][N>1,gene_name]
+    tmp <- tmp[!(gene_name %in% dropg)]
+    
     setorderv(tmp,"tstat",-1)
     ## get the stat column as a vector and give it the gene ids as names for fgsea
     ## note that since data.table (invisibly) uses list() for column data, its cleaner to just make the working table a data frame for this last bit
     tmp <- as.data.frame(tmp)
     v <- tmp$tstat
-    names(v) <- tmp$gene_id
+    names(v) <- tmp$gene_name
     deres[[length(deres)+1]] <- v
     names(deres)[length(deres)] <- names(de2b2)[i]
     rm(v,tmp)
 }
-rm(i,de2b)
+rm(i,de2b,dropg)
 gc(full=T)
 ```
 
@@ -163,12 +164,10 @@ rm(deres,tfgseares)
 deres <- list()
 i<-1
 for (i in c(1:length(de2b2))){
-    tmp <- copy(de2b2[[i]])[,.(gene_id,abs(tstat))]
-    tmp <- merge.data.table(tmp,rddt[,.(gene_id,gene_name)],by="gene_id",all.x=T)
-    
-    dropg <- tmp[,.N,by="gene_id"][N>1,gene_id]
-    dropg2 <- tmp[,.N,by="gene_name"][N>1,gene_name]
-    tmp <- tmp[!(gene_id %in% dropg)&!(gene_name %in% dropg2)]
+    tmp <- copy(de2b2[[i]])[,.(gene_name,abs(tstat))]
+
+    dropgg <- tmp[,.N,by="gene_name"][N>1,gene_name]
+    tmp <- tmp[!(gene_name %in% dropg)]
     
     setnames(tmp,2,"tstat")
     setorderv(tmp,"tstat",-1)
@@ -181,7 +180,7 @@ for (i in c(1:length(de2b2))){
     names(deres)[length(deres)] <- names(de2b2)[i]
     rm(v,tmp)
 }
-rm(i,de2b)
+rm(i)
 ```
 
 run UNSIGNED fgsea (genes that tend to be affected, regardless of direction)
