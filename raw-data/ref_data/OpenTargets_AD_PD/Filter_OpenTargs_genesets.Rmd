@@ -1,0 +1,47 @@
+---
+title: "Filter_OT_genesets"
+author: "Bernie Mulvey"
+date: "2025-05-27"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(fig.height = 10,fig.width = 7,include = FALSE)
+#### sets tab autocompletion for directories to begin from the directory containing the .Rproj session, instead of the script's directory if different
+knitr::opts_knit$set(root.dir = here::here())
+
+library(data.table)
+```
+
+see raw-data/ref_data/opentargets blah blah/readme and https://github.com/LieberInstitute/LFF_spatial_ERC/blob/devel/code/00_project_prep/07_OpenTargets_AD_data.R for details 
+```{r}
+otad <- fread("raw-data/ref_data/OpenTargets_AD_PD/OT-AD_MONDO_0004975-associated-targets-5_24_2025-v25_03.tsv")
+otpd <- fread("raw-data/ref_data/OpenTargets_AD_PD/OT-PD_MONDO_0005180-associated-targets-5_24_2025-v0_0.tsv")
+
+select_gene_sets <- c("symbol","gwasCredibleSets","geneBurden", "eva", "genomicsEngland", "gene2Phenotype","uniprotLiterature","uniprotVariants","orphanet","clingen")
+otad <- otad[,..select_gene_sets]
+otpd <- otpd[,..select_gene_sets]
+
+## keep genes with at least 1 forms of evidence (i.e. not "No data" in ≥1 columns nonsymbol columns)
+dropad <- rowSums(otad[,c(2:10),with=F]=="No data")==9
+otad1 <- otad[dropad==FALSE,]
+# 779 genes
+
+droppd <- rowSums(otpd[,c(2:10),with=F]=="No data")==9
+otpd1 <- otpd[droppd==FALSE,]
+# 295 genes
+
+## Also keep genes with at least 2 forms of evidence (i.e. not "No data" in ≥2 columns nonsymbol columns)
+dropad <- rowSums(otad[,c(2:10),with=F]=="No data")>=8
+otad2 <- otad[dropad==FALSE,]
+# 15 genes
+
+droppd <- rowSums(otpd[,c(2:10),with=F]=="No data")>=8
+otpd2 <- otpd[droppd==FALSE,]
+# 25 genes
+
+outlist <- list(otad1,otpd1,otad2,otpd2)
+names(outlist) <- c(paste0("OT_1evidencetype_",c("AD","PD")),paste0("OT_2evidencetype_",c("AD","PD")))
+
+saveRDS(outlist,"raw-data/ref_data/OpenTargets_AD_PD/OpenTargs_AD_PD_min1_and_min2_evidencetype_genesets.RDS")
+```

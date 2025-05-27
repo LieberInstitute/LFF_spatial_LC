@@ -1,5 +1,5 @@
 ---
-title: "01a-Make_Allcluster_DGE_withMinSpots_reqmnt_edgeRdefaultLoExpFilt"
+title: "01a-Make_Allcluster_DGE_withMinSpots_reqmnt"
 author: "Bernie Mulvey"
 date: "2025-05-12"
 output: html_document
@@ -185,7 +185,7 @@ gc(full=T)
 ```
 
 
-## make the single DGEList; added 5/12/25-filter using edgeR default, with grouping by label.
+## make the single DGEList; for now, we will filter on a model-wise basis in downstream scripts.
 ```{r}
 ## drop genes with 0 counts
 keep <- rowSums(megamat)>0
@@ -196,13 +196,7 @@ rm(tmprd)
 
 dgel <- DGEList(counts=megamat,samples=megacd,genes=as.data.frame(gdat))
 
-### for now, we will filter on a model-wise basis in downstream scripts.
-# des <- model.matrix(~0+label*Sex+label*APOE+label*YRI+Age,data=dgel$samples)
-# keep <- filterByExpr.DGEList(dgel,design = des)
-
-## recalc lib factors after dropping low-expressed genes
-# dgel <- dgel[keep,,keep.lib.sizes=FALSE]
-# dgel <- calcNormFactors(dgel,method = "TMM")
+# alternative: filter with grouping by label rather than a specific design (not shown)
 ```
 
 ## save

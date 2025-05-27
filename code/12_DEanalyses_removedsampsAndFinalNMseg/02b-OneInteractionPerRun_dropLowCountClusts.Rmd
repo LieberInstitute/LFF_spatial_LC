@@ -443,6 +443,7 @@ gc(full=T)
 ```
 
 ## load the tmp RDSes
+## not included in concatenation because not run (properly, yet): YRI as continuous variable (model 5/test 8)
 ```{r}
 sexlabel <- readRDS("processed-data/12_DEanalyses_removedsampsAndFinalNMseg/02bTMP_keeplist_sexlabel_noMixClusts.RDS")
 E2E4label <- readRDS("processed-data/12_DEanalyses_removedsampsAndFinalNMseg/02bTMP_keeplist_E2E4label_noMixClusts.RDS")
