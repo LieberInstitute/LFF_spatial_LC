@@ -1,0 +1,50 @@
+---
+title: "10-Unique_DEGs_per_cluster"
+author: "Bernie Mulvey"
+date: "2025-05-31"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(fig.height = 10,fig.width = 7,include = FALSE)
+#### sets tab autocompletion for directories to begin from the directory containing the .Rproj session, instead of the script's directory if different
+knitr::opts_knit$set(root.dir = here::here())
+
+library(data.table)
+library(edgeR)
+library(limma)
+# library(SpatialFeatureExperiment)
+
+## rstudio GUI tweaks
+require(colorout)
+ColorOut()
+options("styler.addins_style_transformer" = "biocthis::bioc_style()")
+##
+
+## last of all, unload the base package datasets, whose data keep getting in the way of autocompletions (e.g., Theoph is priortized over TRUE)
+unloadNamespace("datasets")
+```
+
+```{r}
+deres <- readRDS("processed-data/12_DEanalyses_removedsampsAndFinalNMseg/02b-voomLmFit_objs_and_DE_tables_LabSex_LabE2vE4_LabSingleGenos_LabAncesGrp_noMixClusts.RDS")
+
+## for each comparison, get the genes unique to one cluster
+deres <- lapply(deres,function(x){x[[6]]})
+
+### split the allele comparisons into separate groups for this
+deres$E2hom_vs_anyE4 <- deres[[3]][seq(1,20,by=4)]
+deres$E2het_vs_anyE4 <- deres[[3]][seq(2,20,by=4)]
+deres$E4hom_vs_anyE2 <- deres[[3]][seq(3,20,by=4)]
+deres$E4het_vs_anyE2 <- deres[[3]][seq(4,20,by=4)]
+
+deres <- deres[c(1,2,4:8)]
+
+uniqs <- lapply(deres,function(x){
+    y <- rbindlist(x,idcol="clustertest")
+    singg <- y[adj.P.Val<0.05,.N,by="gene_name"][N==1,gene_name]
+    z <- y[gene_name %in% singg&adj.P.Val<0.05]
+    return(z)
+})
+
+saveRDS(uniqs,"processed-data/12_DEanalyses_removedsampsAndFinalNMseg/10-LabSex_LabE4vE2_LabSingleGeno_LabPredomAnces_SingleClusterDEGswithinTest.RDS")
+```

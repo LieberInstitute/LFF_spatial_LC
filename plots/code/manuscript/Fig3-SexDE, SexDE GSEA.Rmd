@@ -62,27 +62,32 @@ Fig 3A/B/C: Volcanos (ACHE_SERT_LC_WM, LC, Astro)
 ## load cluster palette
 pal <- readRDS("plots/cluster_palette_narrowluminance_v2.RDS")
 pal <- pal[c("LC","*ACHE*, *SERT*, LC, Oligo Mixed","Astro")]
+names(pal)[2] <- "*ACHE*, *SERT*, LC,<br>Oligo Mixed"
 
 detabs <- readRDS("processed-data/12_DEanalyses_removedsampsAndFinalNMseg/02b-voomLmFit_objs_and_DE_tables_LabSex_LabE2vE4_LabSingleGenos_LabAncesGrp_noMixClusts.RDS")
 detabs <- detabs$SexByLabel$sexlabel_detabs
 
 names(detabs) <- gsub(names(detabs),pattern="_Sex",replacement="")
 names(detabs) <- gsub(names(detabs),pattern="_",replacement=" ")
-names(detabs)[1] <- "*ACHE*, *SERT*, LC, Oligo Mixed"
+names(detabs)[1] <- "*ACHE*, *SERT*, LC,<br>Oligo Mixed"
+
+## identify genes to be labeled in plots
+# LC TMC6 APOLD1 CHGB PRCP GSTT2B
+# astro HSPB8 GASK1B NTSR2 DNAJB1
+# achesertlc BAG3 PHYH CPNE6 LRRTM3
+### LRRTM3: ncbi synopsis is brief and on point: "Acts upstream of or within positive regulation of amyloid-beta formation."
 
 detabs$LC[,label:=""]
-detabs$LC[gene_name %in% c("DUSP1", "CLDN5", "TCF20", "APOLD1", "NR4A1", "TYROBP","APOC2"),label:=gene_name]
+detabs$LC[gene_name %in% c("TMC6", "CHGB", "TCF20", "APOLD1", "PRCP", "GSTT2B"),label:=gene_name]
 
-detabs$`*ACHE*, *SERT*, LC, Oligo Mixed`[,label:=""]
-detabs$`*ACHE*, *SERT*, LC, Oligo Mixed`[gene_name %in% c("GAD1", "SLC32A1","HSPA5","PSD"," SSTR2","HSF1"),label:=gene_name]
+detabs$`*ACHE*, *SERT*, LC,<br>Oligo Mixed`[,label:=""]
+detabs$`*ACHE*, *SERT*, LC,<br>Oligo Mixed`[gene_name %in% c("BAG3","PHYH","CPNE6","LRRTM3"),label:=gene_name]
 
 detabs$Astro[,label:=""]
-detabs$Astro[gene_name %in% c("ATN1", "MLC1", "MCL1", "FGFR3", "DNAJC12", "HSPA1B", "OLR1"),label:=gene_name]
+detabs$Astro[gene_name %in% c("HSPB8", "GASK1B", "NTSR2", "DNAJB1"),label:=gene_name]
 
-pltdetabs <- detabs[c("LC","Astro","*ACHE*, *SERT*, LC, Oligo Mixed")]
-fn <- c("LC","Astro","ACHE_SERT_LC_Oligo")
-
-
+## make a giant table of the results for all 3 clusters for legend purposes
+pltdetabs <- detabs[c("LC","Astro","*ACHE*, *SERT*, LC,<br>Oligo Mixed")]
 pltdetabs <- mapply(x=pltdetabs,n=names(pltdetabs),SIMPLIFY=FALSE,function(x,n){
     x[,clust:=n]
     return(x)
@@ -90,19 +95,29 @@ pltdetabs <- mapply(x=pltdetabs,n=names(pltdetabs),SIMPLIFY=FALSE,function(x,n){
 
 pltdetabs <- rbindlist(pltdetabs)
 
-
 ## get a legend
 legplt <- ggplot(pltdetabs,aes(x=P.Value,y=logFC,col=clust))+
-    geom_point()
+    geom_point()+
+    labs(col="Visium<br>Cluster")+
+    theme(legend.text=element_markdown(size=7,color="#000000"),
+          legend.box.background=element_blank(),
+          legend.title=element_markdown(size=8,color = "#000000"),
+          legend.key.width=unit(0.083,"in"))
 
 leg.plt <- extract_legend(legplt)
 dev.off()
+####
 
+### make plots
+fn <- c("LC","ACHE_SERT_LC_Oligo","Astro")
 
-mapply(x=names(pal),n=fn,SIMPLIFY=FALSE,FUN=function(x,n,clus){
+i<-1
+for (i in c(1:3)){
+    x <- names(pal)[i]
+    n <- fn[i]
     
-    p <- ggplot(x[!(chr %in% c("chrX","chrY","chrMT"))&clust==x],aes(x=logFC,y=-log10(P.Value),col=clust)) +
-        geom_point(size=1.2,stroke=0,alpha=0.7) +
+    p <- ggplot(pltdetabs[!(chr %in% c("chrX","chrY","chrMT"))&clust==x],aes(x=logFC,y=-log10(P.Value),col=clust)) +
+        geom_point(size=0.9,stroke=0,alpha=0.7) +
         labs(x="log2FC (+: Male-up)",y="-log10 P-value") +
         geom_hline(yintercept = -log10(0.05), linetype="dashed", color="red",linewidth=0.5) +
         geom_text_repel(seed = 23942,aes(y = -log10(P.Value),
@@ -123,12 +138,12 @@ mapply(x=names(pal),n=fn,SIMPLIFY=FALSE,FUN=function(x,n,clus){
     
     if(n=="ACHE_SERT_LC_Oligo"){
         p <- p+theme(legend.text=element_markdown(size=7))
-        w<-3.5
+        w<-3
         
         p<-rasterize(p,layers="points",dpi=450,dev="cairo_png")
     
         pdf(paste0("plots/manuscript/Fig3/3ABC-SexDE_Volcano_",n,".pdf"),width=w,height=2,onefile=FALSE)
-        print(p)
+        do.call("grid.arrange",list(p,leg.plt,ncol=2,widths=c(2,1)))
         dev.off()
         
     } else {
@@ -140,7 +155,7 @@ mapply(x=names(pal),n=fn,SIMPLIFY=FALSE,FUN=function(x,n,clus){
         print(p)
         dev.off()
     }
-})
+}
 ```
 
 3D: GSEA: msigdb
