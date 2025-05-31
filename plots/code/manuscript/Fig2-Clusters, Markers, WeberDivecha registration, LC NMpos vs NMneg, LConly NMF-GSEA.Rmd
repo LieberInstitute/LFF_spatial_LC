@@ -66,7 +66,13 @@ louvs <- merge.data.table(louvs,splitcd,by.x="rn",by.y="rowname") # split sectio
 lcnm <- fread("processed-data/10_subclustering/04-LCsubclus-by-NM_otherclusts-by-LCorLCNMadjacency.txt")
 lcnm <- lcnm[,.(rn,NMseg_subclus)]
 
-louvs <- merge.data.table(louvs,lcnm,by="rn",all.x=T) 
+louvs <- merge.data.table(louvs,lcnm,by="rn",all.x=T)
+louvs$anno[louvs$anno=="Oligo_Complex"] <- "Oligo and Other Types Mixed"
+louvs$anno[louvs$anno=="Astro_Oligo"] <- "Astro-Oligo Mixed"
+louvs$anno[louvs$anno=="Oligo_Astro"] <- "Oligo-Astro Mixed"
+louvs$anno[louvs$anno=="ACHE_SERT_LC_WM"] <- "*ACHE*, *SERT*, LC, Oligo Mixed"
+louvs$anno[louvs$anno=="ACHE_SERT_Npep"] <- "*ACHE*, *SERT*, Neuropeptide Mixed"
+
 
 louvs <- DataFrame(louvs,row.names=louvs$original_spot_id)[colnames(lc2),]
 stopifnot(nrow(louvs)==ncol(lc2))
@@ -81,6 +87,16 @@ gc(full=T)
 ## load cluster 9-color palette
 ```{r}
 pal <- readRDS("plots/cluster_palette_narrowluminance_v2.RDS")
+
+names(pal)
+
+names(pal)[9] <- "Oligo and Other Types Mixed"
+names(pal)[5] <- "Astro-Oligo Mixed"
+names(pal)[8] <- "Oligo-Astro Mixed"
+names(pal)[2] <- "*ACHE*, *SERT*, LC, Oligo Mixed"
+names(pal)[3] <- "*ACHE*, *SERT*, Neuropeptide Mixed"
+
+stopifnot(all(names(pal) %in% unique(louvs$anno)))
 ```
 
 ### custom function to extrct legend from one plot to extend to all ###
@@ -117,7 +133,6 @@ samps <- c("V13M06-331_A1","V13M06-333_B1","V13M06-404_B1","V13M06-403_D1")
 plts <- lapply(samps,function(s){
     p <- vis_clus(lc2,sampleid=s,spatial = T,na_color = NA,auto_crop = T,point_size = 0.6,alpha=0.65,clustervar = "label",colors = pal,image_id = "lowres")+
         guides(color="none",fill="none")+
-    #ggtitle("NPY")+
         theme(plot.title = element_text(size = 9, hjust = 0.5,margin=margin(0,0,0,0)),
           panel.border = element_blank(),
           plot.margin = margin(-0.1,0.025,-0.475,-0.45,unit="in"))
@@ -331,7 +346,7 @@ ggplot(pltdat,aes(x=LFF_clus,y=WebDiv_label,fill=value))+
     )
 dev.off()
 
-rm(pltdat,)
+rm(pltdat)
 ```
 
 Fig 2D: Show one of the previous samples, now with only LC NM+ and - labeled. V13M06-404_B1 looks like a good sample for illustrating
