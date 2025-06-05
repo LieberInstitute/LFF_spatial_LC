@@ -1,0 +1,204 @@
+---
+title: "Fig4-APOE DE and GSEA"
+author: "Bernie Mulvey"
+date: "2025-06-03"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(fig.height = 10,fig.width = 7,include = FALSE)
+#### sets tab autocompletion for directories to begin from the directory containing the .Rproj session, instead of the script's directory if different
+knitr::opts_knit$set(root.dir = here::here())
+
+library(data.table)
+library(ggplot2)
+library(ggtext)
+library(gridExtra)
+library(ggrastr)
+library(ggrepel)
+library(SpatialExperiment)
+library(escheR)
+library(scater)
+library(jaffelab) # cleaningY
+library(SpatialExperiment)
+
+## rstudio GUI tweaks
+require(colorout)
+ColorOut()
+options("styler.addins_style_transformer" = "biocthis::bioc_style()")
+##
+
+## enable forked parallel processing with BiocParallel::multicoreParam, future::, etc. seemed to need this a couple times, but otherwise havent so its here as a preventative measure. part of this is adding the line 
+# OBJC_DISABLE_INITIALIZE_FORK_SAFETY=YES
+# to Renviron.site. see e.g. top response on https://stackoverflow.com/questions/73638290/python-on-mac-is-it-safe-to-set-objc-disable-initialize-fork-safety-yes-globall 
+library(parallelly)
+options(parallelly.supportsMulticore.disableOn="")
+options(parallelly.fork.enable=TRUE)
+library(BiocParallel)
+options(bphost="localhost")
+
+
+## ggplot defaults
+theme_set(theme_bw()+theme(axis.text.x = element_text(size = 8,color = "#000000"), axis.title.x = element_text(size = 9,color = "#000000"), axis.text.y = element_text(size = 8,color = "#000000"), axis.title.y = element_text(size =9,color = "#000000"), plot.title = element_markdown(size = 10,hjust=0.5,color = "#000000"), strip.text = element_text(size=11), legend.text = element_text(size=7,color = "#000000"), legend.title = element_text(size=8,hjust=0.5,color = "#000000"),plot.title.position="plot",axis.ticks = element_line(linewidth=0.5),panel.grid.major = element_line(linewidth=0.5),panel.grid.minor=element_line(linewidth=0.25)))
+
+## last of all, unload the base package datasets, whose data keep getting in the way of autocompletions (e.g., Theoph is priortized over TRUE)
+unloadNamespace("datasets")
+```
+
+
+### helper function to extract a legend and pipe back to a diff plot: from https://statisticsglobe.com/add-common-legend-to-combined-ggplot2-plots-in-r/#example-2-add-shared-legend-to-ggplot2-plots-using-gridextra-package 
+```{r}
+extract_legend <- function(my_ggp) {
+    step1 <- ggplot_gtable(ggplot_build(my_ggp))
+    step2 <- which(sapply(step1$grobs, function(x) x$name) == "guide-box")
+    step3 <- step1$grobs[[step2]]
+    return(step3)
+}
+```
+
+
+Fig 4A/B Volcanos (LC, Astro E4vE2)
+```{r}
+## load cluster palette
+pal <- readRDS("plots/cluster_palette_narrowluminance_v2.RDS")
+pal <- pal[c("LC","Astro")]
+
+detabs <- readRDS("processed-data/12_DEanalyses_removedsampsAndFinalNMseg/02b-voomLmFit_objs_and_DE_tables_LabSex_LabE2vE4_LabSingleGenos_LabAncesGrp_noMixClusts.RDS")
+ab4 <- detabs$E2E4ByLabel$E2E4label_detabs
+ab4 <- ab4[c(3,4)] # astro and LC
+
+names(ab4) <- gsub(names(ab4),pattern="_E4vE2",replacement="")
+names(ab4) <- gsub(names(ab4),pattern="_",replacement=" ")
+
+## identify genes to be labeled in plots
+# LC BBOX1 RND2 WWC1 SORCS1
+# astro HSPA1B, HSPA1A TPPP3 BRSK2
+
+ab4$LC[,label:=""]
+ab4$LC[gene_name %in% c("BBOX1", "RND2", "WWC1", "SORCS1"),label:=gene_name]
+
+ab4$Astro[,label:=""]
+ab4$Astro[gene_name %in% c("HSPA1B", "HSPA1A", "TPPP3", "BRSK2"),label:=gene_name]
+
+## make a giant table of the results for all 3 clusters for legend purposes
+
+pltdetabs <- rbindlist(ab4,idcol = "clust")
+
+## get a legend
+legplt <- ggplot(pltdetabs,aes(x=P.Value,y=logFC,col=clust))+
+    geom_point()+
+    labs(col="Visium<br>Cluster")+
+    theme(legend.text=element_markdown(size=7,color="#000000"),
+          legend.box.background=element_blank(),
+          legend.title=element_markdown(size=8,color = "#000000"),
+          legend.key.width=unit(0.083,"in"))
+
+leg.plt <- extract_legend(legplt)
+dev.off()
+####
+
+### make plots
+fn <- c("LC","Astro")
+
+i<-1
+for (i in c(1:2)){
+    x <- names(pal)[i]
+    n <- fn[i]
+    
+    p <- ggplot(pltdetabs[!(chr %in% c("chrMT"))&clust==x],aes(x=logFC,y=-log10(P.Value),col=clust)) +
+        geom_point(size=0.9,stroke=0,alpha=0.7) +
+        labs(x="log2FC (+: APOE4-up)",y="-log10 P-value") +
+        geom_hline(yintercept = -log10(0.05), linetype="dashed", color="red",linewidth=0.5) +
+        geom_text_repel(seed = 23942,aes(y = -log10(P.Value),
+                x = logFC,
+                label = ifelse(is.na(label), "", label)),
+            min.segment.length = 0,
+            size = 2,
+            show.legend=FALSE,
+            max.iter=100000,
+            max.overlaps=10000,
+            max.time=3,
+            segment.size=0.4,
+            force_pull = 0.65,
+            fontface = "italic")+
+        scale_color_manual(values=pal)+
+        guides(color="none")
+
+    
+    if(n=="Astro"){
+        p <- p+theme(legend.text=element_markdown(size=7))
+        w<-3
+        
+        p<-rasterize(p,layers="points",dpi=450,dev="cairo_png")
+    
+        pdf(paste0("plots/manuscript/Fig4/Fig4AB-AllE4vsAllE2_Volcano_",n,".pdf"),width=w,height=2,onefile=FALSE)
+        do.call("grid.arrange",list(p,leg.plt,ncol=2,widths=c(3,1)))
+        dev.off()
+        
+    } else {
+        w <- 2
+        
+        p<-rasterize(p,layers="points",dpi=450,dev="cairo_png")
+    
+        pdf(paste0("plots/manuscript/Fig4/Fig4AB-AllE4vsAllE2_Volcano_",n,".pdf"),width=w,height=2,onefile=FALSE)
+        print(p)
+        dev.off()
+    }
+}
+```
+
+3C: GSEA: msigdb
+```{r}
+msigs <- readRDS("processed-data/12_DEanalyses_removedsampsAndFinalNMseg/03bi-MulticlusterDE_OneInterxnPerModel_dropMixClusts_GSEAmsigdb.RDS")
+
+msiglc <- msigs$LC_E4vE2[pathway %in% c("GOBP_ANTEROGRADE_AXONAL_TRANSPORT",
+"GOCC_ENDOPEPTIDASE_COMPLEX",
+"REACTOME_CROSS_PRESENTATION_OF_SOLUBLE_EXOGENOUS_ANTIGENS_ENDOSOMES",
+"GOCC_PROTEASOME_COMPLEX",
+"WP_PROTEASOME_DEGRADATION",
+"REACTOME_UCH_PROTEINASES",
+"REACTOME_THE_ROLE_OF_GTSE1_IN_G2_M_PROGRESSION_AFTER_G2_CHECKPOINT",
+"REACTOME_G1_S_DNA_DAMAGE_CHECKPOINTS",
+"LEIN_ASTROCYTE_MARKERS",
+"GOCC_ASTROCYTE_PROJECTION",
+"GOBP_ACIDIC_AMINO_ACID_TRANSPORT",
+"REACTOME_BINDING_AND_UPTAKE_OF_LIGANDS_BY_SCAVENGER_RECEPTORS",
+"GOBP_NEURON_FATE_COMMITMENT")]
+
+## there's an entry per direction here so get the significant ones
+msiglc <- msiglc[padj<0.05]
+
+msiglc[pathway=="GOBP_ANTEROGRADE_AXONAL_TRANSPORT",pathway:="Anterograde axonal\nTransport"]
+msiglc[pathway=="GOCC_ENDOPEPTIDASE_COMPLEX",pathway:="Endopeptidase Complex"]
+msiglc[pathway=="REACTOME_CROSS_PRESENTATION_OF_SOLUBLE_EXOGENOUS_ANTIGENS_ENDOSOMES",pathway:="Cross Presentation of\nSoluble Exogenous Antigens\nEndosomes"]
+msiglc[pathway=="GOCC_PROTEASOME_COMPLEX",pathway:="Proteasome Complex"]
+msiglc[pathway=="WP_PROTEASOME_DEGRADATION",pathway:="Proteasome Degradation"]
+msiglc[pathway=="REACTOME_UCH_PROTEINASES",pathway:="UCH Proteinases"]
+msiglc[pathway=="REACTOME_THE_ROLE_OF_GTSE1_IN_G2_M_PROGRESSION_AFTER_G2_CHECKPOINT",pathway:="GTSE1 in G2-M\nProgression after G2\nCheckpoint"]
+msiglc[pathway=="REACTOME_G1_S_DNA_DAMAGE_CHECKPOINTS",pathway:="G1/S DNA Damage\nCheckpoints"]
+msiglc[pathway=="LEIN_ASTROCYTE_MARKERS",pathway:="Lein Astrocyte\nMarkers"]
+msiglc[pathway=="GOCC_ASTROCYTE_PROJECTION",pathway:="Astrocyte Projection"]
+msiglc[pathway=="GOBP_ACIDIC_AMINO_ACID_TRANSPORT",pathway:="Acidic Amino Acid\nTransport"]
+msiglc[pathway=="REACTOME_BINDING_AND_UPTAKE_OF_LIGANDS_BY_SCAVENGER_RECEPTORS",pathway:="Ligand Uptake by\nScavenger Receptors"]
+msiglc[pathway=="GOBP_NEURON_FATE_COMMITMENT",pathway:="Neuron Fate\nCommitment"]
+
+pdf("plots/manuscript/Fig4/4C-LC_allE4vsAllE2_msigdbGSEA.pdf",height=4,width=3.75)
+ggplot(msiglc,aes(y=pathway,x=-log10(pval),color=NES,size=abs(NES)))+
+    geom_point()+
+    scale_color_gradient2(low="red",high="blue")+
+    geom_vline(xintercept = -log10(0.05), linetype="dashed", color="black",linewidth=0.5) +
+    scale_x_continuous(breaks=seq(0,15,3),expand=c(0,3)) +
+    #scale_y_discrete(expand = c(0,0)) +
+    labs(x="-log10(p-value)",y="Msigdb Term",color="NES (+: E4-Up\nEnriched)")+
+    theme(axis.text.x=element_text(hjust=1,size=7,colour = "#000000"),
+          axis.text.y=element_text(size=7,colour = "#000000"),
+          axis.title.x=element_text(size=8,colour = "#000000"),
+          axis.title.y=element_text(size=8,colour = "#000000", margin=margin(0,0,0,-0.02,unit="in")),
+          legend.title=element_text(size=8,hjust=0.5,colour = "#000000"),
+          legend.text=element_text(size=7,colour = "#000000"),
+          legend.background=element_blank(),
+          legend.margin=margin(0,-0.08,0,-0.1,unit="in"))+
+    guides(size="none")
+dev.off()
+```
+
+remainder tbd

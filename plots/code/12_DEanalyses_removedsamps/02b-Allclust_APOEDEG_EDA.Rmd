@@ -1,0 +1,184 @@
+---
+title: "02b-Allclust_APOEDEG_EDA"
+author: "Bernie Mulvey"
+date: "2025-05-24"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(fig.height = 10,fig.width = 7,include = FALSE)
+#### sets tab autocompletion for directories to begin from the directory containing the .Rproj session, instead of the script's directory if different
+knitr::opts_knit$set(root.dir = here::here())
+
+library(data.table)
+library(ggplot2)
+library(ggtext)
+library(gridExtra)
+library(SpatialExperiment)
+# library(SpatialFeatureExperiment)
+
+## rstudio GUI tweaks
+require(colorout)
+ColorOut()
+options("styler.addins_style_transformer" = "biocthis::bioc_style()")
+##
+
+## enable forked parallel processing with BiocParallel::multicoreParam, future::, etc. seemed to need this a couple times, but otherwise havent so its here as a preventative measure. part of this is adding the line 
+# OBJC_DISABLE_INITIALIZE_FORK_SAFETY=YES
+# to Renviron.site. see e.g. top response on https://stackoverflow.com/questions/73638290/python-on-mac-is-it-safe-to-set-objc-disable-initialize-fork-safety-yes-globall 
+library(parallelly)
+options(parallelly.supportsMulticore.disableOn="")
+options(parallelly.fork.enable=TRUE)
+library(BiocParallel)
+options(bphost="localhost")
+
+
+## ggplot defaults
+theme_set(theme_bw()+theme(axis.text.x = element_text(size = 9), axis.title.x = element_text(size = 8), axis.text.y = element_text(size = 8), axis.title.y = element_text(size =9), plot.title = element_markdown(size = 11,hjust=0.5), strip.text = element_text(size=11), legend.text = element_text(size=8), legend.title = element_text(size=9,hjust=0.5),plot.title.position="plot"))
+
+## last of all, unload the base package datasets, whose data keep getting in the way of autocompletions (e.g., Theoph is priortized over TRUE)
+unloadNamespace("datasets")
+```
+
+```{r}
+detabs <- readRDS("processed-data/12_DEanalyses_removedsampsAndFinalNMseg/02b-voomLmFit_objs_and_DE_tables_LabSex_LabE2vE4_LabSingleGenos_LabAncesGrp_noMixClusts.RDS")
+
+uniquede <- readRDS("processed-data/12_DEanalyses_removedsampsAndFinalNMseg/10-LabSex_LabE4vE2_LabSingleGeno_LabPredomAnces_SingleClusterDEGswithinTest.RDS")
+
+e4e2 <- detabs$E2E4ByLabel$E2E4label_detabs
+
+e4home2 <- grep(names(detabs$ApoAllelesByLabel$ApoAllelesLabel_detabs),pattern="E4hom_vs",value=T)
+e4hete2 <- grep(names(detabs$ApoAllelesByLabel$ApoAllelesLabel_detabs),pattern="E4het_vs",value=T)
+e2home4 <- grep(names(detabs$ApoAllelesByLabel$ApoAllelesLabel_detabs),pattern="E2hom_vs",value=T)
+e2hete4 <- grep(names(detabs$ApoAllelesByLabel$ApoAllelesLabel_detabs),pattern="E2het_vs",value=T)
+
+e4home2 <- detabs$ApoAllelesByLabel$ApoAllelesLabel_detabs[e4home2]
+e4hete2 <- detabs$ApoAllelesByLabel$ApoAllelesLabel_detabs[e4hete2]
+e2home4 <- detabs$ApoAllelesByLabel$ApoAllelesLabel_detabs[e2home4]
+e2hete4 <- detabs$ApoAllelesByLabel$ApoAllelesLabel_detabs[e2hete4]
+```
+
+Subset to cluster-unique DEGs within tests first
+```{r}
+filttabs <- list(E2E4ByLabel=list(),
+                 E4hom_vs_anyE2=list(),
+                 E4het_vs_anyE2=list(),
+                 E2hom_vs_anyE4=list(),
+                 E2het_vs_anyE4=list())
+i<-1
+for (i in c(1:5)){
+    filttabs[[1]][[i]] <- e4e2[[i]][gene_id %in% uniquede$E2E4ByLabel$gene_id]
+    filttabs[[2]][[i]] <- e4home2[[i]][gene_id %in% uniquede$E4hom_vs_anyE2$gene_id]
+    filttabs[[3]][[i]] <- e4hete2[[i]][gene_id %in% uniquede$E4het_vs_anyE2$gene_id]
+    filttabs[[4]][[i]] <- e2home4[[i]][gene_id %in% uniquede$E2hom_vs_anyE4$gene_id]
+    filttabs[[5]][[i]] <- e2hete4[[i]][gene_id %in% uniquede$E2het_vs_anyE4$gene_id]
+    
+    names(filttabs[[1]])[i] <- names(e4e2)[i]
+    names(filttabs[[2]])[i] <- names(e4home2)[i]
+    names(filttabs[[3]])[i] <- names(e4hete2)[i]
+    names(filttabs[[4]])[i] <- names(e2home4)[i]
+    names(filttabs[[5]])[i] <- names(e2hete4)[i]
+}
+rm(i,uniquede)
+```
+
+E4vE2 LC: AQP4, FGFR3;
+RND2: "This gene encodes a member of the Rho GTPase family, whose members play a key role in the regulation of actin cytoskeleton organization in response to extracellular growth factors. This particular family member has been implicated in the regulation of neuronal morphology and endosomal trafficking." -ncbi
+BBOX1: "This gene encodes gamma butyrobetaine hydroxylase which catalyzes the formation of L-carnitine from gamma-butyrobetaine, the last step in the L-carnitine biosynthetic pathway. Carnitine is essential for the transport of activated fatty acids across the mitochondrial membrane during mitochondrial beta-oxidation." - ncbi
+
+E4vE2 astro: HSPA1B, HSPA1A
+TPPP3, "Involved in decidualization and microtubule bundle formation. Located in microtubule bundle and perinuclear region of cytoplasm" -ncbi
+BRSK2 "acts as a key regulator of polarization of cortical neurons, probably by mediating phosphorylation of microtubule-associated proteins such as MAPT/TAU at 'Thr-529' and 'Ser-579'."
+
+## for allelewise tests, look for dose fx: E4
+```{r}
+lce4home4het <- e4home2$LC_E4hom_vs_anyE2[gene_id %in% e4hete2$LC_E4het_vs_anyE2[adj.P.Val<0.1,gene_id]&adj.P.Val<0.1,gene_id]
+
+lce4het <- e4hete2$LC_E4het_vs_anyE2[gene_id %in% lce4home4het & adj.P.Val<0.1,.(gene_id,gene_name,logFC,adj.P.Val)]
+setnames(lce4het,c(3,4),c("E4het_lfc","E4het_fdr"))
+
+lce4hom <- e4home2$LC_E4hom_vs_anyE2[gene_id %in% lce4home4het & adj.P.Val<0.1,.(gene_id,gene_name,logFC,adj.P.Val)]
+setnames(lce4hom,c(3,4),c("E4hom_lfc","E4hom_fdr"))
+
+lce4 <- merge.data.table(lce4het,lce4hom,by=c("gene_id","gene_name"))
+rm(lce4hom,lce4het,lce4home4het,lce4)
+
+####
+aste4home4het <- e4hete2$Astro_E4het_vs_anyE2[gene_id %in% e4home2$Astro_E4hom_vs_anyE2[adj.P.Val<0.1,gene_id]&adj.P.Val<0.1,gene_id]
+
+aste4het <- e4hete2$Astro_E4het_vs_anyE2[gene_id %in% aste4home4het & adj.P.Val<0.1,.(gene_id,gene_name,logFC,adj.P.Val)]
+setnames(aste4het,c(3,4),c("E4het_lfc","E4het_fdr"))
+
+aste4hom <- e4home2$Astro_E4hom_vs_anyE2[gene_id %in% aste4home4het & adj.P.Val<0.1,.(gene_id,gene_name,logFC,adj.P.Val)]
+setnames(aste4hom,c(3,4),c("E4hom_lfc","E4hom_fdr"))
+
+aste4 <- merge.data.table(aste4het,aste4hom,by=c("gene_id","gene_name"))
+rm(aste4hom,aste4het,aste4home4het,aste4)
+```
+## LC: LNC01322, WWC1 ("cytoplasmic phosphoprotein that interacts with PRKC-zeta and dynein light chain-1. Alleles of this gene have been found that enhance memory in some individuals"-ncbi)
+
+## Astro: HSPA1B (similar effect size for both genos), GPIHBP1 ("This gene encodes a capillary endothelial cell protein that facilitates the lipolytic processing of triglyceride-rich lipoproteins. The encoded protein is a glycosylphosphatidylinositol-anchored protein that is a member of the lymphocyte antigen 6 (Ly6) family. This protein plays a major role in transporting lipoprotein lipase (LPL) from the subendothelial spaces to the capillary lumen.")
+
+### Allelewise dose fx: E2
+```{r}
+### lc e2 dose
+lce2home2het <- e2hete4$LC_E2het_vs_anyE4[gene_id %in% e2home4$LC_E2hom_vs_anyE4[adj.P.Val<0.1,gene_id]&adj.P.Val<0.1,gene_id]
+
+lce2het <- e2hete4$LC_E2het_vs_anyE4[gene_id %in% lce2home2het & adj.P.Val<0.1,.(gene_id,gene_name,logFC,adj.P.Val)]
+setnames(lce2het,c(3,4),c("E2het_lfc","E2het_fdr"))
+
+lce2hom <- e2home4$LC_E2hom_vs_anyE4[gene_id %in% lce2home2het & adj.P.Val<0.1,.(gene_id,gene_name,logFC,adj.P.Val)]
+setnames(lce2hom,c(3,4),c("E2hom_lfc","E2hom_fdr"))
+
+lce2 <- merge.data.table(lce2het,lce2hom,by=c("gene_id","gene_name"))
+rm(lce2hom,lce2het,lce2home2het,lce2)
+
+###
+aste2home2het <- e2hete4$Astro_E2het_vs_anyE4[gene_id %in% e2home4$Astro_E2hom_vs_anyE4[adj.P.Val<0.1,gene_id]&adj.P.Val<0.1,gene_id]
+
+aste2het <- e2hete4$Astro_E2het_vs_anyE4[gene_id %in% aste2home2het & adj.P.Val<0.1,.(gene_id,gene_name,logFC,adj.P.Val)]
+setnames(aste2het,c(3,4),c("E2het_lfc","E2het_fdr"))
+
+aste2hom <- e2home4$Astro_E2hom_vs_anyE4[gene_id %in% aste2home2het & adj.P.Val<0.1,.(gene_id,gene_name,logFC,adj.P.Val)]
+setnames(aste2hom,c(3,4),c("E2hom_lfc","E2hom_fdr"))
+
+aste2 <- merge.data.table(aste2het,aste2hom,by=c("gene_id","gene_name"))
+rm(aste4hom,aste4het,aste4home4het,aste4)
+```
+
+### LC: CX3CR1, EPS8L2 (uniprot: "Stimulates guanine exchange activity of SOS1. May play a role in membrane ruffling and remodeling of the actin cytoskeleton.")
+
+****Astro**** super interesting!!!: MAPT HSPE1 HSPA1A CX3CR1 CRLF1 ("This gene encodes a member of the cytokine type I receptor family. The protein forms a secreted complex with cardiotrophin-like cytokine factor 1 and acts on cells expressing ciliary neurotrophic factor receptors. The complex can promote survival of neuronal cells" ncbi) 
+
+#### PT 2: GSEAs ####
+```{r}
+msigs <- readRDS("processed-data/12_DEanalyses_removedsampsAndFinalNMseg/03bi-MulticlusterDE_OneInterxnPerModel_dropMixClusts_GSEAmsigdb.RDS")
+
+keepmsig <- grep(names(msigs),pattern="^LC|^Astro",value=T)
+keepmsig2 <- grep(keepmsig,pattern="E4vE2|E2het|E2hom|E4het|E4hom",value=T)
+msigs <- msigs[keepmsig2]
+```
+
+LC E4 vs E2:
+E4 up: GOBP_ANTEROGRADE_AXONAL_TRANSPORT
+GOCC_ENDOPEPTIDASE_COMPLEX
+REACTOME_CROSS_PRESENTATION_OF_SOLUBLE_EXOGENOUS_ANTIGENS_ENDOSOMES
+GOCC_PROTEASOME_COMPLEX
+WP_PROTEASOME_DEGRADATION
+REACTOME_UCH_PROTEINASES
+REACTOME_THE_ROLE_OF_GTSE1_IN_G2_M_PROGRESSION_AFTER_G2_CHECKPOINT
+REACTOME_G1_S_DNA_DAMAGE_CHECKPOINTS
+
+--thought for sure the G1/M/G2 terms were going to be astro driven but evidently not:
+
+E2 up: LEIN_ASTROCYTE_MARKERS
+GOCC_ASTROCYTE_PROJECTION
+GOBP_ACIDIC_AMINO_ACID_TRANSPORT
+REACTOME_BINDING_AND_UPTAKE_OF_LIGANDS_BY_SCAVENGER_RECEPTORS
+GOBP_NEURON_FATE_COMMITMENT
+
+
+```{r}
+
+
+

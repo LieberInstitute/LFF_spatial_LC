@@ -265,7 +265,7 @@ run DE ###
 ```{r}
 v.swt <- voomLmFit(dgelApoAlleles,design = des,block = as.factor(dgelApoAlleles$samples$brnum),adaptive.span = T,sample.weights = T)
 
-## fit M-F contrasts for each label
+## fit contrasts for each label
 v.swt.fit <- contrasts.fit(v.swt,contrasts=trastmat)
 v.swt.fit.e <- eBayes(v.swt.fit,robust = T)
 
