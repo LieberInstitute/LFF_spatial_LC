@@ -60,7 +60,7 @@ extract_legend <- function(my_ggp) {
 Fig 3A/B/C: Volcanos (ACHE_SERT_LC_WM, LC, Astro)
 ```{r}
 ## load cluster palette
-pal <- readRDS("plots/cluster_palette_narrowluminance_v2.RDS")
+pal <- readRDS("plots/cluster_palette_narrowluminance_v3.RDS")
 pal <- pal[c("LC","*ACHE*, *SERT*, LC, Oligo Mixed","Astro")]
 names(pal)[2] <- "*ACHE*, *SERT*, LC,<br>Oligo Mixed"
 

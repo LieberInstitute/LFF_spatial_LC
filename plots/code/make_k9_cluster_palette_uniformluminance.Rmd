@@ -70,3 +70,36 @@ saveRDS(pal4,"plots/cluster_palette_narrowluminance_v2.RDS")
 pal5 <- pal4[c(1,2,3,4,8)]
 swatch(pal5)
 ```
+
+Candidate version 3 (coauthor selections):
+LC -> #3299FFFF
+ACHE_SERT_LC_WM -> #9AD1EBFF
+ACHE_SERT_Npep -> #8CC8BCFF
+Astro -> #F17CB0FF
+Astro_Oligo -> #B276B2FF
+Vascular -> #DD7867FF
+Oligo -> #B98F00FF
+Oligo_Astro -> #F7AA58FF
+Oligo_Complex -> #FFD06FFF
+```{r}
+pal5 <- readRDS("plots/cluster_palette_narrowluminance_v2.RDS")
+names(pal5)
+# [1] "LC"                                 "*ACHE*, *SERT*, LC, Oligo Mixed"   
+# [3] "*ACHE*, *SERT*, Neuropeptide Mixed" "Astro"                             
+# [5] "Astro-Oligo Mixed"                  "Vascular"                          
+# [7] "Oligo"                              "Oligo-Astro Mixed"                 
+# [9] "Oligo and Other Types Mixed"      
+
+pal5[1] <- "#3299FFFF" # LC
+pal5[2] <- "#9AD1EBFF" # ACHE_SERT_LC_WM
+pal5[3] <- "#8CC8BCFF" # ACHE_SERT_Npep
+pal5[4] <- "#F17CB0FF" # Astro
+pal5[5] <- "#B276B2FF" # Astro_Oligo
+pal5[6] <- "#DD7867FF" # Vascular
+pal5[7] <- "#B98F00FF" # Oligo
+pal5[8] <- "#F7AA58FF" # Oligo_Astro
+pal5[9] <- "#FFD06FFF" # Oligo_Complex
+
+swatch(pal5)
+saveRDS(pal5,"plots/cluster_palette_narrowluminance_v3.RDS")
+```

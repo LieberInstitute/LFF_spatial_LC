@@ -18,16 +18,45 @@ library(data.table)
 ```{r}
 spe <- readRDS("processed-data/04_QC/04-lffLC_noEdges_noLocOutliers_remainder1pctileUMIorGene-removed.RDS")
 
-## append metadata columns we may need later: YRI, NM metrics, hemisphere. almost all of these are in our tsv of the colData for section-level (with a column we can use to join back to capture-level)
-tmpcd <- fread("processed-data/06-QCed_SPE_splitToTissSect_colData.txt")
-tmpcd <- tmpcd[,.(capture_id,brnum,section,hemisphere,N_NMbodies,Prop_NM,Intensity_NM,CentroidSignalCount_NM,tissueNMscore)]
+spe <- spe[,spe$sample_id %in% c("V13M06-331_A1", "V13M06-333_B1", "V13M06-404_B1", "V13M06-403_D1")]
+
+## get coldata
+tmpcd <- as.data.table(colData(spe),keep.rownames=T)
+```
+
+cluster annots
+```{r}
+louvs <- readRDS("processed-data/07_featureSelection_dimred_harmony_clustering/04-Initial_louvLeid_res0.5-1-2_clusterings.RDS")
+louvs <- louvs$HARMONYlmbna_HDG_SVG_2575[,.(rn,snnHARMONYlmbna_HDG_SVG_2575_louv_res1)]
+setnames(louvs,2,"clusid")
+
+anno <- fread("processed-data/08_validitycheck_25hdg75svg_louv1/10-25hdg75svg_louv1_annots.txt")
+louvs <- merge.data.table(louvs,anno,by="clusid")
+
+splitcd <- fread("processed-data/06-QCed_SPE_splitToTissSect_colData.txt")
+osid <- copy(splitcd)[,.(rowname,original_spot_id)]
+
+louvs <- merge.data.table(louvs,osid,by.x="rn",by.y="rowname") # split section ids
+stopifnot(all(tmpcd$rowname %in% louvs$rn)) # make sure all the spots in the SPE are in table
+```
+
+## append metadata columns we may need later: cluster labels YRI, NM metrics, age, sex, hemisphere, donor number. almost all of these are in our tsv of the colData for section-level (with a column we can use to join back to capture-level)
+```{r} 
+splitcd <- splitcd[,.(original_spot_id,brnum,capture_id,section,hemisphere,tissueNMscore, N_NMbodies,Prop_NM,Intensity_NM,CentroidSignalCount_NM)]
 
 globanc <- fread("raw-data/ancestryAndHaplotypes/FLARE/global_ancestry_estimates.txt")
 globanc[ID=="Br6119",ID:="Br6119(re-dis)"] ## for consistency with other files
 
-tmpcd <- merge.data.table(tmpcd,globanc,by.x="brnum",by.y="ID",all.x=T)
-## make sure we have the same number of spots in the capture-level SPE and metadata from after the split
+tisscd <- merge.data.table(tisscd,globanc,by.x="brnum",by.y="ID",all.x=T)
+
+# drop brnum from the capture area coldata (redundant); merge
+tmpcd[,brnum:=NULL]
+tmpcd <- merge.data.table(tisscd,tmpcd,by.x="original_spot_id",by.y="rn")
+tmpcd <- DataFrame(tmpcd,row.names=tmpcd$original_spot_id)[colnames(spe),]
 stopifnot(nrow(tmpcd)==ncol(spe))
+colData(spe) <- tmpcd
 
+rm(tmpcd,tisscd,globanc,splitcd,louvs,osid,anno)
 
+saveRDS(spe,"plots/manuscript/capAreaLevel_SPE_wMainFigSampsOnly.RDS")
 ```

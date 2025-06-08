@@ -141,7 +141,7 @@ plts <- lapply(samps,function(s){
 
 })
 ### arrangeGrob() on the spotplot list --> 2x1 of plots from that list only, constituting the "first column" of the parent; leg.tmp2 is an additional thing being plotted in the second column of the parent.
-pdf("plots/manuscript/Fig2/2A-Cluster_spotplots.pdf",height=3.5,width=4.25)
+pdf("plots/manuscript/Fig2/2A-Cluster_spotplots.pdf",height=3.5,width=4.25,onefile = FALSE)
 do.call("grid.arrange", list(arrangeGrob(grobs = plts, ncol = 2, nrow = 2), leg.tmp, ncol = 2, widths = c(2.8, 1.2)))
 dev.off()
 
