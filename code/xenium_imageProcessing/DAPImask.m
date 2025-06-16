@@ -44,3 +44,20 @@ imwrite(cellmask, fullfile(Md, od, 'cellmask.png'))
 
 nucmaskL = imresize(nucmask, [425, 881]); %from overviewscan.m
 imwrite(nucmaskL, fullfile(Md, od, 'nucmask_overviewscanR.png'))
+
+% compute mpp from json files instead of 0.2125 mentioned in xenium.experiment
+yres = 2999.06/size(nucmask,1); %from overviewscan.m
+xres = 6297.15/size(nucmask,2); %from overviewscan.m
+
+scale_x = xres/0.25;
+scale_y = yres/0.25;
+
+nucmaskL = imresize(nucmask, [size(nucmask,1) * scale_y, size(nucmask,2) * scale_x], 'bicubic');
+imwrite(nucmaskL, fullfile(Md, od, 'nucmask_HER.png'))
+
+% compute mpp from json files instead of 0.2125 mentioned in xenium.experiment
+
+scale = 0.2125/0.25;
+
+nucmaskL = imresize(nucmask, scale);
+imwrite(nucmaskL, fullfile(Md, od, 'nucmask(0p2125)_resized_to_HE_inM.png'))
