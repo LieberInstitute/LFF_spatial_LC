@@ -29,18 +29,18 @@ nucmask = double(np.array(nucmask_py));
 disp('Size of cellseg_mask')
 disp(size(cellmask))
 
-%od = '/processed-data/xenium_imageProcessing/';
-%save(fullfile(Md, od, 'cell.mat'),'cellmask','-v7.3')
-%save(fullfile(Md, od, 'nuc.mat'),'nucmask', '-v7.3')
-%
-%rgb_nucmask = label2rgb(uint16(nucmask), 'jet', 'k', 'shuffle');
-%rgb_cellmask = label2rgb(uint16(cellmask), 'jet', 'k', 'shuffle');
-%
-%imwrite(rgb_nucmask, fullfile(Md, od, 'rgb_nucmask.png'))
-%imwrite(rgb_cellmask, fullfile(Md, od, 'rgb_cellmask.png'))
-%
-%imwrite(nucmask, fullfile(Md, od, 'nucmask.png'))
-%imwrite(cellmask, fullfile(Md, od, 'cellmask.png'))
-%
-%nucmaskL = imresize(nucmask, [425, 881]); %from overviewscan.m
-%imwrite(nucmaskL, fullfile(Md, od, 'nucmask_overviewscanR.png'))
+od = '/processed-data/xenium_imageProcessing/';
+save(fullfile(Md, od, 'cell.mat'),'cellmask','-v7.3')
+save(fullfile(Md, od, 'nuc.mat'),'nucmask', '-v7.3')
+
+rgb_nucmask = label2rgb(uint16(nucmask), 'jet', 'k', 'shuffle');
+rgb_cellmask = label2rgb(uint16(cellmask), 'jet', 'k', 'shuffle');
+
+imwrite(rgb_nucmask, fullfile(Md, od, 'rgb_nucmask.png'))
+imwrite(rgb_cellmask, fullfile(Md, od, 'rgb_cellmask.png'))
+
+imwrite(nucmask, fullfile(Md, od, 'nucmask.png'))
+imwrite(cellmask, fullfile(Md, od, 'cellmask.png'))
+
+nucmaskL = imresize(nucmask, [425, 881]); %from overviewscan.m
+imwrite(nucmaskL, fullfile(Md, od, 'nucmask_overviewscanR.png'))
