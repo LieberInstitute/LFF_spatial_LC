@@ -5,5 +5,6 @@ img_rotated = imrotate(img, 90);
 img_rotated = img_rotated(5000:end-8000,8000:end-5000,:);
 imshow(img_rotated(78708:92664,18004:45240,:))
 
-save(fullfile(Md,'/processed-data/xenium_imageProcessing/Br6538_HE.mat'),rotated(78708:92664,18004:45240,:))
-imwrite(img_rotated(78708:92664,18004:45240,:),fullfile(Md,'/processed-data/xenium_imageProcessing/HE.png'))
+he_crop = img_rotated(78708:90000,19000:42000,:);
+save(fullfile(Md,'/processed-data/xenium_imageProcessing/Br6538_HE.mat'),'he_crop')
+imwrite(he_crop,fullfile(Md,'/processed-data/xenium_imageProcessing/Br6538_HE.png'))
