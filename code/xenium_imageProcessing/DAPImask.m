@@ -53,11 +53,11 @@ scale_x = xres/0.25;
 scale_y = yres/0.25;
 
 nucmaskL = imresize(nucmask, [size(nucmask,1) * scale_y, size(nucmask,2) * scale_x], 'bicubic');
-imwrite(nucmaskL, fullfile(Md, od, 'nucmask_HER.png'))
+imwrite(nucmaskL, fullfile(Md, od, 'nucmask_xyres_resized_to_HE_inM.png'))
 
 % compute mpp from json files instead of 0.2125 mentioned in xenium.experiment
 
 scale = 0.2125/0.25;
 
 nucmaskL = imresize(nucmask, scale);
-imwrite(nucmaskL, fullfile(Md, od, 'nucmask(0p2125)_resized_to_HE_inM.png'))
+imwrite(nucmaskL, fullfile(Md, od, 'nucmask_0p2125_resized_to_HE_inM.png'))
