@@ -24,4 +24,4 @@ img_registered = imwarp(img, T, 'OutputView', Rout);
 
 % Show result
 imshow(img_registered)
-imwrite(img_registered, fullfile(Md, od, 'HE_aligned.png'))
+imwrite(img_registered, fullfile(Md, od, 'Br6538_HE_aligned.png'))
