@@ -12,6 +12,6 @@ imwrite(he_crop,fullfile(Md,'/processed-data/xenium_imageProcessing/Br6538_HE.pn
 %further crop sample to fit into DAPI mask 
 
 img = imread(fullfile(Md,'/processed-data/xenium_imageProcessing/Br6538_HE.png'));
-he_crop = img(300:end-400,1300:end-300,:);
+he_crop = img(300:end-1100,1300:end-300,:);
 save(fullfile(Md,'/processed-data/xenium_imageProcessing/Br6538_HE.mat'),'he_crop')
 imwrite(he_crop,fullfile(Md,'/processed-data/xenium_imageProcessing/Br6538_HE.png'))
