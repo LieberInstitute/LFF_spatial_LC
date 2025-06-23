@@ -71,5 +71,5 @@ imwrite(nucmaskL, fullfile(Md, od, 'nucmask_resized_to_HE_835.png'))
 % further reduce image by scale 83.5%
 load(fullfile(Md, od, 'cell.mat'))
 scale = 0.84;
-cellmaskL = imresize(cellmask, scale);
+cellmaskL = imresize(cellmask, scale, 'nearest');
 imwrite(cellmaskL, fullfile(Md, od, 'cellmask_resized_to_HE_84.png'))
