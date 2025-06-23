@@ -1,4 +1,5 @@
 Md = '/dcs05/lieber/marmaypag/LFF_spatialLC_LIBD4140/LFF_spatial_LC';
+od = '/processed-data/xenium_imageProcessing/';
 zarr_path = fullfile(Md, '/raw-data/xenium/output-XETG00558__0068654__Br6538__20250501__172909/cells.zarr.zip');
 
 % Import zarr and numpy
@@ -29,7 +30,6 @@ nucmask = double(np.array(nucmask_py));
 disp('Size of cellseg_mask')
 disp(size(cellmask))
 
-od = '/processed-data/xenium_imageProcessing/';
 save(fullfile(Md, od, 'cell.mat'),'cellmask','-v7.3')
 save(fullfile(Md, od, 'nuc.mat'),'nucmask', '-v7.3')
 
@@ -61,3 +61,9 @@ scale = 0.2125/0.25;
 
 nucmaskL = imresize(nucmask, scale);
 imwrite(nucmaskL, fullfile(Md, od, 'nucmask_0p2125_resized_to_HE_inM.png'))
+
+% further reduce image by scale 83.5%
+load(fullfile(Md, od, 'nuc.mat'))
+scale = 0.835;
+nucmaskL = imresize(nucmask, scale);
+imwrite(nucmaskL, fullfile(Md, od, 'nucmask_resized_to_HE_835.png'))
