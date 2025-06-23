@@ -34,7 +34,7 @@ imwrite(im2uint8(img), fullfile(Md, od, 'Br6538_HE_DAPI_overlaid_boundary.png'))
 %% overlay transcripts
 
 T = readtable(fullfile(Md,od,'Br6538_transcripts_subset.csv'));
-microns_per_pixel = 0.253;
+%microns_per_pixel = 0.253;
 T.x_pixel = round(T.x_location / microns_per_pixel);
 T.y_pixel = round(T.y_location / microns_per_pixel);
 
