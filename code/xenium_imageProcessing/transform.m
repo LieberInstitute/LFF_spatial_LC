@@ -1,5 +1,6 @@
 Md = '/dcs05/lieber/marmaypag/LFF_spatialLC_LIBD4140/LFF_spatial_LC';
-img = imread(fullfile(Md,'/processed-data/xenium_imageProcessing/Br6538_HE.png'));
+od ='/processed-data/xenium_imageProcessing/';
+img = imread(fullfile(Md,od,'Br6538_HE.png'));
 
 % TrakEM2 affine transformation parameters
 a = 0.9999743970151198;
@@ -23,3 +24,4 @@ img_registered = imwarp(img, T, 'OutputView', Rout);
 
 % Show result
 imshow(img_registered)
+imwrite(img_registered, fullfile(Md, od, 'HE_aligned.png'))
