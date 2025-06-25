@@ -66,12 +66,10 @@ imwrite(cellmask, fullfile(Md, od, brain, 'cellmask.png'))
 
 scale = 0.21/0.25;
 load(fullfile(Md, od, 'nuc.mat'))
-scale = 0.835;
 nucmaskL = imresize(nucmask, scale);
-imwrite(nucmaskL, fullfile(Md, od, 'nucmask_resized_to_HE_835.png'))
+imwrite(nucmaskL, fullfile(Md, od, brain, 'nucmask_resized_to_HE_84.png'))
 
-% further reduce image by scale 83.5%
+
 load(fullfile(Md, od, 'cell.mat'))
-scale = 0.84;
 cellmaskL = imresize(cellmask, scale, 'nearest');
-imwrite(cellmaskL, fullfile(Md, od, 'cellmask_resized_to_HE_84.png'))
+imwrite(cellmaskL, fullfile(Md, od, brain, 'cellmask_resized_to_HE_84.png'))
