@@ -1,6 +1,6 @@
 Md = '/dcs05/lieber/marmaypag/LFF_spatialLC_LIBD4140/LFF_spatial_LC';
 fname = '/raw-data/xenium/post-xenium_images/LC_PostXenium_0068654_Slide4_40x_05_07_2025_HRD.tif';
-img = imread(fname);
+img = imread(fullfile(Md,fname));
 img_rotated = imrotate(img, 90); 
 img_rotated = img_rotated(5000:end-8000,8000:end-5000,:);
 imshow(img_rotated(78708:92664,18004:45240,:))
