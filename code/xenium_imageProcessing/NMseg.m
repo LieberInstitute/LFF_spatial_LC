@@ -18,3 +18,6 @@ imwrite(he_crop,fullfile(Md,'/processed-data/xenium_imageProcessing/Br6538_HE.pn
 
 
 %%Br6297
+he_crop = img_rotated(9100:31000, 4000:16000, :);
+save(fullfile(Md,'/processed-data/xenium_imageProcessing/Br6297/Br6297_HE.mat'),'he_crop')
+imwrite(he_crop,fullfile(Md,'/processed-data/xenium_imageProcessing/Br6297/Br6297_HE.png'))
