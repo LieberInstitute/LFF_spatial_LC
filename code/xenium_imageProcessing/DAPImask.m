@@ -61,12 +61,10 @@ imwrite(cellmask, fullfile(Md, od, brain, 'cellmask.png'))
 % compute mpp from json files instead of 0.2125 mentioned in xenium.experiment
 
 %scale = 0.2125/0.25;
+%nucmaskL = imresize(nucmask, scale);
+%imwrite(nucmaskL, fullfile(Md, od, 'nucmask_0p2125_resized_to_HE_inM.png'))
+
 scale = 0.21/0.25;
-
-nucmaskL = imresize(nucmask, scale);
-imwrite(nucmaskL, fullfile(Md, od, 'nucmask_0p2125_resized_to_HE_inM.png'))
-
-% further reduce image by scale 83.5%
 load(fullfile(Md, od, 'nuc.mat'))
 scale = 0.835;
 nucmaskL = imresize(nucmask, scale);
