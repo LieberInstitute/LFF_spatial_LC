@@ -1,6 +1,8 @@
 Md = '/dcs05/lieber/marmaypag/LFF_spatialLC_LIBD4140/LFF_spatial_LC';
 od = '/processed-data/xenium_imageProcessing/';
-zarr_path = fullfile(Md, '/raw-data/xenium/output-XETG00558__0068654__Br6538__20250501__172909/cells.zarr.zip');
+%zarr_path = fullfile(Md, '/raw-data/xenium/output-XETG00558__0068654__Br6538__20250501__172909/cells.zarr.zip');
+zarr_path = fullfile(Md, '/raw-data/xenium/output-XETG00558__0068654__Br6297__20250501__172909/cells.zarr.zip');
+brain = 'Br6297';
 
 % Import zarr and numpy
 zarr = py.importlib.import_module('zarr');
@@ -30,20 +32,21 @@ nucmask = double(np.array(nucmask_py));
 disp('Size of cellseg_mask')
 disp(size(cellmask))
 
-save(fullfile(Md, od, 'cell.mat'),'cellmask','-v7.3')
-save(fullfile(Md, od, 'nuc.mat'),'nucmask', '-v7.3')
+mkdir(fullfile(Md, od,brain))
+save(fullfile(Md, od, brain, 'cell.mat'),'cellmask','-v7.3')
+save(fullfile(Md, od, brain, 'nuc.mat'),'nucmask', '-v7.3')
 
 rgb_nucmask = label2rgb(uint16(nucmask), 'jet', 'k', 'shuffle');
 rgb_cellmask = label2rgb(uint16(cellmask), 'jet', 'k', 'shuffle');
 
-imwrite(rgb_nucmask, fullfile(Md, od, 'rgb_nucmask.png'))
-imwrite(rgb_cellmask, fullfile(Md, od, 'rgb_cellmask.png'))
+imwrite(rgb_nucmask, fullfile(Md, od, brain, 'rgb_nucmask.png'))
+imwrite(rgb_cellmask, fullfile(Md, od, brain, 'rgb_cellmask.png'))
 
-imwrite(nucmask, fullfile(Md, od, 'nucmask.png'))
-imwrite(cellmask, fullfile(Md, od, 'cellmask.png'))
+imwrite(nucmask, fullfile(Md, od, brain, 'nucmask.png'))
+imwrite(cellmask, fullfile(Md, od, brain, 'cellmask.png'))
 
-nucmaskL = imresize(nucmask, [425, 881]); %from overviewscan.m
-imwrite(nucmaskL, fullfile(Md, od, 'nucmask_overviewscanR.png'))
+%nucmaskL = imresize(nucmask, [425, 881]); %from overviewscan.m
+%imwrite(nucmaskL, fullfile(Md, od, 'nucmask_overviewscanR.png'))
 
 % compute mpp from json files instead of 0.2125 mentioned in xenium.experiment
 yres = 2999.06/size(nucmask,1); %from overviewscan.m
