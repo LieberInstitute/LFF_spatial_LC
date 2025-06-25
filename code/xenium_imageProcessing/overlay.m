@@ -34,7 +34,7 @@ imwrite(im2uint8(img), fullfile(Md, od, 'Br6538_HE_DAPI_overlaid_boundary.png'))
 %% overlay transcripts
 
 T = readtable(fullfile(Md,od,'Br6538_transcripts_subset.csv'));
-%microns_per_pixel = 0.253;
+microns_per_pixel = 0.253;
 T.x_pixel = round(T.x_location / microns_per_pixel);
 T.y_pixel = round(T.y_location / microns_per_pixel);
 
@@ -51,12 +51,10 @@ hold off;
 
 %%%%% all transcripts
 % Define target genes and distinct colors
-target_genes = {'TH', 'DBH', 'PHOX2A', 'PHOX2B', 'SLC6A2'};
+target_genes = {'TH', 'DBH', 'SLC6A2'};
 colors = [
     1 0 0;    % Red
     0 1 0;    % Green
-    0 0 1;    % Blue
-    1 0 1;    % Magenta
     1 1 0     % Yellow
 ];
 
@@ -69,10 +67,10 @@ hold on;
 for i = 1:length(target_genes)
     gene = target_genes{i};
     gene_idx = strcmp(T.feature_name, gene);
-    scatter(T.x_pixel(gene_idx), T.y_pixel(gene_idx), 0.009, colors(i,:), 'filled', ...
+    scatter(T.x_pixel(gene_idx), T.y_pixel(gene_idx), 0.01, colors(i,:), 'filled', ...
         'DisplayName', gene);
 end
 
 legend('Location', 'bestoutside');
-title('Overlay of TH, DBH, PHOX2A, PHOX2B, SLC6A2 transcripts');
+title('Overlay of TH, DBH, SLC6A2 transcripts');
 hold off;
