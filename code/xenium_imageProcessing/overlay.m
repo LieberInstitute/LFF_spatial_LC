@@ -11,11 +11,11 @@ load(fullfile(Md, od,brain,'cell.mat'))
 cellmaskL=cellmask;
 
 % Generate boundary mask
-boundary_mask = bwperim(cellmaskL > 0);
-thick_boundary = imdilate(boundary_mask, strel('disk', 2));
-
-img(repmat(thick_boundary, [1 1 3])) = 0;
-imwrite(im2uint8(img), fullfile(Md, od, 'Br6538_HE_DAPI_overlaid.png'));
+%boundary_mask = bwperim(cellmaskL > 0);
+%thick_boundary = imdilate(boundary_mask, strel('disk', 2));
+%
+%img(repmat(thick_boundary, [1 1 3])) = 0;
+%imwrite(im2uint8(img), fullfile(Md, od, 'Br6538_HE_DAPI_overlaid.png'));
 
 
 %% to plot boundaries of attached cells
@@ -31,7 +31,7 @@ thick_boundary = imdilate(boundary_mask, strel('disk', 2));
 img(repmat(thick_boundary, [1 1 3])) = 0;
 
 imshow(img)
-imwrite(im2uint8(img), fullfile(Md, od, 'Br6538_HE_DAPI_overlaid_boundary.png'));
+imwrite(im2uint8(img), fullfile(Md, od, brain, [brain, '_HE_DAPI_overlay.png']));
 
 %% overlay transcripts
 
