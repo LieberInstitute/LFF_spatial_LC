@@ -1,30 +1,37 @@
 Md = '/dcs05/lieber/marmaypag/LFF_spatialLC_LIBD4140/LFF_spatial_LC';
 od ='/processed-data/xenium_imageProcessing/';
-img = imread(fullfile(Md,od,'Br6538_HE.png'));
+brain = 'Br6297';
+imgname = 'Br6297_HE_21.png';
 
-xmlFile = fullfile(Md, od, 'Br6538.xml');
+xmlFile = fullfile(Md, od,brain, 'Br6297.xml');
 xDoc = xmlread(xmlFile);
 
-% TrakEM2 affine transformation parameters
-a = 0.9999743970151198;
-b = -0.007155788862699962;
-c = 0.007155788862699962;
-d = 0.9999743970151198;
-e = 1816.6183235292347;
-f = 1543.900200597453;
+% Get all t2_patch nodes
+patchNodes = xDoc.getElementsByTagName('t2_patch');
 
-T = affine2d([a, b, 0;
-              c, d, 0;
-              e, f, 1]);
+% Loop through patches to find the HE image
+for i = 0:patchNodes.getLength-1
+    patch = patchNodes.item(i);
+    titleAttr = char(patch.getAttribute('title'));
+    
+    if contains(titleAttr, imgname)
+        % Get transform string and parse values
+        transformStr = char(patch.getAttribute('transform'));
+        tokens = regexp(transformStr, 'matrix\((.*)\)', 'tokens');
+        values = sscanf(tokens{1}{1}, '%f,');
+        a = values(1); b = values(2); c = values(3);
+        d = values(4); e = values(5); f = values(6);
+	
+	elseif contains(titleAttr, 'nucmask.png')
+        % Get target size
+        target_width = str2double(patch.getAttribute('o_width'));
+        target_height = str2double(patch.getAttribute('o_height'));
+    end
+end
 
-% Target dimensions from srcrect_
-target_height = 11557;
-target_width = 23948;
+img = imread(fullfile(Md,od,brain,imgname));
+T = affine2d([a, b, 0; c, d, 0; e, f, 1]);
 Rout = imref2d([target_height, target_width]);
-
-% Warp with black padding
 img_registered = imwarp(img, T, 'OutputView', Rout);
 
-% Show result
-imshow(img_registered)
-imwrite(img_registered, fullfile(Md, od, 'Br6538_HE_aligned.png'))
+imwrite(img_registered, fullfile(Md, od, brain, [brain, '_HE_aligned.png']))
