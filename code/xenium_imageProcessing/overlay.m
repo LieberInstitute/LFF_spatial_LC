@@ -1,12 +1,14 @@
 Md = '/dcs05/lieber/marmaypag/LFF_spatialLC_LIBD4140/LFF_spatial_LC';
 od = '/processed-data/xenium_imageProcessing/';
+brain = 'Br6297';
 
-img_registered = imread(fullfile(Md,od,'Br6538_HE_aligned.png'));
+img_registered = imread(fullfile(Md,od,brain,[brain,'_HE_aligned.png']));
 img = im2double(img_registered);
 
-load(fullfile(Md, od, 'cell.mat'))
-scale = 0.84;
-cellmaskL = imresize(cellmask, scale, 'nearest');
+load(fullfile(Md, od,brain,'cell.mat'))
+%scale = 0.84;
+%cellmaskL = imresize(cellmask, scale, 'nearest');
+cellmaskL=cellmask;
 
 % Generate boundary mask
 boundary_mask = bwperim(cellmaskL > 0);
