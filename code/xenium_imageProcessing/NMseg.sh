@@ -18,7 +18,7 @@ echo "Task id: ${SLURM_ARRAY_TASK_ID}"
 ## load MATLAB
 module load matlab
 
-matlab -nodesktop -nosplash -r "NMseg_refine.m"
+matlab -nodesktop -nosplash -r "NMseg_refine"
 
 echo "**** Job ends ****"
 date
