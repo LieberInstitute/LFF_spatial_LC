@@ -24,4 +24,4 @@ end
 
 save(fullfile(Md,od, [brain, '_Kmeans', '.mat']),'cluster','-v7.3')
 
-disp(['done ',matchingFiles(i).name])
+disp(['done ',brain])
