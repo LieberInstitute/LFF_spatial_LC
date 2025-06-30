@@ -10,7 +10,7 @@ disp(fname);
    Ie = rgb2gray(NM);
    Ie = im2double(Ie);
    BW = zeros(size(Ie));
-   BW(Ie>0.2 & Ie<0.5) = 1;
+   BW(Ie>0 & Ie<0.2) = 1;
    
    save(fullfile(Md,od,brain, 'NMseg.mat'), 'BW', '-v7.3');
 
