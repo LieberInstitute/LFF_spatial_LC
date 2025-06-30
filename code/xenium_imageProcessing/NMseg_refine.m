@@ -6,7 +6,7 @@ disp(fname);
 
    load(fullfile(Md,od,brain,fname));
    he = imread(fullfile(Md,od,brain,[brain,'_HE_aligned.png']));
-   NM = cluster{2};
+   NM = cluster{1};
    Ie = rgb2gray(NM);
    Ie = im2double(Ie);
    BW = zeros(size(Ie));
