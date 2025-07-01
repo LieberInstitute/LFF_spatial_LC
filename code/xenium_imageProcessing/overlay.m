@@ -33,7 +33,7 @@ imwrite(im2uint8(img), fullfile(Md, od, brain, [brain, '_HE_DAPI_overlay.png']))
 %% overlay NMseg
 load(fullfile(Md,od,brain,'NMseg.mat'))
 	
-nm_mask = NMseg > 0; 
+nm_mask = BW > 0; 
 yellow_overlay = cat(3, nm_mask, nm_mask, zeros(size(nm_mask)));
 
 alpha = 0.5;  % transparency of overlay
