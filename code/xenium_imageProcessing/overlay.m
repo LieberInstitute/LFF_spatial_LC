@@ -32,16 +32,22 @@ imwrite(im2uint8(img), fullfile(Md, od, brain, [brain, '_HE_DAPI_overlay.png']))
 
 %% overlay NMseg
 load(fullfile(Md,od,brain,'NMseg.mat'))
-	
-nm_mask = BW > 0; 
-yellow_overlay = cat(3, nm_mask, nm_mask, zeros(size(nm_mask)));
-
-alpha = 0.5;  % transparency of overlay
+nm_mask = BW > 0;
 img_overlay = img;
-img_overlay(yellow_overlay(:,:,1)) = (1 - alpha) * img_overlay(yellow_overlay(:,:,1)) + alpha;
-img_overlay(yellow_overlay(:,:,2) + numel(nm_mask)) = (1 - alpha) * img_overlay(yellow_overlay(:,:,2) + numel(nm_mask)) + alpha;
 
-imshow(img_overlay)
+% Set yellow color: R and G to 1, B to 0 where nm_mask is true
+img_overlay(:,:,1) = img(:,:,1) .* ~nm_mask + nm_mask * 1;  % Red channel
+img_overlay(:,:,2) = img(:,:,2) .* ~nm_mask + nm_mask * 1;  % Green channel
+img_overlay(:,:,3) = img(:,:,3) .* ~nm_mask + nm_mask * 0;  % Blue channel
+
+% Optional: blend instead of overwrite
+% alpha = 0.5;
+% img_overlay(:,:,1) = img(:,:,1) .* (1 - alpha * nm_mask) + alpha * nm_mask;
+% img_overlay(:,:,2) = img(:,:,2) .* (1 - alpha * nm_mask) + alpha * nm_mask;
+% img_overlay(:,:,3) = img(:,:,3) .* (1 - alpha * nm_mask);  % stays dark in blue
+
+% Display and save
+imshow(img_overlay(9000:10000,8000:10000,:))
 imwrite(im2uint8(img_overlay), fullfile(Md, od, brain, [brain, '_HE_DAPI_NM_overlay.png']));
 
 %% iPSC grant overlay transcripts
