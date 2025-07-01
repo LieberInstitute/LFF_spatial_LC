@@ -22,7 +22,7 @@ for i = 0:patchNodes.getLength-1
         a = values(1); b = values(2); c = values(3);
         d = values(4); e = values(5); f = values(6);
 	
-	elseif contains(titleAttr, 'nucmask.png')
+	elseif contains(titleAttr, 'cellmask.png')
         % Get target size
         target_width = str2double(patch.getAttribute('o_width'));
         target_height = str2double(patch.getAttribute('o_height'));
