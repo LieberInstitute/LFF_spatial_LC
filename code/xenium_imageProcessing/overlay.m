@@ -27,11 +27,24 @@ boundary_mask = (dilated ~= cellmaskR) & (cellmaskR > 0);
 thick_boundary = imdilate(boundary_mask, strel('disk', 2));
 
 img(repmat(thick_boundary, [1 1 3])) = 0;
-
 %imshow(img)
 imwrite(im2uint8(img), fullfile(Md, od, brain, [brain, '_HE_DAPI_overlay.png']));
 
-%% overlay transcripts
+%% overlay NMseg
+load(fullfile(Md,od,brain,'NMseg.mat'))
+	
+nm_mask = NMseg > 0; 
+yellow_overlay = cat(3, nm_mask, nm_mask, zeros(size(nm_mask)));
+
+alpha = 0.5;  % transparency of overlay
+img_overlay = img;
+img_overlay(yellow_overlay(:,:,1)) = (1 - alpha) * img_overlay(yellow_overlay(:,:,1)) + alpha;
+img_overlay(yellow_overlay(:,:,2) + numel(nm_mask)) = (1 - alpha) * img_overlay(yellow_overlay(:,:,2) + numel(nm_mask)) + alpha;
+
+imshow(img_overlay)
+imwrite(im2uint8(img_overlay), fullfile(Md, od, brain, [brain, '_HE_DAPI_NM_overlay.png']));
+
+%% iPSC grant overlay transcripts
 
 T = readtable(fullfile(Md,od,'Br6538_transcripts_subset.csv'));
 microns_per_pixel = 0.253;
