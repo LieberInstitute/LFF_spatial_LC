@@ -18,7 +18,7 @@ echo "Job name: ${SLURM_JOB_NAME}"
 echo "Hostname: ${SLURM_NODENAME}"
 echo "Task id: ${SLURM_ARRAY_TASK_ID}"
 
-module --ignore_cache load xeniumranger/2.0.0
+module --ignore_cache load xeniumranger/3.1.1
 
 # get current sample to resegment
 FILE=/dcs05/lieber/marmaypag/LFF_spatialLC_LIBD4140/LFF_spatial_LC/raw-data/xenium/output-XETG00558__0068654__Br6297__20250501__172909
