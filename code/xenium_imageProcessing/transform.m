@@ -1,9 +1,9 @@
 Md = '/dcs05/lieber/marmaypag/LFF_spatialLC_LIBD4140/LFF_spatial_LC';
 od ='/processed-data/xenium_imageProcessing/';
-brain = 'Br6297';
-imgname = 'Br6297_HE_21.png';
+brain = 'Br6423';
+imgname = [brain, '_HE_21.png'];
 
-xmlFile = fullfile(Md, od,brain, 'Br6297.xml');
+xmlFile = fullfile(Md, od,brain, [brain, '.xml']);
 xDoc = xmlread(xmlFile);
 
 % Get all t2_patch nodes
