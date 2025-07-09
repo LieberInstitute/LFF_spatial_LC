@@ -3,7 +3,22 @@ Md = '/dcs05/lieber/marmaypag/LFF_spatialLC_LIBD4140/LFF_spatial_LC';
 fname = '/raw-data/xenium/post-xenium_images/LC_PostXenium_0068968_Slide5_40x_05_13_2025_HRD.tif';
 img = imread(fullfile(Md,fname));
 img_rotated = imrotate(img, 90); 
-img_rotated = img_rotated(5000:end-8000,8000:end-5000,:);
+%img_rotated = img_rotated(5000:end-8000,8000:end-5000,:);
+
+img_rotated = img_rotated(8000:end-8000,8000:end-5000,:);
+%A =
+% 2.1726    3.5079
+% 2.2324    6.4099
+
+
+%% Br6423
+he_crop = img_rotated(72000:end-1000,7000:20000,:);
+save(fullfile(Md,'/processed-data/xenium_imageProcessing/Br6423/Br6423_HE.mat'),'he_crop')
+imwrite(he_crop,fullfile(Md,'/processed-data/xenium_imageProcessing/Br6423/Br6423_HE.png'))
+
+scale = 0.25/0.21;
+he_21 = imresize(he_crop,scale);
+imwrite(he_21,fullfile(Md,'/processed-data/xenium_imageProcessing/Br6423/Br6423_HE_21.png'))
 
 %%Br6538
 imshow(img_rotated(78708:92664,18004:45240,:))
