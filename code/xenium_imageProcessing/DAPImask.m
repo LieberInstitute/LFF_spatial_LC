@@ -1,8 +1,8 @@
 Md = '/dcs05/lieber/marmaypag/LFF_spatialLC_LIBD4140/LFF_spatial_LC';
 od = '/processed-data/xenium_imageProcessing/';
 %zarr_path = fullfile(Md, '/raw-data/xenium/output-XETG00558__0068654__Br6538__20250501__172909/cells.zarr.zip');
-zarr_path = fullfile(Md, '/raw-data/xenium/output-XETG00558__0068654__Br6297__20250501__172909/cells.zarr.zip');
-brain = 'Br6297';
+zarr_path = fullfile(Md, '/raw-data/xenium/output-XETG00558__0068968__Br6423__20250509__160650/cells.zarr.zip');
+brain = 'Br6423';
 
 % Import zarr and numpy
 zarr = py.importlib.import_module('zarr');
