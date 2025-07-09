@@ -22,7 +22,7 @@ module --ignore_cache load xeniumranger/3.1.1
 
 # get current sample to resegment
 #FILE=/dcs05/lieber/marmaypag/LFF_spatialLC_LIBD4140/LFF_spatial_LC/raw-data/xenium/output-XETG00558__0068654__Br6297__20250501__172909
-FILE=/dcs04/lieber/lcolladotor/rawDataTDSC_LIBD001/raw-data/2025-05-05_xenium-SKCCC/output-XETG00558__0068654__Br6297__20250501__172909
+FILE=/dcs04/lieber/lcolladotor/rawDataTDSC_LIBD001/raw-data/_xenium_LIBD/output-XETG00558__0068654__Br6297__20250501__172909
 MASK=/dcs05/lieber/marmaypag/LFF_spatialLC_LIBD4140/LFF_spatial_LC/processed-data/xenium_imageProcessing/Br6297/combined_nucmask.npy
 OUTPATH=xeniumranger_NM_DAPI
 
