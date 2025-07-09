@@ -1,6 +1,6 @@
 Md = '/dcs05/lieber/marmaypag/LFF_spatialLC_LIBD4140/LFF_spatial_LC';
 od = '/processed-data/xenium_imageProcessing/';
-brain = 'Br6297';
+brain = 'Br6423';
 
 img_registered = imread(fullfile(Md,od,brain,[brain,'_HE_aligned.png']));
 img = im2double(img_registered);
