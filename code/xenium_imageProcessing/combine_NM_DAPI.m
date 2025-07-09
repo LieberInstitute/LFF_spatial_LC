@@ -33,3 +33,10 @@ t.close();
 
 
 imwrite(uint32(combined_mask), tiff_filename, 'Compression', 'none');
+
+%% save as Numpy array
+combined_mask_double = double(combined_mask);
+np_array = py.numpy.array(combined_mask_double);
+
+output_file = fullfile(Md, od, brain, 'combined_nucmask.npy');
+py.numpy.save(output_file, np_array);
