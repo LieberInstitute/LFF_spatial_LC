@@ -86,17 +86,9 @@ gc(full=T)
 
 ## load cluster 9-color palette
 ```{r}
-pal <- readRDS("plots/cluster_palette_narrowluminance_v2.RDS")
+pal <- readRDS("plots/finalpal_somuchfornorainbows.RDS")
 
-names(pal)
-
-names(pal)[9] <- "Oligo and Other Types Mixed"
-names(pal)[5] <- "Astro-Oligo Mixed"
-names(pal)[8] <- "Oligo-Astro Mixed"
-names(pal)[2] <- "*ACHE*, *SERT*, LC, Oligo Mixed"
-names(pal)[3] <- "*ACHE*, *SERT*, Neuropeptide Mixed"
-
-stopifnot(all(names(pal) %in% unique(louvs$anno)))
+stopifnot(all(names(pal) %in% unique(lc2$label)))
 ```
 
 ### custom function to extrct legend from one plot to extend to all ###
@@ -119,7 +111,7 @@ tmpplt <- ggplot(tmpdat,aes(x=array_col,y=array_row,col=label))+
     scale_color_manual(values = pal)+
     theme(legend.key.height = unit(0.083,"in"),
           legend.key.width = unit(0.156,"in"),
-          legend.text=element_text(size=7,margin=margin(0,0,0,-0.025,unit="in")),
+          legend.text=element_markdown(size=7,margin=margin(0,0,0,-0.025,unit="in")),
           legend.title=element_blank(),
           legend.key=element_blank(),
           legend.background = element_blank())
@@ -133,9 +125,9 @@ samps <- c("V13M06-331_A1","V13M06-333_B1","V13M06-404_B1","V13M06-403_D1")
 plts <- lapply(samps,function(s){
     p <- vis_clus(lc2,sampleid=s,spatial = T,na_color = NA,auto_crop = T,point_size = 0.6,alpha=0.65,clustervar = "label",colors = pal,image_id = "lowres")+
         guides(color="none",fill="none")+
-        theme(plot.title = element_text(size = 9, hjust = 0.5,margin=margin(0,0,0,0)),
-          panel.border = element_blank(),
-          plot.margin = margin(-0.1,0.025,-0.475,-0.45,unit="in"))
+        theme(plot.title = element_text(size=9,hjust=0.5,margin=margin(0,0,0,0,unit="in")),
+              panel.border = element_blank(),
+              plot.margin = margin(-0.1,0.025,-0.475,-0.45,unit="in"))
     p <- rasterize(p,layers="Points",dpi=300,dev="cairo_png")
     return(p)
 
@@ -242,7 +234,8 @@ htmap <- ComplexHeatmap::Heatmap(
         show_annotation_name = FALSE,
         gap = 0,
         col = list(`Visium Cluster`=pal2),
-        gp = gpar(alpha = 1,cex=0.35)
+        gp = gpar(alpha = 1,cex=0.35),
+        annotation_legend_param = list(labels_gp=gpar(fontsize=7))
     ),
     show_column_names = FALSE,
     show_column_dend = FALSE,
@@ -265,7 +258,6 @@ htmap <- ComplexHeatmap::Heatmap(
     raster_device = "CairoPNG",
     raster_quality = 10
 )
-
 
 ### save plot; add title 
 
@@ -347,236 +339,6 @@ ggplot(pltdat,aes(x=LFF_clus,y=WebDiv_label,fill=value))+
 dev.off()
 
 rm(pltdat)
-```
-
-Fig 2D: Show one of the previous samples, now with only LC NM+ and - labeled. V13M06-404_B1 looks like a good sample for illustrating
-```{r}
-fig2c <- lc2[,lc2$sample_id=="V13M06-404_B1"]
-fig2c <- fig2c[,fig2c$lcnm_subclus %in% c("LC_NMpos","LC_NMneg")]
-fig2c$lcnm_subclus <- gsub(fig2c$lcnm_subclus,pattern="_",replacement=" ")
-fig2c$lcnm_subclus <- gsub(fig2c$lcnm_subclus,pattern="pos",replacement="+")
-fig2c$lcnm_subclus <- gsub(fig2c$lcnm_subclus,pattern="neg",replacement="-")
-
-lcnmpal <- c(pal[1],"#9a9a9a")
-names(lcnmpal) <- c("LC NM+","LC NM-")
-
-# point size of 0.9175 at this pdf size (2.4 x 3) and theme/legend parameter set gives spots nearly touching; the center-to-center distance between visium spots is 100µm (i.e., 100-(27.5µm radii of two spots)=45µm between spots). So we want to use approx (1-0.45)*0.9175 for point_size to accurately represent dead space (and NM overlap)
-
-## that comes out a little small. use 0.55 straight up
-
-## finally, spatialLIBD's autocrop is still including the vast majority of the image (whereas LC is a much smaller area of it, and despite us throwing out all the spots that aren't LC here. so some post-adjusting in illustrator will be required; triple all the parameters for sizes and themes besides legend so that we can rework it later).
-
-plotfact <- 3
-p <- vis_clus(fig2c,sampleid="V13M06-404_B1",spatial = T,na_color = NULL,auto_crop = T,point_size = 0.55*plotfact,alpha=0.45,clustervar = "lcnm_subclus",colors = lcnmpal,image_id = "hires")+
-    theme(plot.title = element_text(size = 9, hjust = 0.5,margin=margin(0,0,0,0)),
-          panel.border = element_blank(),
-          plot.margin = margin(-0.15*plotfact,
-                               0.0375*plotfact,
-                               -0.7125*plotfact,
-                               -0.675*plotfact,unit="in"),
-          legend.key.height = unit(0.083,"in"),
-          legend.key.width = unit(0.156,"in"),
-          legend.text=element_text(size=7,margin=margin(0,0,0,-0.025,unit="in")),
-          legend.title=element_text(size=8),
-          legend.key=element_blank(),
-          legend.background = element_blank())+
-    scale_fill_manual(values=lcnmpal)+
-    labs(fill="LC Spot Type")+
-    guides(fill=guide_legend(override.aes=list(size=1.25,alpha=0.45)))
-
-## also plot in higher res than would otherwise be necessary so we have good resolution of the illustrator-cropped out LC zoone
-p <- rasterize(p,layers="Points",dpi=600,dev="cairo_png")
-
-pdf("plots/manuscript/Fig2/Fig2D_needs_illust_postproc.pdf",height=plotfact*2.4,width=plotfact*3)
-p
-dev.off()
-
-rm(fig2c,p,plotfact)
-```
-
-Fig 2E: LC NM+- DE volcano
-```{r}
-nmde <- fread("processed-data/12_DEanalyses_removedsampsAndFinalNMseg/04-LCNMpos_vs_LCNMneg_DE.txt")
-
-nmde[,yval:=-log10(adj.P.Val)]
-nmde[,uptype:=ifelse(logFC>0,yes="LC NM+",no="LC NM-")]
-
-## illustrate glial and inhibitory genes for NM- enrichment; LC markers and GPX3 (NM-assoc gene) for NM+ enrichment
-nmde[gene_name %in% c("GAD1","GAD2","TCN","GJB6","VCAN","PHOX2B","SLC6A2","SLC18A2","TH","GPX3"),label:=gene_name]
-
-p <- ggplot(nmde,aes(x=logFC,y=yval,col=uptype,alpha=ifelse(nmde$adj.P.Val<0.05,yes=1,no=0.4)))+
-    geom_point(size=0.6,stroke = 0)+
-    geom_hline(yintercept=-log10(0.05),linetype="dashed",col="red",linewidth=0.5)+
-    labs(x="logFC\n(NM+ vs NM-)",y="-log10 (FDR)",col="LC\nSpot Type")+
-    scale_color_manual(values=lcnmpal)+
-        geom_text_repel(seed = 23942,aes(y = -log10(P.Value),
-                x = logFC,
-                label = ifelse(is.na(label), "", label)),
-            min.segment.length = 0,
-            size = 1.5,
-            show.legend=FALSE,
-            #nudge_x=1.25*sign(nudges$logFC),
-            #seed=10403, 
-            max.iter=100000,
-            max.overlaps=10000,
-            max.time=3,
-            segment.size=0.25)+
-    guides(alpha="none",color=guide_legend(override.aes=list(size=1.25,alpha=1)))+
-    theme(axis.text.x=element_text(size=8),
-          axis.text.y=element_text(size=8),
-          axis.title.x=element_text(size=9),
-          axis.title.y = element_text(size=9),
-          legend.title=element_text(size=8,hjust=0.5),
-          legend.text=element_text(size=7,margin=margin(0,0,0,-0.025,unit="in")),
-          axis.ticks = element_line(linewidth=0.5),
-          panel.grid.major = element_line(linewidth=0.5),
-          panel.grid.minor = element_line(linewidth=0.25),
-          legend.margin = margin(-0.25,0,0,-0.25,unit="in"),
-          legend.background = element_blank(),
-          legend.box.background = element_blank(),
-          legend.key.height = unit(0.083,"in"),
-          legend.key.width = unit(0.156,"in"),
-          legend.key=element_blank())
-
-p <- rasterize(p,layers="Points",dpi=300,dev="cairo_png")
-
-
-## point labels are wildly screwed up and will need fixing in illustrator.
-pdf("plots/manuscript/Fig2/2E-LCnmDE_volcano.pdf",height=2.5,width=3)
-p
-dev.off()
-
-rm(p,nmde)
-gc(full=T)
-```
-
-Fig 2F: LC NMF GSEA didn't really yield anything. instead, use the enrichr results on factor-specific genes (with background sets fed in as all genes on which the respective NMFs were performed).
-
-Start by grabbing results for the following terms, which popped up in one or more factor-specific-gene set, then see how many we really have 
-postsynaptic (GO)
-presynaptic (GO)
-ubiquitin (GO, other pathway/ontol dbs)
-esr1
-mitochondrial (GO, other pathway/ontol dbs)
-calml3 (protein complexes)
-znf365 (TF coexp, TF ppi)
-LMTK3 (kinase coexp)
-subceruleus (allen atlas regions)
-COPS4 (protein complexes? or ppis? don't remember)
-BOLA3 (" or " or TF coexp dont recall)
-Sncg (mouse scseq type)
-ZNF444 (TF coexp)
-TCF25 (TF coexp)
-Sensory (cell types/tissues)
-Endothel (cell types/tissues)
-Olig2 (TF coexpression)
-```{r}
-nmfenrichr <- readRDS("processed-data/10_subclustering/09-LCnmfFilt_factorSpecGenes_enrichr_results.RDS")
-## fix something stupid where N_genes came back as a list
-nmfenrichr[,N_genes:=as.numeric(N_genes)]
-
-factspec <- fread("processed-data/12_DEanalyses_removedsampsAndFinalNMseg/06b-LCNMFLogCt18Filt_factors_and_factorSpecGenes_min25specGenes.txt")
-
-enrichrpltdat <- nmfenrichr[Term %in% grep(Term,pattern="postsynaptic|presynaptic|ubiquitin|esr1|mitochondr|calml3|znf365|LMTK3|subcoeruleus|COPS4|BOLA3|Sncg up|ZNF444|TCF25|Sensory|Olig2|ATF3 A549 hg19|ATF6 Down|Xbp1 expression of XBP1s, an spliced version of the protein mouse GSE6980 sample 1507",value=T,ignore.case=T)]
-
-rm(nmfenrichr)
-
-## subset to terms of interest first filtering for those signif after correction and matching terms of interest
-keepterm <- unique(enrichrpltdat[Adjusted.P.value<0.05,.(Enrichr_database,Term)])
-keepterm <- keepterm[Term %in% grep(Term,pattern="Ubiquitin-Dependent Protein Catabolic Process|Ubiquitin-Protein Transferase Activity (GO:0004842)|Ubiquitin E3 ligase \\(CRY|OLIG2 human tf ARCHS4|Mitochondrial Membrane|COPS4|BOLA3|ZNF365|ESR1 knockdown|ESR1 KD human|ESR1 mut human|ESR1 22446102 ChIP|OLIG2 26023283 ChIP-Seq|TCF25 Up|ESR1 Up|LMTK3 Up|Olig2 Down|ESR1 SRP254635|OLIG2 23332759|Regulation Of Postsynaptic|Sensory Perception \\(GO|Sensory neuron|Integral Component Of Presynaptic Active|Voltage-gated|Ligand-gated|PERTURB 5973 KD TCF25|subcoeruleus",value=T)|Term=="Mitochondrial Translation"|Term=="ESR1"|Term=="ATF3 A549 hg19"|(Term=="ATF6 Down"&Enrichr_database=="LINCS_L1000_CRISPR_KO_Consensus_Sigs")|Term=="Xbp1 expression of XBP1s, an spliced version of the protein mouse GSE6980 sample 1507"]
-
-
-## drop a couple less important ones
-keepterm <- keepterm[!(Term %in% grep(Term,pattern="OLIG2 26023283",value=T))] # less relevant cell type
-keepterm <- keepterm[!(Term=="ESR1"&Enrichr_database=="PPI_Hub_Proteins")] # redundant with another
-keepterm <- keepterm[Term!="ESR1 22446102 ChIP-Seq UTERUS Mouse"] # several human cell line datasets supporting same
-keepterm <- keepterm[Term!="ZNF365 Up"] # weak/redundant
-
-## Now clean up/consolidate terms
-keepterm[Term %in% grep(Term,pattern="subcoeruleus",value=T),pltterm:="Allen Ms r1/r2 Sub-<br>coeruleus nu."]
-keepterm[,pltterm:=gsub(Term,pattern="^(.*) human tf ARCHS4 coexpression",replacement=paste0("*","\\1","*"," Coexp."))]
-keepterm[Term %in% c("PERTURB 5973 KD TCF25 SRP271175 DOWN","TCF25 Up"),pltterm:="*TCF25* KD/KO Diff. Expr."]
-keepterm[Term=="LMTK3 Up",pltterm:="*LMTK3* KD/KO Upreg."]
-keepterm[Term=="OLIG2 23332759 ChIP-Seq OLIGODENDROCYTES Mouse",pltterm:="Ms Olig2 ChIP Targets"]
-keepterm[Term=="Mitochondrial Membrane (GO:0031966)",pltterm:="Mitochondrial Memb."]
-keepterm[Term=="Regulation Of Postsynaptic Neurotransmitter Receptor Endocytosis (GO:0099149) BP",pltterm:="Regulation of Postsynaptic<br>Recep. Endocytosis"]
-keepterm[Term=="Integral Component Of Presynaptic Active Zone Membrane (GO:0099059) CC",pltterm:="Presynaptic Active Zone<br>Memb. Integral Component"]
-keepterm[Term %in% c("PERTURB 2483 MUT ESR1 SRP254635 UP","PERTURB 2487 MUT ESR1 SRP254635 UP","ESR1 knockdown 96h HCC515","ESR1 KD human GSE26298 sample 479","ESR1 Up"),pltterm:="*ESR1* KD/KO Upreg."]
-keepterm[Term=="Ubiquitin E3 ligase (CRY1, SKP1A, CUL1, FBXL3) (human)",pltterm:="E3 Ligase (CRY1*)"]
-keepterm[Term=="Ubiquitin E3 ligase (CRY2, SKP1A, CUL1, FBXL3) (human)",pltterm:="E3 Ligase (CRY2*)"]
-keepterm[Term=="Sensory Perception (GO:0007600)",pltterm:="Sensory Perception"]
-keepterm[Term=="Ubiquitin-Dependent Protein Catabolic Process (GO:0006511)",pltterm:="Ub-Dependent<br>Protein Catabolism"]
-keepterm[Term=="ESR1",pltterm:="*ESR1* Coexp."]
-keepterm[Term=="ATF3 A549 hg19",pltterm:="ATF3 ChIP Targets"]
-keepterm[Term=="ATF6 Down",pltterm:="*ATF6* KD/KO Downreg."]
-keepterm[Term=="Xbp1 expression of XBP1s, an spliced version of the protein mouse GSE6980 sample 1507",pltterm:="Ms *Xbp1s* OE Diff. Expr."]
-
-## for some reason lines keep getting dropped from running all these calls in series, so make sure we end up with 18 terms
-stopifnot(length(unique(keepterm$pltterm))==20)
-
-### merge these reduced terms back to the data we're keeping to plot
-enrichrpltdat <- merge.data.table(enrichrpltdat[Term %in% keepterm$Term],keepterm,by=c("Enrichr_database","Term"))
-stopifnot(all(keepterm$pltterm %in% enrichrpltdat$pltterm))
-
-## make a new table with every factor and every term
-pltdat <- unique(expand.grid(unique(enrichrpltdat[,.(LCnmf_filt_factor,pltterm)])))
-
-pltdat <- merge(pltdat,enrichrpltdat[,.(LCnmf_filt_factor,pltterm,Adjusted.P.value,Odds.Ratio,N_genes)],by=c("LCnmf_filt_factor","pltterm"),all.x=T)
-pltdat <- as.data.table(pltdat)
-pltdat[,`-log10(FDR)`:=-log10(Adjusted.P.value)]
-pltdat[Adjusted.P.value>0.2,Odds.Ratio:=NA]
-pltdat[Adjusted.P.value>0.2,N_genes:=NA]
-## factors 156-160 don't have FDR<0.2 for any of these
-pltdat <- pltdat[!(LCnmf_filt_factor %in% paste0("LCnmf",c(156:160)))]
-
-
-
-## attach percentage of factor-specific genes that are in the set as an alternative size scaling metric
-factspecn <- factspec[,.N,by="factor"]
-pltdat <- merge.data.table(pltdat,factspecn,by.x="LCnmf_filt_factor",by.y="factor")
-pltdat[,propfactgenes:=100*(N_genes/N)]
-## reorder pltterm to make more sense
-pltdat[,pltterm:=factor(pltterm,levels=c("Mitochondrial Memb.", 
-                                         "Mitochondrial Translation",
-                                         "*BOLA3* Coexp.",
-                                         "*COPS4* Coexp.", 
-                                         "Ub-Dependent<br>Protein Catabolism",
-                                         "ATF3 ChIP Targets",
-                                         "Sensory Perception", 
-                                         "Presynaptic Active Zone<br>Memb. Integral Component", 
-                                         "Regulation of Postsynaptic<br>Recep. Endocytosis", 
-                                         "*OLIG2* Coexp.", 
-                                         "Ms Olig2 ChIP Targets", 
-                                         "*ZNF365* KD/KO Upreg.", 
-                                         "E3 Ligase (CRY1*)", 
-                                         "E3 Ligase (CRY2*)", 
-                                         "*ESR1* Coexp.", 
-                                         "*ESR1* KD/KO Upreg.",
-                                         "*ATF6* KD/KO Downreg.",
-                                         "Ms *Xbp1s* OE Diff. Expr.",
-                                         "*LMTK3* KD/KO Upreg.",
-                                         "*TCF25* KD/KO Diff. Expr.",
-                                         "*ZNF365* Coexp."))]
-## reorder factor to match
-pltdat[,LCnmf_filt_factor:=factor(LCnmf_filt_factor,levels=paste0("LCnmf",c(1,2,3,4,5,6,7,8,13,17,21,103)))]
-
-
-pdf("plots/manuscript/Fig2/2F-Lowexpfilt_LCnmf_FactorSpecGene_Enrichr_nmfs156-160dropped_maxAdjP0.2.pdf",height=4,width=4.35)
-ggplot(pltdat,aes(x=LCnmf_filt_factor,y=pltterm,col=`-log10(FDR)`))+
-    geom_point(aes(size=propfactgenes))+
-    scale_color_viridis_c(option="magma")+
-    #scale_x_discrete(expand = c(0,0)) +
-    #scale_y_discrete(expand = c(0,0)) +
-    labs(x="LC NMF Factor",y="Enrichr Term",size="% Factor Genes\nin Term")+
-    theme(axis.text.x=element_text(angle=45,hjust=1,size=7,colour = "#000000"),
-          axis.text.y=element_markdown(size=7,colour = "#000000"),
-          axis.title.x=element_text(size=8,colour = "#000000"),
-          axis.title.y=element_text(size=8,colour = "#000000", margin=margin(0,0,0,-0.02,unit="in")),
-          legend.title=element_text(size=8,hjust=0.5,colour = "#000000"),
-          legend.text=element_text(size=7,colour = "#000000"),
-          legend.background=element_blank(),
-          legend.margin=margin(0,-0.08,0,-0.1,unit="in"))
-dev.off()
 ```
 
 repinf
