@@ -1,11 +1,11 @@
 Md = '/dcs05/lieber/marmaypag/LFF_spatialLC_LIBD4140/LFF_spatial_LC';
 od = '/processed-data/xenium_imageProcessing/';
-brain = 'Br6423';
+brain = 'Br6297';
 
 img_registered = imread(fullfile(Md,od,brain,[brain,'_HE_aligned.png']));
 img = im2double(img_registered);
 
-load(fullfile(Md, od,brain,'cell.mat'))
+load(fullfile(Md, od,brain,'NMcell.mat'))
 %scale = 0.84;
 %cellmaskL = imresize(cellmask, scale, 'nearest');
 cellmaskL=cellmask;
@@ -28,7 +28,7 @@ thick_boundary = imdilate(boundary_mask, strel('disk', 2));
 
 img(repmat(thick_boundary, [1 1 3])) = 0;
 %imshow(img)
-imwrite(im2uint8(img), fullfile(Md, od, brain, [brain, '_HE_DAPI_overlay.png']));
+imwrite(im2uint8(img), fullfile(Md, od, brain, [brain, '_HE_NMDAPI_overlay.png']));
 
 %% overlay NMseg
 load(fullfile(Md,od,brain,'NMseg.mat'))
