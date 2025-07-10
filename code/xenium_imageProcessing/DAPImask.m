@@ -1,8 +1,10 @@
 Md = '/dcs05/lieber/marmaypag/LFF_spatialLC_LIBD4140/LFF_spatial_LC';
 od = '/processed-data/xenium_imageProcessing/';
 %zarr_path = fullfile(Md, '/raw-data/xenium/output-XETG00558__0068654__Br6538__20250501__172909/cells.zarr.zip');
-zarr_path = fullfile(Md, '/raw-data/xenium/output-XETG00558__0068968__Br6423__20250509__160650/cells.zarr.zip');
+%zarr_path = fullfile(Md, '/raw-data/xenium/output-XETG00558__0068968__Br6423__20250509__160650/cells.zarr.zip');
 brain = 'Br6423';
+
+zarr_path = fullfile(Md, od, brain, 'xeniumranger_NM_DAPI', 'outs', 'cells.zarr.zip');
 
 % Import zarr and numpy
 zarr = py.importlib.import_module('zarr');
@@ -33,8 +35,8 @@ disp('Size of cellseg_mask')
 disp(size(cellmask))
 
 mkdir(fullfile(Md, od,brain))
-save(fullfile(Md, od, brain, 'cell.mat'),'cellmask','-v7.3')
-save(fullfile(Md, od, brain, 'nuc.mat'),'nucmask', '-v7.3')
+save(fullfile(Md, od, brain, 'NMcell.mat'),'cellmask','-v7.3')
+save(fullfile(Md, od, brain, 'NMnuc.mat'),'nucmask', '-v7.3')
 
 rgb_nucmask = label2rgb(uint16(nucmask), 'jet', 'k', 'shuffle');
 rgb_cellmask = label2rgb(uint16(cellmask), 'jet', 'k', 'shuffle');
