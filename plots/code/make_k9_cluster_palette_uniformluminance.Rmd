@@ -103,3 +103,20 @@ pal5[9] <- "#FFD06FFF" # Oligo_Complex
 swatch(pal5)
 saveRDS(pal5,"plots/cluster_palette_narrowluminance_v3.RDS")
 ```
+
+what other people liked
+```{r}
+pal6 <- readRDS("plots/cluster_palette_narrowluminance_v2.RDS")
+names(pal6)
+pal6[1] <- "#0609C6"
+pal6[2] <- "#0AC2B3"
+pal6[3] <- "#3B8591"
+pal6[4] <- "#CCBE00"
+pal6[5] <- "#E49A1B"
+pal6[6] <- "#B81800"
+pal6[7] <- "#29652F"
+pal6[8] <- "#359742" 
+pal6[9] <- "#A9C45A"
+
+saveRDS(pal6,"plots/finalpal_somuchfornorainbows.RDS")
+```

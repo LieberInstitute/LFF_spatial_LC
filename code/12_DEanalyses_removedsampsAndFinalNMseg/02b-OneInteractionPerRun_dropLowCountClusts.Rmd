@@ -344,7 +344,7 @@ for (cl in unique(dgel$samples$label)){
 rm(ret,cl,keep)
 ```
 
-### model 4/test 7: label_YRI
+### model 4/test 7: label_YRI (predominant)
 run DE ###
 ```{r}
 v.swt <- voomLmFit(dgelYRI,design = des,block = as.factor(dgelYRI$samples$brnum),adaptive.span = T,sample.weights = T)
@@ -391,10 +391,7 @@ tmpsamp$rn <- NULL
 dgelYRI$samples <- tmpsamp
 rm(tmpsamp)
 ## full design matrix with colnames matching clus geno group values
-des <- model.matrix(~ YRI*label +
-                        Sex +
-                        APOE +
-                        Age,
+des <- model.matrix(~0+label:YRI+ 
                     data = dgelYRI$samples)
 
 ## now filter expression. we DO want to get normalized lib sizes first, based on readme for the arguments for filterByExpr.DGEList (it will look for normalized lib sizes)
