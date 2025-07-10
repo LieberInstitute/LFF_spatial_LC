@@ -40,3 +40,52 @@ np_array = py.numpy.array(combined_mask_uint32);
 
 output_file = fullfile(Md, od, brain, 'combined_nucmask.npy');
 py.numpy.save(output_file, np_array);
+
+
+%% combine NM regions with nucmask only if there is 30% overlap
+NM_labeled = bwlabel(NM);
+combined_mask = nucmask;
+max_label = max(nucmask(:));
+
+NM_stats = regionprops(NM_labeled, 'PixelIdxList');
+nucmask_stats = regionprops(nucmask, 'PixelIdxList');
+
+for i = 1:numel(NM_stats)
+    nm_pixels = NM_stats(i).PixelIdxList;
+    overlapping_labels = nucmask(nm_pixels);
+    overlapping_labels(overlapping_labels == 0) = [];
+    
+    if isempty(overlapping_labels)
+        % No overlap, assign new label
+        max_label = max_label + 1;
+        combined_mask(nm_pixels) = max_label;
+        continue;
+    end
+
+    % Count how many pixels overlap with each nucmask label
+    [ulabels, ~, idx] = unique(overlapping_labels);
+    counts = accumarray(idx, 1);
+    
+    assigned = false;
+    for j = 1:numel(ulabels)
+        nuc_label = ulabels(j);
+        overlap_count = counts(j);
+        nuc_size = numel(nucmask_stats(nuc_label).PixelIdxList);
+        
+        overlap_ratio = overlap_count / nuc_size;
+        if overlap_ratio >= 0.3
+            combined_mask(nm_pixels) = nuc_label;
+            assigned = true;
+            break;
+        end
+    end
+
+    if ~assigned
+        max_label = max_label + 1;
+        combined_mask(nm_pixels) = max_label;
+    end
+end
+
+rgb_nucmask = label2rgb(uint16(nucmask), 'jet', 'k', 'shuffle');
+rgb_NMnucmask = label2rgb(uint16(combined_mask), 'jet', 'k', 'shuffle');
+
