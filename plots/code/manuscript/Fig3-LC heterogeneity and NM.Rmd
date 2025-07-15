@@ -284,7 +284,7 @@ nmde[,yval:=-log10(adj.P.Val)]
 nmde[,uptype:=ifelse(logFC>0,yes="LC NM+",no="LC NM-")]
 
 ## illustrate glial and inhibitory genes for NM- enrichment; LC markers and GPX3 (NM-assoc gene) for NM+ enrichment
-nmde[gene_name %in% c("GAD1","GAD2","TCN","GJB6","VCAN","PHOX2B","SLC6A2","SLC18A2","TH","GPX3"),label:=gene_name]
+nmde[gene_name %in% c("GAD1","STAT3","TCN","GJB6","VCAN","PHOX2B","SLC6A2","ATF4","TH","GPX3"),label:=gene_name]
 
 p <- ggplot(nmde,aes(x=logFC,y=yval,col=uptype,alpha=ifelse(nmde$adj.P.Val<0.05,yes=1,no=0.4)))+
     geom_point(size=0.6,stroke = 0)+
@@ -394,8 +394,13 @@ tfnm[pathway=="EBF3_OE_SKNSH_HUMAN_GSE90682_RNASEQ_DOWN_TF_Perturbations_Followe
 tfnm[pathway=="MEF2D_KD_MOUSE_GSE47150_CREEDSID_GENE_956_UP_TF_Perturbations_Followed_by_Expression",tf:=paste0(tf," ","Downreg.")]
 tfnm[pathway=="STAT3_KO_MOUSE_GSE38375_CREEDSID_GENE_2479_UP_TF_Perturbations_Followed_by_Expression",tf:=paste0(tf," ","Downreg.")]
 
-## how the shit to plot this..gets very confusing because NM-enriched genes can be TF-suprressed genes and vice versa
-ggplot(tfnm,aes(x=-log10(padj),y=tf,color=NES,size=abs(NES),shape=subanno))+geom_point()+scale_color_gradient2(low="blue",mid="gray",high = "red")
+## how the shit to plot this..I think this is not getting the key point across, which is that NM+ neurons are both enriched in TF-upregulated genes AND depleted of TF-repressed genes
+
+
+ggplot(tfnm,aes(x=-log10(pval),y=tf,color=NES,shape=`LC Spot Type\nEnriched for Set`,size=abs(NES)))+
+  geom_point()+
+  ylab("TF and effect on genes in geneset")+
+  scale_color_gradient2(breaks=c(-2,0,2,4),low="#F15FFF",mid="gray",high = "darkorange4")+labs(color="Norm.\nEnrichment\nScore")
 ```
 
 repinf
