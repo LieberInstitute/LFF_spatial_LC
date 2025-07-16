@@ -1,5 +1,5 @@
 ---
-title: "Fig2-Clusters, Markers, WeberDivecha registration, LC NMpos vs NMneg, LConly NMF-GSEA"
+title: "Fig3-LC NMpos vs NMneg, LConly NMF-GSEA"
 format: html
 date: "07-09-2025"
 ---
@@ -44,136 +44,6 @@ theme_set(theme_bw()+theme(axis.text.x = element_text(size = 9), axis.title.x = 
 unloadNamespace('datasets')
 ```
 
-
-
-Fig 3A: LC NMF GSEA didn't really yield anything. instead, use the enrichr results on factor-specific genes (with background sets fed in as all genes on which the respective NMFs were performed).
-
-Start by grabbing results for the following terms, which popped up in one or more factor-specific-gene set, then see how many we really have 
-postsynaptic (GO)
-presynaptic (GO)
-ubiquitin (GO, other pathway/ontol dbs)
-esr1
-mitochondrial (GO, other pathway/ontol dbs)
-calml3 (protein complexes)
-znf365 (TF coexp, TF ppi)
-LMTK3 (kinase coexp)
-subceruleus (allen atlas regions)
-COPS4 (protein complexes? or ppis? don't remember)
-BOLA3 (" or " or TF coexp dont recall)
-Sncg (mouse scseq type)
-ZNF444 (TF coexp)
-TCF25 (TF coexp)
-Sensory (cell types/tissues)
-Endothel (cell types/tissues)
-Olig2 (TF coexpression)
-```{r}
-nmfenrichr <- readRDS("processed-data/10_subclustering/09-LCnmfFilt_factorSpecGenes_enrichr_results.RDS")
-## fix something stupid where N_genes came back as a list
-nmfenrichr[,N_genes:=as.numeric(N_genes)]
-
-factspec <- fread("processed-data/12_DEanalyses_removedsampsAndFinalNMseg/06b-LCNMFLogCt18Filt_factors_and_factorSpecGenes_min25specGenes.txt")
-
-enrichrpltdat <- nmfenrichr[Term %in% grep(Term,pattern="postsynaptic|presynaptic|ubiquitin|esr1|mitochondr|calml3|znf365|LMTK3|subcoeruleus|COPS4|BOLA3|Sncg up|ZNF444|TCF25|Sensory|Olig2|ATF3 A549 hg19|ATF6 Down|Xbp1 expression of XBP1s, an spliced version of the protein mouse GSE6980 sample 1507",value=T,ignore.case=T)]
-
-rm(nmfenrichr)
-
-## subset to terms of interest first filtering for those signif after correction and matching terms of interest
-keepterm <- unique(enrichrpltdat[Adjusted.P.value<0.05,.(Enrichr_database,Term)])
-keepterm <- keepterm[Term %in% grep(Term,pattern="Ubiquitin-Dependent Protein Catabolic Process|Ubiquitin-Protein Transferase Activity (GO:0004842)|Ubiquitin E3 ligase \\(CRY|OLIG2 human tf ARCHS4|Mitochondrial Membrane|COPS4|BOLA3|ZNF365|ESR1 knockdown|ESR1 KD human|ESR1 mut human|ESR1 22446102 ChIP|OLIG2 26023283 ChIP-Seq|TCF25 Up|ESR1 Up|LMTK3 Up|Olig2 Down|ESR1 SRP254635|OLIG2 23332759|Regulation Of Postsynaptic|Sensory Perception \\(GO|Sensory neuron|Integral Component Of Presynaptic Active|Voltage-gated|Ligand-gated|PERTURB 5973 KD TCF25|subcoeruleus",value=T)|Term=="Mitochondrial Translation"|Term=="ESR1"|Term=="ATF3 A549 hg19"|(Term=="ATF6 Down"&Enrichr_database=="LINCS_L1000_CRISPR_KO_Consensus_Sigs")|Term=="Xbp1 expression of XBP1s, an spliced version of the protein mouse GSE6980 sample 1507"]
-
-
-## drop a couple less important ones
-keepterm <- keepterm[!(Term %in% grep(Term,pattern="OLIG2 26023283",value=T))] # less relevant cell type
-keepterm <- keepterm[!(Term=="ESR1"&Enrichr_database=="PPI_Hub_Proteins")] # redundant with another
-keepterm <- keepterm[Term!="ESR1 22446102 ChIP-Seq UTERUS Mouse"] # several human cell line datasets supporting same
-keepterm <- keepterm[Term!="ZNF365 Up"] # weak/redundant
-
-## Now clean up/consolidate terms
-keepterm[Term %in% grep(Term,pattern="subcoeruleus",value=T),pltterm:="Allen Ms r1/r2 Sub-<br>coeruleus nu."]
-keepterm[,pltterm:=gsub(Term,pattern="^(.*) human tf ARCHS4 coexpression",replacement=paste0("*","\\1","*"," Coexp."))]
-keepterm[Term %in% c("PERTURB 5973 KD TCF25 SRP271175 DOWN","TCF25 Up"),pltterm:="*TCF25* KD/KO Diff. Expr."]
-keepterm[Term=="LMTK3 Up",pltterm:="*LMTK3* KD/KO Upreg."]
-keepterm[Term=="OLIG2 23332759 ChIP-Seq OLIGODENDROCYTES Mouse",pltterm:="Ms Olig2 ChIP Targets"]
-keepterm[Term=="Mitochondrial Membrane (GO:0031966)",pltterm:="Mitochondrial Memb."]
-keepterm[Term=="Regulation Of Postsynaptic Neurotransmitter Receptor Endocytosis (GO:0099149) BP",pltterm:="Regulation of Postsynaptic<br>Recep. Endocytosis"]
-keepterm[Term=="Integral Component Of Presynaptic Active Zone Membrane (GO:0099059) CC",pltterm:="Presynaptic Active Zone<br>Memb. Integral Component"]
-keepterm[Term %in% c("PERTURB 2483 MUT ESR1 SRP254635 UP","PERTURB 2487 MUT ESR1 SRP254635 UP","ESR1 knockdown 96h HCC515","ESR1 KD human GSE26298 sample 479","ESR1 Up"),pltterm:="*ESR1* KD/KO Upreg."]
-keepterm[Term=="Ubiquitin E3 ligase (CRY1, SKP1A, CUL1, FBXL3) (human)",pltterm:="E3 Ligase (CRY1*)"]
-keepterm[Term=="Ubiquitin E3 ligase (CRY2, SKP1A, CUL1, FBXL3) (human)",pltterm:="E3 Ligase (CRY2*)"]
-keepterm[Term=="Sensory Perception (GO:0007600)",pltterm:="Sensory Perception"]
-keepterm[Term=="Ubiquitin-Dependent Protein Catabolic Process (GO:0006511)",pltterm:="Ub-Dependent<br>Protein Catabolism"]
-keepterm[Term=="ESR1",pltterm:="*ESR1* Coexp."]
-keepterm[Term=="ATF3 A549 hg19",pltterm:="ATF3 ChIP Targets"]
-keepterm[Term=="ATF6 Down",pltterm:="*ATF6* KD/KO Downreg."]
-keepterm[Term=="Xbp1 expression of XBP1s, an spliced version of the protein mouse GSE6980 sample 1507",pltterm:="Ms *Xbp1s* OE Diff. Expr."]
-
-## for some reason lines keep getting dropped from running all these calls in series, so make sure we end up with 18 terms
-stopifnot(length(unique(keepterm$pltterm))==20)
-
-### merge these reduced terms back to the data we're keeping to plot
-enrichrpltdat <- merge.data.table(enrichrpltdat[Term %in% keepterm$Term],keepterm,by=c("Enrichr_database","Term"))
-stopifnot(all(keepterm$pltterm %in% enrichrpltdat$pltterm))
-
-## make a new table with every factor and every term
-pltdat <- unique(expand.grid(unique(enrichrpltdat[,.(LCnmf_filt_factor,pltterm)])))
-
-pltdat <- merge(pltdat,enrichrpltdat[,.(LCnmf_filt_factor,pltterm,Adjusted.P.value,Odds.Ratio,N_genes)],by=c("LCnmf_filt_factor","pltterm"),all.x=T)
-pltdat <- as.data.table(pltdat)
-pltdat[,`-log10(FDR)`:=-log10(Adjusted.P.value)]
-pltdat[Adjusted.P.value>0.2,Odds.Ratio:=NA]
-pltdat[Adjusted.P.value>0.2,N_genes:=NA]
-## factors 156-160 don't have FDR<0.2 for any of these
-pltdat <- pltdat[!(LCnmf_filt_factor %in% paste0("LCnmf",c(156:160)))]
-
-
-
-## attach percentage of factor-specific genes that are in the set as an alternative size scaling metric
-factspecn <- factspec[,.N,by="factor"]
-pltdat <- merge.data.table(pltdat,factspecn,by.x="LCnmf_filt_factor",by.y="factor")
-pltdat[,propfactgenes:=100*(N_genes/N)]
-## reorder pltterm to make more sense
-pltdat[,pltterm:=factor(pltterm,levels=c("Mitochondrial Memb.", 
-                                         "Mitochondrial Translation",
-                                         "*BOLA3* Coexp.",
-                                         "*COPS4* Coexp.", 
-                                         "Ub-Dependent<br>Protein Catabolism",
-                                         "ATF3 ChIP Targets",
-                                         "Sensory Perception", 
-                                         "Presynaptic Active Zone<br>Memb. Integral Component", 
-                                         "Regulation of Postsynaptic<br>Recep. Endocytosis", 
-                                         "*OLIG2* Coexp.", 
-                                         "Ms Olig2 ChIP Targets", 
-                                         "*ZNF365* KD/KO Upreg.", 
-                                         "E3 Ligase (CRY1*)", 
-                                         "E3 Ligase (CRY2*)", 
-                                         "*ESR1* Coexp.", 
-                                         "*ESR1* KD/KO Upreg.",
-                                         "*ATF6* KD/KO Downreg.",
-                                         "Ms *Xbp1s* OE Diff. Expr.",
-                                         "*LMTK3* KD/KO Upreg.",
-                                         "*TCF25* KD/KO Diff. Expr.",
-                                         "*ZNF365* Coexp."))]
-## reorder factor to match
-pltdat[,LCnmf_filt_factor:=factor(LCnmf_filt_factor,levels=paste0("LCnmf",c(1,2,3,4,5,6,7,8,13,17,21,103)))]
-
-
-pdf("plots/manuscript/Fig3/3A-Lowexpfilt_LCnmf_FactorSpecGene_Enrichr_nmfs156-160dropped_maxAdjP0.2.pdf",height=4,width=4.35)
-ggplot(pltdat,aes(x=LCnmf_filt_factor,y=pltterm,col=`-log10(FDR)`))+
-    geom_point(aes(size=propfactgenes))+
-    scale_color_viridis_c(option="magma")+
-    #scale_x_discrete(expand = c(0,0)) +
-    #scale_y_discrete(expand = c(0,0)) +
-    labs(x="LC NMF Factor",y="Enrichr Term",size="% Factor Genes\nin Term")+
-    theme(axis.text.x=element_text(angle=45,hjust=1,size=7,colour = "#000000"),
-          axis.text.y=element_markdown(size=7,colour = "#000000"),
-          axis.title.x=element_text(size=8,colour = "#000000"),
-          axis.title.y=element_text(size=8,colour = "#000000", margin=margin(0,0,0,-0.02,unit="in")),
-          legend.title=element_text(size=8,hjust=0.5,colour = "#000000"),
-          legend.text=element_text(size=7,colour = "#000000"),
-          legend.background=element_blank(),
-          legend.margin=margin(0,-0.08,0,-0.1,unit="in"))
-dev.off()
-```
 
 ## For the clustering spotplots, we want to use the H&E images and plot by capture area, so we will need to load the big daddy SPE
 ```{r}
@@ -231,13 +101,13 @@ extract_legend <- function(my_ggp) {
 }
 ```
 
-Fig 3B: Show one of the previous samples, now with only LC NM+ and - labeled. V13M06-404_B1 looks like a good sample for illustrating
+Fig 3A: Show one of the previous samples, now with only LC NM+ and - labeled. V13M06-404_B1 looks like a good sample for illustrating
 ```{r}
-fig2c <- lc2[,lc2$sample_id=="V13M06-404_B1"]
-fig2c <- fig2c[,fig2c$lcnm_subclus %in% c("LC_NMpos","LC_NMneg")]
-fig2c$lcnm_subclus <- gsub(fig2c$lcnm_subclus,pattern="_",replacement=" ")
-fig2c$lcnm_subclus <- gsub(fig2c$lcnm_subclus,pattern="pos",replacement="+")
-fig2c$lcnm_subclus <- gsub(fig2c$lcnm_subclus,pattern="neg",replacement="-")
+fig3a <- lc2[,lc2$sample_id=="V13M06-404_B1"]
+fig3a <- fig3a[,fig3a$lcnm_subclus %in% c("LC_NMpos","LC_NMneg")]
+fig3a$lcnm_subclus <- gsub(fig3a$lcnm_subclus,pattern="_",replacement=" ")
+fig3a$lcnm_subclus <- gsub(fig3a$lcnm_subclus,pattern="pos",replacement="+")
+fig3a$lcnm_subclus <- gsub(fig3a$lcnm_subclus,pattern="neg",replacement="-")
 
 lcnmpal <- c(pal[1],"#9a9a9a")
 names(lcnmpal) <- c("LC NM+","LC NM-")
@@ -249,7 +119,7 @@ names(lcnmpal) <- c("LC NM+","LC NM-")
 ## finally, spatialLIBD's autocrop is still including the vast majority of the image (whereas LC is a much smaller area of it, and despite us throwing out all the spots that aren't LC here. so some post-adjusting in illustrator will be required; triple all the parameters for sizes and themes besides legend so that we can rework it later).
 
 plotfact <- 3
-p <- vis_clus(fig2c,sampleid="V13M06-404_B1",spatial = T,na_color = NULL,auto_crop = T,point_size = 0.55*plotfact,alpha=0.45,clustervar = "lcnm_subclus",colors = lcnmpal,image_id = "hires")+
+p <- vis_clus(fig3a,sampleid="V13M06-404_B1",spatial = T,na_color = NULL,auto_crop = T,point_size = 0.55*plotfact,alpha=0.45,clustervar = "lcnm_subclus",colors = lcnmpal,image_id = "hires")+
     theme(plot.title = element_text(size = 9, hjust = 0.5,margin=margin(0,0,0,0,unit="in")),
           panel.border = element_blank(),
           plot.margin = margin(-0.15*plotfact,
@@ -269,14 +139,14 @@ p <- vis_clus(fig2c,sampleid="V13M06-404_B1",spatial = T,na_color = NULL,auto_cr
 ## also plot in higher res than would otherwise be necessary so we have good resolution of the illustrator-cropped out LC zoone
 p <- rasterize(p,layers="Points",dpi=600,dev="cairo_png")
 
-pdf("plots/manuscript/Fig3/Fig3B_needs_illust_postproc.pdf",height=plotfact*2.4,width=plotfact*3)
+pdf("plots/manuscript/Fig3/Fig3A_needs_illust_postproc.pdf",height=plotfact*2.4,width=plotfact*3)
 p
 dev.off()
 
-rm(fig2c,p,plotfact)
+rm(fig3a,p,plotfact)
 ```
 
-Fig 3C: LC NM+- DE volcano
+Fig 3B: LC NM+- DE volcano
 ```{r}
 nmde <- fread("processed-data/12_DEanalyses_removedsampsAndFinalNMseg/04-LCNMpos_vs_LCNMneg_DE.txt")
 
@@ -301,8 +171,7 @@ p <- ggplot(nmde,aes(x=logFC,y=yval,col=uptype,alpha=ifelse(nmde$adj.P.Val<0.05,
             #seed=10403, 
             max.iter=100000,
             max.overlaps=10000,
-            max.time=3,
-            segment.size=0.25)+
+            max.time=3)+
     guides(alpha="none",color=guide_legend(override.aes=list(size=1.25,alpha=1)))+
     theme(axis.text.x=element_text(size=8),
           axis.text.y=element_text(size=8),
@@ -323,8 +192,8 @@ p <- ggplot(nmde,aes(x=logFC,y=yval,col=uptype,alpha=ifelse(nmde$adj.P.Val<0.05,
 p <- rasterize(p,layers="Points",dpi=300,dev="cairo_png")
 
 
-## point labels are wildly screwed up and will need fixing in illustrator.
-pdf("plots/manuscript/Fig2/3C-LCnmDE_volcano.pdf",height=2.5,width=3)
+## point labels are wildly screwed up and will need fixing in illustrator. make it 2x size so that we can tell where labels and lines are supposed to be going (and then downsixze in illust.) 
+pdf("plots/manuscript/Fig3/3B-LCnmDE_volcano.pdf",height=5,width=6)
 p
 dev.off()
 
@@ -332,7 +201,7 @@ rm(p,nmde)
 gc(full=T)
 ```
 
-Fig 3D: NM DEG GSEA
+Fig 3C: NM DEG GSEA -- OR GRN, TBD
 ```{r}
 msignm <- readRDS("processed-data/12_DEanalyses_removedsampsAndFinalNMseg/05-LCNMposVsNeg_msigdb_and_tftarg_GSEAs.RDS")
 ## ^ only grab the msigdb ones here; TF-targ enrichments were filtered beyond this point to those where TF is at least marginally expressed later
@@ -401,6 +270,163 @@ ggplot(tfnm,aes(x=-log10(pval),y=tf,color=NES,shape=`LC Spot Type\nEnriched for 
   geom_point()+
   ylab("TF and effect on genes in geneset")+
   scale_color_gradient2(breaks=c(-2,0,2,4),low="#F15FFF",mid="gray",high = "darkorange4")+labs(color="Norm.\nEnrichment\nScore")
+```
+
+3E UPPER PORTION: LC NMF factors 3-8 (3-7 are LC, 8 is astrocytic): enrichr and projection of SPE NMF into WebDiv snseq
+
+This plot will be laid out such that above the x axis is the enrichr results and below it are the projections onto webdiv. LC NMF loadings into GSEA didn't really yield anything. instead, use the enrichr results on factor-specific genes (with background sets fed in as all genes on which the respective NMFs were performed).
+
+Start by grabbing results for the following terms, which popped up in one or more factor-specific-gene set, then see how many we really have 
+postsynaptic (GO)
+presynaptic (GO)
+ubiquitin (GO, other pathway/ontol dbs)
+esr1
+mitochondrial (GO, other pathway/ontol dbs)
+calml3 (protein complexes)
+znf365 (TF coexp, TF ppi)
+LMTK3 (kinase coexp)
+subceruleus (allen atlas regions)
+COPS4 (protein complexes? or ppis? don't remember)
+BOLA3 (" or " or TF coexp dont recall)
+Sncg (mouse scseq type)
+ZNF444 (TF coexp)
+TCF25 (TF coexp)
+Sensory (cell types/tissues)
+Endothel (cell types/tissues)
+Olig2 (TF coexpression)
+```{r}
+nmfenrichr <- readRDS("processed-data/10_subclustering/09-LCnmfFilt_factorSpecGenes_enrichr_results.RDS")
+## fix something stupid where N_genes came back as a list
+nmfenrichr[,N_genes:=as.numeric(N_genes)]
+
+factspec <- fread("processed-data/12_DEanalyses_removedsampsAndFinalNMseg/06b-LCNMFLogCt18Filt_factors_and_factorSpecGenes_min25specGenes.txt")
+
+enrichrpltdat <- nmfenrichr[Term %in% grep(Term,pattern="postsynaptic|presynaptic|ubiquitin|esr1|mitochondr|calml3|znf365|LMTK3|subcoeruleus|COPS4|BOLA3|Sncg up|ZNF444|TCF25|Sensory|Olig2|ATF3 A549 hg19|ATF6 Down|Xbp1 expression of XBP1s, an spliced version of the protein mouse GSE6980 sample 1507",value=T,ignore.case=T)]
+enrichrpltdat <- enrichrpltdat[LCnmf_filt_factor%in%paste0("LCnmf",c(3,5:8)),]
+
+rm(nmfenrichr)
+
+## subset to factors of interest and terms of interest first filtering for those signif after correction and matching terms of interest. term 4 has no notable enrichments.
+keepterm <- unique(enrichrpltdat[P.value<0.05&LCnmf_filt_factor%in%paste0("LCnmf",c(3,5:8)),.(Enrichr_database,Term)])
+keepterm <- keepterm[Term %in% grep(Term,pattern="Ubiquitin-Dependent Protein Catabolic Process|Ubiquitin-Protein Transferase Activity (GO:0004842)|Ubiquitin E3 ligase \\(CRY|OLIG2 human tf ARCHS4|Mitochondrial Membrane|COPS4|BOLA3|ZNF365|ESR1 knockdown|ESR1 KD human|ESR1 mut human|ESR1 22446102 ChIP|OLIG2 26023283 ChIP-Seq|TCF25 Up|ESR1 Up|LMTK3 Up|Olig2 Down|ESR1 SRP254635|OLIG2 23332759|Regulation Of Postsynaptic|Sensory Perception \\(GO|Sensory neuron|Integral Component Of Presynaptic Active|Voltage-gated|Ligand-gated|PERTURB 5973 KD TCF25|subcoeruleus",value=T)|Term=="Mitochondrial Translation"|Term=="ESR1"|Term=="ATF3 A549 hg19"|(Term=="ATF6 Down"&Enrichr_database=="LINCS_L1000_CRISPR_KO_Consensus_Sigs")|Term=="Xbp1 expression of XBP1s, an spliced version of the protein mouse GSE6980 sample 1507"]
+keepterm <- keepterm
+
+## drop a couple less important ones
+keepterm <- keepterm[!(Term %in% grep(Term,pattern="OLIG2 26023283",value=T))] # less relevant cell type
+keepterm <- keepterm[!(Term=="ESR1"&Enrichr_database=="PPI_Hub_Proteins")] # redundant with another
+keepterm <- keepterm[Term!="ESR1 22446102 ChIP-Seq UTERUS Mouse"] # several human cell line datasets supporting same
+keepterm <- keepterm[Term!="ZNF365 Up"] # weak/redundant
+
+## Now clean up/consolidate terms
+keepterm[Term %in% grep(Term,pattern="subcoeruleus",value=T),pltterm:="Allen Ms r1/r2 Sub-<br>coeruleus nu."]
+keepterm[,pltterm:=gsub(Term,pattern="^(.*) human tf ARCHS4 coexpression",replacement=paste0("*","\\1","*"," Coexp."))]
+keepterm[Term %in% c("PERTURB 5973 KD TCF25 SRP271175 DOWN","TCF25 Up"),pltterm:="*TCF25* KD/KO Diff. Expr."]
+keepterm[Term=="LMTK3 Up",pltterm:="*LMTK3* KD/KO Upreg."]
+keepterm[Term=="OLIG2 23332759 ChIP-Seq OLIGODENDROCYTES Mouse",pltterm:="Ms Olig2 ChIP Targets"]
+keepterm[Term=="Mitochondrial Membrane (GO:0031966)",pltterm:="Mitochondrial Memb."]
+keepterm[Term=="Regulation Of Postsynaptic Neurotransmitter Receptor Endocytosis (GO:0099149) BP",pltterm:="Regulation of Postsynaptic<br>Recep. Endocytosis"]
+keepterm[Term=="Integral Component Of Presynaptic Active Zone Membrane (GO:0099059) CC",pltterm:="Presynaptic Active Zone<br>Memb. Integral Component"]
+keepterm[Term %in% c("PERTURB 2483 MUT ESR1 SRP254635 UP","PERTURB 2487 MUT ESR1 SRP254635 UP","ESR1 KD human GSE26298 sample 479","ESR1 Up"),pltterm:="*ESR1* KD/KO Upreg."]
+keepterm[Term=="ESR1 knockdown 96h HCC515"&Enrichr_database=="L1000_Kinase_and_GPCR_Perturbations_down",pltterm:="*ESR1* KD/KO Downreg."]
+keepterm[Term=="ESR1 knockdown 96h HCC515"&Enrichr_database=="L1000_Kinase_and_GPCR_Perturbations_up",pltterm:="*ESR1* KD/KO Upreg."]
+keepterm[Term=="Ubiquitin E3 ligase (CRY1, SKP1A, CUL1, FBXL3) (human)",pltterm:="E3 Ligase (CRY1*)"]
+keepterm[Term=="Ubiquitin E3 ligase (CRY2, SKP1A, CUL1, FBXL3) (human)",pltterm:="E3 Ligase (CRY2*)"]
+keepterm[Term=="Sensory Perception (GO:0007600)",pltterm:="Sensory Perception"]
+keepterm[Term=="Ubiquitin-Dependent Protein Catabolic Process (GO:0006511)",pltterm:="Ub-Dependent<br>Protein Catabolism"]
+keepterm[Term=="ESR1",pltterm:="*ESR1* Coexp."]
+keepterm[Term=="ATF3 A549 hg19",pltterm:="ATF3 ChIP Targets"]
+keepterm[Term=="ATF6 Down",pltterm:="*ATF6* KD/KO Downreg."]
+keepterm[Term=="Xbp1 expression of XBP1s, an spliced version of the protein mouse GSE6980 sample 1507",pltterm:="Ms *Xbp1s* OE Diff. Expr."]
+
+## filter to terms we've renamed
+keepterm <- keepterm[pltterm!=Term]
+
+## for some reason lines keep getting dropped from running all these calls in series, so make sure we end up with 13 terms (there are multiple for some ESR1 sets)
+stopifnot(length(unique(keepterm$pltterm))==13)
+
+### merge these reduced terms back to the data we're keeping to plot
+enrichrpltdat <- merge.data.table(enrichrpltdat[Term %in% keepterm$Term],keepterm,by=c("Enrichr_database","Term"))
+stopifnot(all(keepterm$pltterm %in% enrichrpltdat$pltterm))
+
+## make a new table with every factor and every term
+pltdat <- unique(expand.grid(unique(enrichrpltdat[,.(LCnmf_filt_factor,pltterm)])))
+
+pltdat <- merge(pltdat,enrichrpltdat[,.(LCnmf_filt_factor,pltterm,Adjusted.P.value,Odds.Ratio,N_genes)],by=c("LCnmf_filt_factor","pltterm"),all.x=T)
+pltdat <- as.data.table(pltdat)
+pltdat[,`-log10(FDR)`:=-log10(Adjusted.P.value)]
+pltdat[Adjusted.P.value>0.2,Odds.Ratio:=NA]
+pltdat[Adjusted.P.value>0.2,N_genes:=NA]
+
+## attach percentage of factor-specific genes that are in the set as an alternative size scaling metric
+factspecn <- factspec[,.N,by="factor"]
+pltdat <- merge.data.table(pltdat,factspecn,by.x="LCnmf_filt_factor",by.y="factor")
+pltdat[,propfactgenes:=100*(N_genes/N)]
+## reorder pltterm to make more sense. get rid of xbp1s OE associated genes, not FDR sig in any test
+pltdat <- pltdat[pltterm!="Ms *Xbp1s* OE Diff. Expr."]
+
+pltdat[,pltterm:=factor(pltterm,levels=c(
+  "*ESR1* Coexp.",
+  "ATF3 ChIP Targets",
+  "Mitochondrial Memb.",
+  "*ESR1* KD/KO Downreg.",
+  "*ZNF365* Coexp.",
+  "Sensory Perception",
+  "Presynaptic Active Zone<br>Memb. Integral Component",
+  "Regulation of Postsynaptic<br>Recep. Endocytosis",
+  "*OLIG2* Coexp.", 
+  "Ms Olig2 ChIP Targets",
+  "*ESR1* KD/KO Upreg.",
+  "*ATF6* KD/KO Downreg."))]
+## reorder factor to match
+pltdat[,LCnmf_filt_factor:=factor(LCnmf_filt_factor,levels=paste0("LCnmf",c(3,5,6,7,8)))]
+
+
+pdf("plots/manuscript/Fig3/3Dupper-Lowexpfilt_LCnmf_FactorSpecGene_Enrichr_nmfs35678_maxAdjP0.2.pdf",height=4,width=4.35)
+ggplot(pltdat,aes(x=LCnmf_filt_factor,y=pltterm,col=`-log10(FDR)`))+
+    geom_point(aes(size=propfactgenes))+
+    scale_color_viridis_c(option="magma")+
+    #scale_x_discrete(expand = c(0,0)) +
+    #scale_y_discrete(expand = c(0,0)) +
+    labs(x="LC NMF Factor",y="Enrichr Term",size="% Factor Genes\nin Term")+
+    theme(axis.text.x=element_text(angle=45,hjust=1,size=7,colour = "#000000"),
+          axis.text.y=element_markdown(size=7,colour = "#000000"),
+          axis.title.x=element_text(size=8,colour = "#000000"),
+          axis.title.y=element_text(size=8,colour = "#000000", margin=margin(0,0,0,-0.02,unit="in")),
+          legend.title=element_text(size=8,hjust=0.5,colour = "#000000"),
+          legend.text=element_text(size=7,colour = "#000000"),
+          legend.background=element_blank(),
+          legend.margin=margin(0,-0.08,0,-0.1,unit="in"))
+dev.off()
+rm(pltdat,enrichrpltdat,keepterm)
+gc(full=T)
+```
+
+Fig 3D lower is the NMF projection of these same factors onto webdiv LC snseq
+```{r}
+webdivnmf <- readRDS("processed-data/10_subclustering/10e-speLCnmfPrefilt_projectToWeberDivechaSnseq.RDS")
+webdivnmf <- webdivnmf[nmf %in% paste0("LCspeFiltNMF_",c(3,5:8))]
+webdivnmf[,nmf:=gsub(nmf,pattern="LCspeFiltNMF_(.*)$",replacement=paste0("LCnmf","\\1"))]
+webdivnmf[,nmf:=factor(nmf,levels=paste0("LCnmf",c(3,5:8)))]
+
+## we'll remove the x axis labels in illustrator so we know for sure they're lined up when we start.
+pdf("plots/manuscript/Fig3/3D LOWER-speLCnmfPrefilt_allfactors_projectToWeberDivechaSnseq.pdf",height=3,width=3.5)
+ggplot(webdivnmf, aes(x=nmf, y=webdivClus, size=prop, color=scaled.avg))+
+  geom_count()+
+  theme_bw()+
+  scale_size(range=c(0,3))+
+  scale_x_discrete(position="top") +
+  scale_color_viridis_c(option="F")+
+  labs(x="Spatial LC NMF Factor",y="Weber Divecha Cluster")+
+  theme(axis.text.x=element_text(size=7,angle=90,colour = "#000000"),
+          axis.text.y=element_markdown(size=7,colour = "#000000"),
+          axis.title.x=element_text(size=8,colour = "#000000"),
+          axis.title.y=element_text(size=8,colour = "#000000", margin=margin(0,0,0,-0.02,unit="in")),
+          legend.title=element_text(size=8,hjust=0.5,colour = "#000000"),
+          legend.text=element_text(size=7,colour = "#000000"),
+          legend.background=element_blank(),
+          legend.margin=margin(0,-0.08,0,-0.1,unit="in"))
+dev.off()
+
 ```
 
 repinf

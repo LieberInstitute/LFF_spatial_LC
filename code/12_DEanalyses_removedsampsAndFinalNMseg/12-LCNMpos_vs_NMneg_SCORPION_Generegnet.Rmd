@@ -11,9 +11,6 @@ knitr::opts_chunk$set(fig.height = 10,fig.width = 7,include = FALSE)
 knitr::opts_knit$set(root.dir = here::here())
 
 library(data.table)
-library(ggplot2)
-library(ggtext)
-library(gridExtra)
 library(SpatialExperiment)
 library(dorothea)
 library(SCORPION)
@@ -35,12 +32,6 @@ options(parallelly.fork.enable=TRUE)
 library(BiocParallel)
 options(bphost="localhost")
 
-
-## ggplot defaults
-theme_set(theme_bw()+theme(axis.text.x = element_text(size = 8,color = "#000000"), axis.title.x = element_text(size = 9,color = "#000000"), axis.text.y = element_text(size = 8,color = "#000000"), axis.title.y = element_text(size =9,color = "#000000"), plot.title = element_markdown(size = 10,hjust=0.5,color = "#000000"), strip.text = element_text(size=11), legend.text = element_text(size=7,color = "#000000"), legend.title = element_text(size=8,hjust=0.5,color = "#000000"),axis.ticks = element_line(linewidth=0.5),panel.grid.major = element_line(linewidth=0.5),panel.grid.minor=element_line(linewidth=0.25),plot.title.position="plot"))
-
-## last of all, unload the base package datasets, whose data keep getting in the way of autocompletions (e.g., Theoph is priortized over TRUE)
-unloadNamespace("datasets")
 ```
 
 ```{r}
@@ -74,31 +65,80 @@ lcnmct <- counts(lc3[,lc3$lcnm=="LC_NMpos"])
 lcct <- counts(lc3[,lc3$lcnm=="LC_NMneg"])
 
 xprmats <- list(NMpos=lcnmct,NMneg=lcct)
+rm(lc3,lcnmct,lcct)
+gc(full=T)
 
 ## re  scorpion arguments not documented (clearly):
 ## pcnet appears to have been a predecessor method -- they use spearman in the paper
-## but then   no applicable method for `@` applied to an object of class "matrix" coming from somewehere ca line 110 in runPANDA -_- 
-## add line 150 to runPANDA: geneCoexp <- as(geneCoexp,"dgCMatrix")
+## error in code as written: no applicable method for `@` applied to an object of class "matrix" coming from somewehere ca line 150 in runPANDA -_- 
+## add two lines at line 150 in runPANDA:     geneCoreg <- as.matrix(geneCoreg)
+    # geneCoreg <- as(geneCoreg, "dgCMatrix")
+## trace(SCORPION:::runPANDA,edit=TRUE)
 
 scorpii <- lapply(xprmats,FUN=function(x){
-  scorpi <- scorpion(tfMotifs = tftab,
+  scorpi <- scorpion(tfMotifs = tftab, # as used by authors
                    gexMatrix = x,
-                   ppiNet = hsaPPI,
+                   ppiNet = hsaPPI, # as used by authors
                    nCores = 8,
-                   gammaValue = 6,
-                   nPC = 20,
-                   assocMethod = "spearman",
-                   alphaValue = 0.1,
-                   hammingValue = 0.001,
-                   nIter = Inf,
-                   outNet = c("regulatory","coregulatory","cooperative"),
+                   gammaValue = 6, #  "Graining level of data (proportion of number of single cells in the initial dataset to the number of super-cells in the final dataset)." Default is 10, but since these are high-content multicellular Visium spots rather than single cells, this can be a little smaller than it would be for scseq. 
+                   nPC = 20, # default is 25
+                   assocMethod = "spearman", # default
+                   alphaValue = 0.1, # default
+                   hammingValue = 0.001, # default
+                   nIter = Inf, # default
+                   outNet = c("regulatory","coregulatory","cooperative"), # all networks
                    showProgress = TRUE,
-                   randomizationMethod = "within.gene",
-                   filterExpr = TRUE,scaleByPresent = FALSE)
+                   randomizationMethod = "None", # default is "none"
+                   filterExpr = TRUE,
+                   scaleByPresent = FALSE, # default
+                   zScaling=TRUE) #default
   return(scorpi)
 })
 
-saveRDS(scorpii,"processed-data/12_DEanalyses_removedsampsAndFinalNMseg/12-LCNMpos_NMneg_scorpii.RDS")
+saveRDS(scorpii,"processed-data/12_DEanalyses_removedsampsAndFinalNMseg/12a-LCNMpos_NMneg_scorpii_actual.RDS")
+```
+── SCORPION ────────────────────────────────────────────────────────────────────────────────────
+✔ Initializing and validating
+✔ Verified sufficient samples
+ℹ Normalizing networks
+ℹ Learning Network
+ℹ Using tanimoto similarity
+✔ Successfully ran SCORPION on 16520 Genes and 603 TFs
+ℹ Time elapsed: 5920.98 seconds          
+                                         
+── SCORPION ────────────────────────────────────────────────────────────────────────────────────
+✔ Initializing and validating
+✔ Verified sufficient samples
+ℹ Normalizing networks
+ℹ Learning Network
+ℹ Using tanimoto similarity
+✔ Successfully ran SCORPION on 16586 Genes and 603 TFs
+ℹ Time elapsed: 6147.76 seconds         
+
+
+## also generate shuffled-genewise networks in case we need them for something comparative later
+```{r}
+scorpii <- lapply(xprmats,FUN=function(x){
+  scorpi <- scorpion(tfMotifs = tftab, # as used by authors
+                   gexMatrix = x,
+                   ppiNet = hsaPPI, # as used by authors
+                   nCores = 8,
+                   gammaValue = 6, #  "Graining level of data (proportion of number of single cells in the initial dataset to the number of super-cells in the final dataset)." Default is 10, but since these are high-content multicellular Visium spots rather than single cells, this can be a little smaller than it would be for scseq. 
+                   nPC = 20, # default is 25
+                   assocMethod = "spearman",
+                   alphaValue = 0.1, # default
+                   hammingValue = 0.001, # default
+                   nIter = Inf, # default
+                   outNet = c("regulatory","coregulatory","cooperative"), # all networks
+                   showProgress = TRUE,
+                   randomizationMethod = "within.gene", # default is "none"
+                   filterExpr = TRUE,
+                   scaleByPresent = FALSE, # default
+                   zScaling=TRUE) #default
+  return(scorpi)
+})
+
+saveRDS(scorpii,"processed-data/12_DEanalyses_removedsampsAndFinalNMseg/12b-LCNMpos_NMneg_scorpii_RandomizedByGene.RDS")
 ```
 ── SCORPION ───────────────────────────────────────────────────────────────────────────────────
 ✔ Initializing and validating
@@ -119,6 +159,13 @@ saveRDS(scorpii,"processed-data/12_DEanalyses_removedsampsAndFinalNMseg/12-LCNMp
 ℹ Using tanimoto similarity
 ✔ Successfully ran SCORPION on 16586 Genes and 603 TFs
 ℹ Time elapsed: 4571.28 seconds         
+
+### To examine differences in GRN activity between conditions/groups, the authors then..
+```{r}
+scorpii <- readRDS("processed-data/12_DEanalyses_removedsampsAndFinalNMseg/12a-LCNMpos_NMneg_scorpii_actual.RDS")
+
+```
+
 
 ```{r}
 sessionInfo()
