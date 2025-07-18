@@ -15,6 +15,7 @@ library(ggplot2)
 library(gridExtra)
 library(SpatialExperiment)
 library(spatialLIBD)
+library(ggrastr)
 
 ## rstudio GUI tweaks
 require(colorout)
@@ -109,18 +110,29 @@ leg.tmp <- ggplot(tmpdat,aes(x=array_col,y=array_row,color=QC))+geom_point()+sca
 leg.tmp <- extract_legend(leg.tmp)
 dev.off()
 
-plt <- vis_grid_clus(raw,clustervar="QC",auto_crop = T,point_size = 1.35,return_plots=T,height=4.25,width=4.25,spatial = T,image_id = "lowres",alpha=0.35)
+# defactor
+raw$QC <- as.character(raw$QC)
+
+
+plt <- vis_grid_clus(raw,clustervar="QC",auto_crop = T,point_size = 1.18,return_plots=T,height=3.75,width=3.75,spatial = T,sort_clust = FALSE,image_id = "lowres",alpha=0.5)
 
 plt <- lapply(plt,FUN=function(x){
     y <- x+guides(fill="none")+
         scale_fill_manual(values=pal)+
         theme(axis.text.x=element_blank(),axis.text.y=element_blank(),title=element_text(size=9))
+    y <- rasterize(y,dpi=300,layers="Points",dev="cairo_png")
     return(y)
 })
 
 ### save--2 plots per row at 4 wide x 4 high + 3 for legend and spaces, 5in per row by 43 samples (22 rows) = 110in
-pdf("plots/manuscript/SuppFigs/SupFig-Spots_by_QC_step.pdf",width=11,height=110,onefile=FALSE)
-do.call("grid.arrange",list(arrangeGrob(grobs=plt,ncol=2),leg.tmp,ncol=2,widths=c(9,2)))
+pdf("plots/manuscript/SuppFigs/SupFig-Spots_by_QC_step.pdf",width=8,height=10.5,onefile=TRUE)
+  i<-1
+  for (i in seq(1,length(plt),4)){
+    j <- i+3
+    if(j>length(plt)){j <- length(plt)}
+      do.call("grid.arrange",list(arrangeGrob(grobs=plt[i:j],ncol=2),leg.tmp,ncol=2,widths=c(9,2)))
+  }
+
 dev.off()
 ```
 
