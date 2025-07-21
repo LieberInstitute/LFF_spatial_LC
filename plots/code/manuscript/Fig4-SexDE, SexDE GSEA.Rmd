@@ -199,9 +199,9 @@ dev.off()
 
 3E: pseudobulk plots of cholesterol metabolism genes
 ```{r}
-pbulk <- readRDS("processed-data/12_DEanalyses_removedsampsAndFinalNMseg/02b-voomLmFit_objs_and_DE_tables_LabSex_LabE2vE4_LabSingleGenos_LabAncesGrp_noMixClusts.RDS")
+pbulk <- readRDS("processed-data/12_DEanalyses_removedsampsAndFinalNMseg/02b-voomLmFit_objs_and_DE_tables_LabSex_LabE2vE4_LabSingleGenos_LabAnces_LabAncesE4E2_noMixClusts_YRIcontAndCat_JUL2025.RDS")
 
-gmat <- pbulk$SexByLabel$voomLFt$EList$E
+gmat <- pbulk$cont_ances$SexByLabel$voomLFt$EList$E
 # subset to LC
 gmat <- gmat[,colnames(gmat) %in% grep(colnames(gmat),pattern="LC_V|^Astro_V",value=T)]
 # make symbols
