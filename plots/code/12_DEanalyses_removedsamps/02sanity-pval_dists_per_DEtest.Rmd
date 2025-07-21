@@ -1,7 +1,7 @@
 ---
 title: "02sanity-pval_dists_per_DEtest"
 author: "Bernie Mulvey"
-date: "2025-06-11"
+date: "2025-07-20"
 output: html_document
 ---
 
@@ -41,15 +41,23 @@ unloadNamespace("datasets")
 
 load de results from all-clusters-jointly DE analyses
 ```{r}
-detabs <- readRDS("processed-data/12_DEanalyses_removedsampsAndFinalNMseg/02b-voomLmFit_objs_and_DE_tables_LabSex_LabE2vE4_LabSingleGenos_LabAncesGrp_noMixClusts.RDS")
+detabs <- readRDS("processed-data/12_DEanalyses_removedsampsAndFinalNMseg/02b-voomLmFit_objs_and_DE_tables_LabSex_LabE2vE4_LabSingleGenos_LabAnces_LabAncesE4E2_noMixClusts_YRIcontAndCat_JUL2025.RDS")
+
+detabs <- lapply(detabs,FUN=function(d){
+    ret <- lapply(d,function(x){
+        y <- x[[6]] # slot with DE tables
+        z <- rbindlist(y,idcol="label_and_test")
+        return(z)
+    })
+})
 
 detabs <- lapply(detabs,function(x){
-    y <- x[[6]] # slot with DE tables
-    z <- rbindlist(y,idcol="label_and_test")
-    return(z)
+    rbindlist(x,idcol="specifiedDesign")
 })
-detabs <- rbindlist(detabs,idcol="specifiedDesign")
 
+detabs <- rbindlist(detabs,idcol="ancestry_coding")
+
+## tidy up any ugly contrast names
 detabs[label_and_test %in% grep(label_and_test,pattern="_Sex",value=T),
        label:=gsub(label_and_test,pattern="^(.*)_Sex$",replacement="\\1")]
 detabs[label_and_test %in% grep(label_and_test,pattern="_E4vE2",value=T),
@@ -60,18 +68,19 @@ detabs[label_and_test %in% grep(label_and_test,pattern="_E2.*_vs_.*",value=T),
        label:=gsub(label_and_test,pattern="^(.*)_E2.*vs.*$",replacement="\\1")]
 detabs[label_and_test %in% grep(label_and_test,pattern="_E4.*_vs_.*",value=T),
        label:=gsub(label_and_test,pattern="^(.*)_E4.*vs.*$",replacement="\\1")]
+detabs[label_and_test %in% grep(label_and_test,pattern="_by_YRI",value=T),
+       label:=gsub(label_and_test,pattern="^(.*)_by_YRI$",replacement="\\1")]
 detabs[label_and_test %in% grep(label_and_test,pattern="_YRI",value=T),
        label:=gsub(label_and_test,pattern="^(.*)_YRI$",replacement="\\1")]
 
-detabs[,clipstr:=paste0(label,"_")]
-detabs[,contrast:=apply(.SD,MARGIN=1,FUN=function(x){gsub(x[2],pattern=x[19],replacement="")})]
-
+detabs[,contrast:=apply(.SD,MARGIN=1,FUN=function(x){paste0(x[1],"_",x[2])}),.SDcols=c("label_and_test","ancestry_coding")]
+## plot for main approach of interest (continuous ancestry), except for ancestry itself in which casae plot for continuous and cat
 lapply(unique(detabs$specifiedDesign),function(d){
     subdat <- detabs[specifiedDesign == d,]
     p <- ggplot(subdat,(aes(x=P.Value)))+
         geom_histogram()+
         facet_wrap(contrast~label)
-    pdf(paste0("plots/12_DEanalyses_removedsampsAndFinalNMseg/02b_Allclust_dropmixclusts_SexDEG_EDA/02sanity-pval_dists_",d,"Model.pdf"),width=10,height=7,onefile =FALSE)
+    pdf(paste0("plots/12_DEanalyses_removedsampsAndFinalNMseg/02b_Allclust_dropmixclusts_SexDEG_EDA/02sanity-pval_dists_",d,"Model.pdf"),width=20,height=14,onefile =FALSE)
     print(p)
     dev.off()
 })
@@ -100,24 +109,22 @@ attached base packages:
 [1] stats     graphics  grDevices utils     methods   base     
 
 other attached packages:
- [1] edgeR_4.4.2         BiocParallel_1.40.0 parallelly_1.43.0   colorout_1.3-0.2   
- [5] gridExtra_2.3       ggtext_0.1.2        ggplot2_3.5.2       data.table_1.17.4  
- [9] limma_3.62.2        rlang_1.1.5        
+[1] BiocParallel_1.40.0 parallelly_1.43.0   colorout_1.3-0.2    gridExtra_2.3      
+[5] ggtext_0.1.2        ggplot2_3.5.2       data.table_1.17.4   rlang_1.1.5        
 
 loaded via a namespace (and not attached):
  [1] gtable_0.3.6       dplyr_1.1.4        compiler_4.4.3     tidyselect_1.2.1  
  [5] Rcpp_1.0.14        xml2_1.3.8         parallel_4.4.3     dichromat_2.0-0.1 
- [9] scales_1.4.0       yaml_2.3.10        fastmap_1.2.0      statmod_1.5.0     
-[13] lattice_0.22-6     here_1.0.1         R6_2.6.1           labeling_0.4.3    
-[17] generics_0.1.4     knitr_1.50         tibble_3.2.1       rprojroot_2.0.4   
-[21] pillar_1.10.2      RColorBrewer_1.1-3 xfun_0.52          cli_3.6.4         
-[25] withr_3.0.2        magrittr_2.0.3     locfit_1.5-9.12    digest_0.6.37     
-[29] grid_4.4.3         gridtext_0.1.5     rstudioapi_0.17.1  lifecycle_1.0.4   
-[33] vctrs_0.6.5        evaluate_1.0.3     glue_1.8.0         farver_2.1.2      
-[37] sessioninfo_1.2.3  codetools_0.2-20   rmarkdown_2.29     tools_4.4.3       
-[41] pkgconfig_2.0.3    htmltools_0.5.8.1 
+ [9] scales_1.4.0       yaml_2.3.10        fastmap_1.2.0      here_1.0.1        
+[13] R6_2.6.1           labeling_0.4.3     generics_0.1.4     knitr_1.50        
+[17] tibble_3.2.1       rprojroot_2.0.4    pillar_1.10.2      RColorBrewer_1.1-3
+[21] xfun_0.52          cli_3.6.4          withr_3.0.2        magrittr_2.0.3    
+[25] digest_0.6.37      grid_4.4.3         gridtext_0.1.5     rstudioapi_0.17.1 
+[29] lifecycle_1.0.4    vctrs_0.6.5        evaluate_1.0.3     glue_1.8.0        
+[33] farver_2.1.2       codetools_0.2-20   rmarkdown_2.29     tools_4.4.3       
+[37] pkgconfig_2.0.3    htmltools_0.5.8.1 
 > sessioninfo::session_info()
-─ Session info ───────────────────────────────────────────────────────────────────────────
+─ Session info ──────────────────────────────────────────────────────────────────────────────
  setting  value
  version  R version 4.4.3 (2025-02-28)
  os       macOS Sequoia 15.3.2
@@ -127,61 +134,56 @@ loaded via a namespace (and not attached):
  collate  en_US.UTF-8
  ctype    en_US.UTF-8
  tz       America/Chicago
- date     2025-06-10
+ date     2025-07-20
  rstudio  2024.07.0-daily+219 Cranberry Hibiscus (desktop)
  pandoc   3.1.11 @ /Applications/RStudio.app/Contents/Resources/app/quarto/bin/tools/aarch64/ (via rmarkdown)
  quarto   1.4.555 @ /Applications/RStudio.app/Contents/Resources/app/quarto/bin/quarto
 
-─ Packages ───────────────────────────────────────────────────────────────────────────────
- !  package      * version  date (UTC) lib source
-    BiocParallel * 1.40.0   2024-11-23 [1] Bioconductor 3.20 (R 4.4.2)
- VP cli            3.6.4    2025-04-23 [2] CRAN (R 4.4.1) (on disk 3.6.5)
-    codetools      0.2-20   2024-03-31 [1] CRAN (R 4.4.3)
-    colorout     * 1.3-0.2  2024-05-01 [1] Github (jalvesaq/colorout@c6113a2)
-    data.table   * 1.17.4   2025-05-26 [1] CRAN (R 4.4.3)
-    dichromat      2.0-0.1  2022-05-02 [1] CRAN (R 4.4.0)
-    digest         0.6.37   2024-08-19 [1] CRAN (R 4.4.1)
-    dplyr          1.1.4    2023-11-17 [1] CRAN (R 4.4.0)
-    edgeR        * 4.4.2    2025-01-27 [1] Bioconductor 3.20 (R 4.4.2)
-    evaluate       1.0.3    2025-01-10 [1] CRAN (R 4.4.1)
-    farver         2.1.2    2024-05-13 [1] CRAN (R 4.4.0)
-    fastmap        1.2.0    2024-05-15 [1] CRAN (R 4.4.0)
-    generics       0.1.4    2025-05-09 [1] CRAN (R 4.4.1)
-    ggplot2      * 3.5.2    2025-04-09 [1] CRAN (R 4.4.1)
-    ggtext       * 0.1.2    2022-09-16 [1] CRAN (R 4.4.0)
-    glue           1.8.0    2024-09-30 [1] CRAN (R 4.4.1)
-    gridExtra    * 2.3      2017-09-09 [1] CRAN (R 4.4.0)
-    gridtext       0.1.5    2022-09-16 [1] CRAN (R 4.4.0)
-    gtable         0.3.6    2024-10-25 [1] CRAN (R 4.4.1)
-    here           1.0.1    2020-12-13 [1] CRAN (R 4.4.0)
-    htmltools      0.5.8.1  2024-04-04 [1] CRAN (R 4.4.0)
-    knitr          1.50     2025-03-16 [1] CRAN (R 4.4.2)
-    labeling       0.4.3    2023-08-29 [1] CRAN (R 4.4.0)
-    lattice        0.22-6   2024-03-20 [1] CRAN (R 4.4.3)
-    lifecycle      1.0.4    2023-11-07 [1] CRAN (R 4.4.0)
-    limma        * 3.62.2   2025-01-09 [1] Bioconductor 3.20 (R 4.4.2)
-    locfit         1.5-9.12 2025-03-05 [1] CRAN (R 4.4.1)
-    magrittr       2.0.3    2022-03-30 [1] CRAN (R 4.4.0)
-    parallelly   * 1.43.0   2025-03-24 [1] CRAN (R 4.4.1)
-    pillar         1.10.2   2025-04-05 [1] CRAN (R 4.4.1)
-    pkgconfig      2.0.3    2019-09-22 [1] CRAN (R 4.4.0)
-    R6             2.6.1    2025-02-15 [1] CRAN (R 4.4.1)
-    RColorBrewer   1.1-3    2022-04-03 [1] CRAN (R 4.4.0)
-    Rcpp           1.0.14   2025-01-12 [1] CRAN (R 4.4.1)
- VP rlang        * 1.1.5    2025-04-11 [2] CRAN (R 4.4.1) (on disk 1.1.6)
-    rmarkdown      2.29     2024-11-04 [1] CRAN (R 4.4.1)
-    rprojroot      2.0.4    2023-11-05 [1] CRAN (R 4.4.0)
-    rstudioapi     0.17.1   2024-10-22 [1] CRAN (R 4.4.1)
-    scales         1.4.0    2025-04-24 [1] CRAN (R 4.4.1)
-    sessioninfo    1.2.3    2025-02-05 [1] CRAN (R 4.4.1)
-    statmod        1.5.0    2023-01-06 [1] CRAN (R 4.4.0)
-    tibble         3.2.1    2023-03-20 [1] CRAN (R 4.4.0)
-    tidyselect     1.2.1    2024-03-11 [1] CRAN (R 4.4.0)
-    vctrs          0.6.5    2023-12-01 [1] CRAN (R 4.4.0)
-    withr          3.0.2    2024-10-28 [1] CRAN (R 4.4.1)
-    xfun           0.52     2025-04-02 [1] CRAN (R 4.4.1)
-    xml2           1.3.8    2025-03-14 [1] CRAN (R 4.4.1)
-    yaml           2.3.10   2024-07-26 [1] CRAN (R 4.4.0)
+─ Packages ──────────────────────────────────────────────────────────────────────────────────
+ !  package      * version date (UTC) lib source
+    BiocParallel * 1.40.0  2024-11-23 [1] Bioconductor 3.20 (R 4.4.2)
+ VP cli            3.6.4   2025-04-23 [2] CRAN (R 4.4.1) (on disk 3.6.5)
+    codetools      0.2-20  2024-03-31 [1] CRAN (R 4.4.3)
+    colorout     * 1.3-0.2 2024-05-01 [1] Github (jalvesaq/colorout@c6113a2)
+    data.table   * 1.17.4  2025-05-26 [1] CRAN (R 4.4.3)
+    dichromat      2.0-0.1 2022-05-02 [1] CRAN (R 4.4.0)
+    digest         0.6.37  2024-08-19 [1] CRAN (R 4.4.1)
+    dplyr          1.1.4   2023-11-17 [1] CRAN (R 4.4.0)
+    evaluate       1.0.3   2025-01-10 [1] CRAN (R 4.4.1)
+    farver         2.1.2   2024-05-13 [1] CRAN (R 4.4.0)
+    fastmap        1.2.0   2024-05-15 [1] CRAN (R 4.4.0)
+    generics       0.1.4   2025-05-09 [1] CRAN (R 4.4.1)
+    ggplot2      * 3.5.2   2025-04-09 [1] CRAN (R 4.4.1)
+    ggtext       * 0.1.2   2022-09-16 [1] CRAN (R 4.4.0)
+    glue           1.8.0   2024-09-30 [1] CRAN (R 4.4.1)
+    gridExtra    * 2.3     2017-09-09 [1] CRAN (R 4.4.0)
+    gridtext       0.1.5   2022-09-16 [1] CRAN (R 4.4.0)
+    gtable         0.3.6   2024-10-25 [1] CRAN (R 4.4.1)
+    here           1.0.1   2020-12-13 [1] CRAN (R 4.4.0)
+    htmltools      0.5.8.1 2024-04-04 [1] CRAN (R 4.4.0)
+    knitr          1.50    2025-03-16 [1] CRAN (R 4.4.2)
+    labeling       0.4.3   2023-08-29 [1] CRAN (R 4.4.0)
+    lifecycle      1.0.4   2023-11-07 [1] CRAN (R 4.4.0)
+    magrittr       2.0.3   2022-03-30 [1] CRAN (R 4.4.0)
+    parallelly   * 1.43.0  2025-03-24 [1] CRAN (R 4.4.1)
+    pillar         1.10.2  2025-04-05 [1] CRAN (R 4.4.1)
+    pkgconfig      2.0.3   2019-09-22 [1] CRAN (R 4.4.0)
+    R6             2.6.1   2025-02-15 [1] CRAN (R 4.4.1)
+    RColorBrewer   1.1-3   2022-04-03 [1] CRAN (R 4.4.0)
+    Rcpp           1.0.14  2025-01-12 [1] CRAN (R 4.4.1)
+ VP rlang        * 1.1.5   2025-04-11 [2] CRAN (R 4.4.1) (on disk 1.1.6)
+    rmarkdown      2.29    2024-11-04 [1] CRAN (R 4.4.1)
+    rprojroot      2.0.4   2023-11-05 [1] CRAN (R 4.4.0)
+    rstudioapi     0.17.1  2024-10-22 [1] CRAN (R 4.4.1)
+    scales         1.4.0   2025-04-24 [1] CRAN (R 4.4.1)
+    sessioninfo    1.2.3   2025-02-05 [1] CRAN (R 4.4.1)
+    tibble         3.2.1   2023-03-20 [1] CRAN (R 4.4.0)
+    tidyselect     1.2.1   2024-03-11 [1] CRAN (R 4.4.0)
+    vctrs          0.6.5   2023-12-01 [1] CRAN (R 4.4.0)
+    withr          3.0.2   2024-10-28 [1] CRAN (R 4.4.1)
+    xfun           0.52    2025-04-02 [1] CRAN (R 4.4.1)
+    xml2           1.3.8   2025-03-14 [1] CRAN (R 4.4.1)
+    yaml           2.3.10  2024-07-26 [1] CRAN (R 4.4.0)
 
  [1] /Library/Frameworks/R.framework/Versions/4.4-arm64/Resources/library
  [2] /Users/bmulvey/Library/R/arm64/4.4/library
@@ -190,4 +192,4 @@ loaded via a namespace (and not attached):
  V ── Loaded and on-disk version mismatch.
  P ── Loaded and on-disk path mismatch.
 
-──────────────────────────────────────────────────────────────────────────────────────────
+─────────────────────────────────────────────────────────────────────────────────────────────

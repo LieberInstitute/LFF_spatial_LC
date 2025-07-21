@@ -1,7 +1,7 @@
 ---
 title: "10-Unique_DEGs_per_cluster"
 author: "Bernie Mulvey"
-date: "2025-05-31"
+date: "2025-07-20"
 output: html_document
 ---
 
@@ -26,25 +26,54 @@ unloadNamespace("datasets")
 ```
 
 ```{r}
-deres <- readRDS("processed-data/12_DEanalyses_removedsampsAndFinalNMseg/02b-voomLmFit_objs_and_DE_tables_LabSex_LabE2vE4_LabSingleGenos_LabAncesGrp_noMixClusts.RDS")
+deres <- readRDS("processed-data/12_DEanalyses_removedsampsAndFinalNMseg/02b-voomLmFit_objs_and_DE_tables_LabSex_LabE2vE4_LabSingleGenos_LabAnces_LabAncesE4E2_noMixClusts_YRIcontAndCat_JUL2025.RDS")
 
-## for each comparison, get the genes unique to one cluster
-deres <- lapply(deres,function(x){x[[6]]})
+deres <- lapply(deres,FUN=function(d){
+    ret <- lapply(d,function(x){
+        y <- x[[6]] # slot with DE tables
+        return(y)
+    })
+})
+
+## for each comparison within an ancestry coding scheme, get the genes unique to one cluster
 
 ### split the allele comparisons into separate groups for this
-deres$E2hom_vs_anyE4 <- deres[[3]][seq(1,20,by=4)]
-deres$E2het_vs_anyE4 <- deres[[3]][seq(2,20,by=4)]
-deres$E4hom_vs_anyE2 <- deres[[3]][seq(3,20,by=4)]
-deres$E4het_vs_anyE2 <- deres[[3]][seq(4,20,by=4)]
+i<-1
+for (i in c(1:length(deres))){
+    deres[[i]]$ApoAllelesLabel$E2hom_vs_anyE4 <- deres[[i]]$ApoAllelesLabel[seq(1,30,by=6)]
+    deres[[i]]$ApoAllelesLabel$E2het_vs_anyE4 <- deres[[i]]$ApoAllelesLabel[seq(2,30,by=6)]
+    deres[[i]]$ApoAllelesLabel$E4hom_vs_anyE2 <- deres[[i]]$ApoAllelesLabel[seq(3,30,by=6)]
+    deres[[i]]$ApoAllelesLabel$E4het_vs_anyE2 <- deres[[i]]$ApoAllelesLabel[seq(4,30,by=6)]
+    deres[[i]]$ApoAllelesLabel$E4hom_vs_E4het <- deres[[i]]$ApoAllelesLabel[seq(5,30,by=6)]
+    deres[[i]]$ApoAllelesLabel$E4hom_vs_others <- deres[[i]]$ApoAllelesLabel[seq(6,30,by=6)]
+    deres[[i]]$ApoAllelesLabel <- deres[[i]]$ApoAllelesLabel[31:36]
+}
 
-deres <- deres[c(1,2,4:8)]
-
-uniqs <- lapply(deres,function(x){
-    y <- rbindlist(x,idcol="clustertest")
-    singg <- y[adj.P.Val<0.05,.N,by="gene_name"][N==1,gene_name]
-    z <- y[gene_name %in% singg&adj.P.Val<0.05]
-    return(z)
+## get unique genes for all the other contrasts
+uniqs <- lapply(deres,function(d){
+    uniqsout <- lapply(d[names(d)!="ApoAllelesLabel"],function(z){
+            u <- rbindlist(z,idcol="clustertest")
+            singg <- u[adj.P.Val<0.05,.N,by="gene_name"][N==1,gene_name]
+            o <- u[gene_name %in% singg&adj.P.Val<0.05]
+            return(o)
+        })
+    return(uniqsout)
 })
+
+## get the unique genes for each ApoAllelesLabel contrast
+apouniqs <- lapply(deres,function(d){
+    uniqsout <- lapply(d$ApoAllelesLabel,function(z){
+            u <- rbindlist(z,idcol="clustertest")
+            singg <- u[adj.P.Val<0.05,.N,by="gene_name"][N==1,gene_name]
+            o <- u[gene_name %in% singg&adj.P.Val<0.05]
+            return(o)
+        })
+    return(uniqsout)
+})
+
+uniqs$cat_ances <- c(uniqs$cat_ances,apouniqs$cat_ances)
+uniqs$cont_ances <- c(uniqs$cont_ances,apouniqs$cont_ances)
+
 
 saveRDS(uniqs,"processed-data/12_DEanalyses_removedsampsAndFinalNMseg/10-LabSex_LabE4vE2_LabSingleGeno_LabPredomAnces_SingleClusterDEGswithinTest.RDS")
 ```

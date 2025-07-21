@@ -62,8 +62,10 @@ Fig 4A/B Volcanos (LC, Astro E4vE2)
 pal <- readRDS("plots/finalpal_somuchfornorainbows.RDS")
 pal <- pal[c("LC","Astro")]
 
-detabs <- readRDS("processed-data/12_DEanalyses_removedsampsAndFinalNMseg/02b-voomLmFit_objs_and_DE_tables_LabSex_LabE2vE4_LabSingleGenos_LabAncesGrp_noMixClusts.RDS")
-ab4 <- detabs$E2E4ByLabel$E2E4label_detabs
+detabs <- readRDS("processed-data/12_DEanalyses_removedsampsAndFinalNMseg/02b-voomLmFit_objs_and_DE_tables_LabSex_LabE2vE4_LabSingleGenos_LabAnces_LabAncesE4E2_noMixClusts_YRIcontAndCat_JUL2025.RDS")
+
+## get the results from ancestry as continuous
+ab4 <- detabs$cont_ances$E2E4label$detabs
 ab4 <- ab4[c(3,4)] # astro and LC
 
 names(ab4) <- gsub(names(ab4),pattern="_E4vE2",replacement="")

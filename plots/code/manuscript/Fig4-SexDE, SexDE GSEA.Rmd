@@ -64,8 +64,9 @@ pal <- readRDS("plots/finalpal_somuchfornorainbows.RDS")
 pal <- pal[c("LC","*ACHE*, *SERT*, LC, Oligo Mixed","Astro")]
 names(pal)[2] <- "*ACHE*, *SERT*, LC,<br>Oligo Mixed"
 
-detabs <- readRDS("processed-data/12_DEanalyses_removedsampsAndFinalNMseg/02b-voomLmFit_objs_and_DE_tables_LabSex_LabE2vE4_LabSingleGenos_LabAncesGrp_noMixClusts.RDS")
-detabs <- detabs$SexByLabel$sexlabel_detabs
+detabs <- readRDS("processed-data/12_DEanalyses_removedsampsAndFinalNMseg/02b-voomLmFit_objs_and_DE_tables_LabSex_LabE2vE4_LabSingleGenos_LabAnces_LabAncesE4E2_noMixClusts_YRIcontAndCat_JUL2025.RDS")
+## get the results using continuous ancestry
+detabs <- detabs$cont_ances$sexlabel$detabs
 
 names(detabs) <- gsub(names(detabs),pattern="_Sex",replacement="")
 names(detabs) <- gsub(names(detabs),pattern="_",replacement=" ")

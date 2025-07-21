@@ -41,7 +41,7 @@ unloadNamespace("datasets")
 ```
 
 ```{r}
-detabs <- readRDS("processed-data/12_DEanalyses_removedsampsAndFinalNMseg/02b-voomLmFit_objs_and_DE_tables_LabSex_LabE2vE4_LabSingleGenos_LabAncesGrp_noMixClusts.RDS")
+detabs <- readRDS("processed-data/12_DEanalyses_removedsampsAndFinalNMseg/02b-voomLmFit_objs_and_DE_tables_LabSex_LabE2vE4_LabSingleGenos_LabAnces_LabAncesE4E2_noMixClusts_YRIcontAndCat_JUL2025.RDS")
 
 uniquede <- readRDS("processed-data/12_DEanalyses_removedsampsAndFinalNMseg/10-LabSex_LabE4vE2_LabSingleGeno_LabPredomAnces_SingleClusterDEGswithinTest.RDS")
 

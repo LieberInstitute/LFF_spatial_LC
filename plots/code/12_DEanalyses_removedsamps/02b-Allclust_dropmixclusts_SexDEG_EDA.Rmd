@@ -51,9 +51,9 @@ QUESTION 1: What's the deal with astrocyte genes being among the LC DEGs?
 Hypothesis: Either due to LC-proximal astrocytes performing unique and sex-differential functions, OR due to differences in LC-local astrocyte pop. size 
 #####################
 ```{r}
-detabs <- readRDS("processed-data/12_DEanalyses_removedsampsAndFinalNMseg/02b-voomLmFit_objs_and_DE_tables_LabSex_LabE2vE4_LabSingleGenos_LabAncesGrp_noMixClusts.RDS")
+detabs <- readRDS("processed-data/12_DEanalyses_removedsampsAndFinalNMseg/02b-voomLmFit_objs_and_DE_tables_LabSex_LabE2vE4_LabSingleGenos_LabAnces_LabAncesE4E2_noMixClusts_YRIcontAndCat_JUL2025.RDS")
 
-detabs <- detabs$SexByLabel$sexlabel_detabs
+detabs <- detabs$cont_ances$sexlabel$detabs
 lapply(detabs,function(x){nrow(x[adj.P.Val<0.05,])})
 # $ACHE_SERT_LC_WM_Sex 1493
 # $ACHE_SERT_Npep_Sex 523
@@ -341,9 +341,9 @@ View(unique(tfres.onesex[dir=="female_up"&N_sig_for_dir>1,.(N_tests,N_sig_for_di
 ```{r}
 library(jaffelab)
 
-pbulk <- readRDS("processed-data/12_DEanalyses_removedsampsAndFinalNMseg/02b-voomLmFit_objs_and_DE_tables_LabSex_LabE2vE4_LabSingleGenos_LabAncesGrp_noMixClusts.RDS")
+pbulk <- readRDS("processed-data/12_DEanalyses_removedsampsAndFinalNMseg/02b-voomLmFit_objs_and_DE_tables_LabSex_LabE2vE4_LabSingleGenos_LabAnces_LabAncesE4E2_noMixClusts_YRIcontAndCat_JUL2025.RDS")
 
-gmat <- pbulk$SexByLabel$voomLFt$EList$E
+gmat <- pbulk$cont_ances$SexByLabel$voomLFt$EList$E
 # subset to LC
 gmat <- gmat[,colnames(gmat) %in% grep(colnames(gmat),pattern="LC_V",value=T)]
 # make symbols

@@ -1,7 +1,7 @@
 ---
 title: "03bi-MulticlusterDE_OneInterxnPerModel_dropMixClusts_GSEAmsigdb"
 author: "Bernie Mulvey"
-date: "2025-05-24"
+date: "2025-07-20"
 output: html_document
 ---
 ```{r setup, include=FALSE}
@@ -58,35 +58,44 @@ gc(full=T)
 
 # PART 1: get signed DE t stat vectors per cluster per test
 ```{r}
-de2b <- readRDS("processed-data/12_DEanalyses_removedsampsAndFinalNMseg/02b-voomLmFit_objs_and_DE_tables_LabSex_LabE2vE4_LabSingleGenos_LabAncesGrp_noMixClusts.RDS")
+de2b <- readRDS("processed-data/12_DEanalyses_removedsampsAndFinalNMseg/02b-voomLmFit_objs_and_DE_tables_LabSex_LabE2vE4_LabSingleGenos_LabAnces_LabAncesE4E2_noMixClusts_YRIcontAndCat_JUL2025.RDS")
 
-de2b <- lapply(de2b,FUN=function(x){x[[6]]})
-de2b2 <- list()
+## we want continuous ancestry analyses, except for the ancestry-strat analysis
+de2b2 <- list(sexlabel=de2b$cont_ances$sexlabel$detabs,E2E4label=de2b$cont_ances$E2E4label$detabs,ApoAllelesLabel=de2b$cont_ances$ApoAllelesLabel$detabs)
+de2b2[[length(de2b2)+1]] <- de2b$cat_ances$AncesByLabel$detabs
+names(de2b2)[length(de2b2)] <- "AncesByLabel"
+
+de2b3 <- list()
 i<-1
-for (i in c(1:length(de2b))){
+for (i in c(1:length(de2b2))){
     j<-1
-    for (j in c(1:length(de2b[[i]]))){
-        de2b2[length(de2b2)+1] <- de2b[[i]][j]
-        names(de2b2)[length(de2b2)] <- names(de2b[[i]])[j]
+    for (j in c(1:length(de2b2[[i]]))){
+        de2b3[length(de2b3)+1] <- de2b2[[i]][j]
+        names(de2b3)[length(de2b3)] <- names(de2b2[[i]])[j]
     }
     rm(j)
 }
 rm(i)
 
 ### drop sex chr genes from sex DE tests
-de2b2[grep(names(de2b2),pattern="sex",value=T)] <- lapply(de2b2[grep(names(de2b2),pattern="sex",value=T)],FUN=function(x){
+de2b3[grep(names(de2b3),pattern="Sex",value=T)] <- lapply(de2b3[grep(names(de2b3),pattern="Sex",value=T)],FUN=function(x){
     x[!(chr %in% grep(chr,pattern="chrX|chrY",value=T))]})
 
 ### drop mito genes from all tests
-de2b2 <- lapply(de2b2,FUN=function(x){
+de2b3 <- lapply(de2b3,FUN=function(x){
     x[!(chr %in% grep(chr,pattern="chrMT",value=T))]})
 
 ### get named, SIGNED vectors of DE t-stats from each test
+### need to use gene symbols for compatibility with the TF-target sets
 deres <- list()
 i<-1
-for (i in c(1:length(de2b2))){
-    setnames(de2b2[[i]],"t","tstat")
-    tmp <- copy(de2b2[[i]])[,.(gene_id,tstat)]
+for (i in c(1:length(de2b3))){
+    setnames(de2b3[[i]],"t","tstat")
+    tmp <- copy(de2b3[[i]])[,.(gene_id,tstat)]
+    
+    dropg <- tmp[,.N,by="gene_id"][N>1,gene_id]
+    tmp <- tmp[!(gene_id %in% dropg)]
+    
     setorderv(tmp,"tstat",-1)
     ## get the stat column as a vector and give it the gene ids as names for fgsea
     ## note that since data.table (invisibly) uses list() for column data, its cleaner to just make the working table a data frame for this last bit
@@ -94,10 +103,10 @@ for (i in c(1:length(de2b2))){
     v <- tmp$tstat
     names(v) <- tmp$gene_id
     deres[[length(deres)+1]] <- v
-    names(deres)[length(deres)] <- names(de2b2)[i]
+    names(deres)[length(deres)] <- names(de2b3)[i]
     rm(v,tmp)
 }
-rm(i,de2b)
+rm(i,de2b,de2b2,dropg)
 gc(full=T)
 ```
 
@@ -169,14 +178,17 @@ saveRDS(gseares,"processed-data/12_DEanalyses_removedsampsAndFinalNMseg/03bi-Mul
 rm(deres,gseares)
 ```
 
-
 ### PART 2: get UNsigned DE t stat vectors per cluster per test
 ```{r}
 ### get named, UNsigned vectors of DE t-stats from each test
 deres <- list()
 i<-1
-for (i in c(1:length(de2b2))){
-    tmp <- copy(de2b2[[i]])[,.(gene_id,abs(tstat))]
+for (i in c(1:length(de2b3))){
+    tmp <- copy(de2b3[[i]])[,.(gene_id,abs(tstat))]
+
+    dropg <- tmp[,.N,by="gene_id"][N>1,gene_id]
+    tmp <- tmp[!(gene_id %in% dropg)]
+    
     setnames(tmp,2,"tstat")
     setorderv(tmp,"tstat",-1)
     ## get the stat column as a vector and give it the gene ids as names for fgsea
@@ -185,10 +197,10 @@ for (i in c(1:length(de2b2))){
     v <- tmp$tstat
     names(v) <- tmp$gene_id
     deres[[length(deres)+1]] <- v
-    names(deres)[length(deres)] <- names(de2b2)[i]
+    names(deres)[length(deres)] <- names(de2b3)[i]
     rm(v,tmp)
 }
-rm(i,de2b2)
+rm(i)
 ```
 
 run UNSIGNED fgsea (genes that tend to be affected, regardless of direction)
@@ -225,6 +237,7 @@ rep inf
 sessionInfo()
 sessioninfo::session_info()
 ```
+
 R version 4.4.3 (2025-02-28)
 Platform: aarch64-apple-darwin20
 Running under: macOS Sequoia 15.3.2
@@ -243,9 +256,9 @@ attached base packages:
 [1] parallel  stats     graphics  grDevices utils     datasets  methods   base     
 
 other attached packages:
-[1] BiocParallel_1.40.0    parallelly_1.43.0      default_1.0.0         
-[4] colorout_1.3-0.2       msigdbr_10.0.1         fgsea_1.32.4          
-[7] clusterProfiler_4.14.6 data.table_1.17.0      rlang_1.1.5           
+[1] BiocParallel_1.40.0    parallelly_1.43.0      default_1.0.0          colorout_1.3-0.2      
+[5] msigdbr_10.0.1         fgsea_1.32.4           clusterProfiler_4.14.6 data.table_1.17.4     
+[9] rlang_1.1.5           
 
 loaded via a namespace (and not attached):
   [1] DBI_1.2.3               gson_0.1.0              magrittr_2.0.3         
@@ -253,38 +266,37 @@ loaded via a namespace (and not attached):
   [7] png_0.1-8               vctrs_0.6.5             reshape2_1.4.4         
  [10] stringr_1.5.1           pkgconfig_2.0.3         crayon_1.5.3           
  [13] fastmap_1.2.0           XVector_0.46.0          rmarkdown_2.29         
- [16] sessioninfo_1.2.3       tzdb_0.5.0              enrichplot_1.26.6      
- [19] UCSC.utils_1.2.0        purrr_1.0.4             bit_4.6.0              
- [22] xfun_0.52               zlibbioc_1.52.0         cachem_1.1.0           
- [25] aplot_0.2.5             GenomeInfoDb_1.42.3     jsonlite_2.0.0         
- [28] blob_1.2.4              R6_2.6.1                stringi_1.8.7          
- [31] RColorBrewer_1.1-3      msigdbdf_24.1.1         GOSemSim_2.32.0        
- [34] assertthat_0.2.1        Rcpp_1.0.14             knitr_1.50             
- [37] ggtangle_0.0.6          R.utils_2.13.0          readr_2.1.5            
- [40] IRanges_2.40.1          Matrix_1.7-3            splines_4.4.3          
- [43] igraph_2.1.4            tidyselect_1.2.1        qvalue_2.38.0          
- [46] rstudioapi_0.17.1       dichromat_2.0-0.1       yaml_2.3.10            
- [49] codetools_0.2-20        lattice_0.22-6          tibble_3.2.1           
- [52] plyr_1.8.9              withr_3.0.2             Biobase_2.66.0         
- [55] treeio_1.30.0           KEGGREST_1.46.0         evaluate_1.0.3         
- [58] gridGraphics_0.5-1      Biostrings_2.74.1       pillar_1.10.2          
- [61] ggtree_3.14.0           stats4_4.4.3            ggfun_0.1.8            
- [64] generics_0.1.3          rprojroot_2.0.4         hms_1.1.3              
- [67] S4Vectors_0.44.0        ggplot2_3.5.2           scales_1.4.0           
- [70] tidytree_0.4.6          glue_1.8.0              lazyeval_0.2.2         
- [73] tools_4.4.3             babelgene_22.9          fs_1.6.6               
- [76] fastmatch_1.1-6         cowplot_1.1.3           grid_4.4.3             
- [79] tidyr_1.3.1             ape_5.8-1               AnnotationDbi_1.68.0   
- [82] colorspace_2.1-1        nlme_3.1-167            GenomeInfoDbData_1.2.13
- [85] patchwork_1.3.0         cli_3.6.4               dplyr_1.1.4            
- [88] gtable_0.3.6            R.methodsS3_1.8.2       yulab.utils_0.2.0      
- [91] digest_0.6.37           BiocGenerics_0.52.0     ggrepel_0.9.6          
- [94] ggplotify_0.1.2         farver_2.1.2            memoise_2.0.1          
- [97] htmltools_0.5.8.1       R.oo_1.27.0             lifecycle_1.0.4        
-[100] httr_1.4.7              here_1.0.1              GO.db_3.20.0           
-[103] bit64_4.6.0-1          
+ [16] tzdb_0.5.0              enrichplot_1.26.6       UCSC.utils_1.2.0       
+ [19] purrr_1.0.4             bit_4.6.0               xfun_0.52              
+ [22] zlibbioc_1.52.0         cachem_1.1.0            aplot_0.2.5            
+ [25] GenomeInfoDb_1.42.3     jsonlite_2.0.0          blob_1.2.4             
+ [28] R6_2.6.1                stringi_1.8.7           RColorBrewer_1.1-3     
+ [31] msigdbdf_24.1.1         GOSemSim_2.32.0         assertthat_0.2.1       
+ [34] Rcpp_1.0.14             knitr_1.50              ggtangle_0.0.6         
+ [37] R.utils_2.13.0          readr_2.1.5             IRanges_2.40.1         
+ [40] Matrix_1.7-3            splines_4.4.3           igraph_2.1.4           
+ [43] tidyselect_1.2.1        qvalue_2.38.0           rstudioapi_0.17.1      
+ [46] dichromat_2.0-0.1       yaml_2.3.10             codetools_0.2-20       
+ [49] lattice_0.22-6          tibble_3.2.1            plyr_1.8.9             
+ [52] withr_3.0.2             Biobase_2.66.0          treeio_1.30.0          
+ [55] KEGGREST_1.46.0         evaluate_1.0.3          gridGraphics_0.5-1     
+ [58] Biostrings_2.74.1       pillar_1.10.2           ggtree_3.14.0          
+ [61] stats4_4.4.3            ggfun_0.1.8             generics_0.1.4         
+ [64] rprojroot_2.0.4         hms_1.1.3               S4Vectors_0.44.0       
+ [67] ggplot2_3.5.2           scales_1.4.0            tidytree_0.4.6         
+ [70] glue_1.8.0              lazyeval_0.2.2          tools_4.4.3            
+ [73] babelgene_22.9          fs_1.6.6                fastmatch_1.1-6        
+ [76] cowplot_1.1.3           grid_4.4.3              tidyr_1.3.1            
+ [79] ape_5.8-1               AnnotationDbi_1.68.0    colorspace_2.1-1       
+ [82] nlme_3.1-167            GenomeInfoDbData_1.2.13 patchwork_1.3.0        
+ [85] cli_3.6.4               dplyr_1.1.4             gtable_0.3.6           
+ [88] R.methodsS3_1.8.2       yulab.utils_0.2.0       digest_0.6.37          
+ [91] BiocGenerics_0.52.0     ggrepel_0.9.6           ggplotify_0.1.2        
+ [94] farver_2.1.2            memoise_2.0.1           htmltools_0.5.8.1      
+ [97] R.oo_1.27.0             lifecycle_1.0.4         httr_1.4.7             
+[100] here_1.0.1              GO.db_3.20.0            bit64_4.6.0-1          
 > sessioninfo::session_info()
-─ Session info ────────────────────────────────────────────────────────────────────
+─ Session info ──────────────────────────────────────────────────────────────────────────────
  setting  value
  version  R version 4.4.3 (2025-02-28)
  os       macOS Sequoia 15.3.2
@@ -294,12 +306,12 @@ loaded via a namespace (and not attached):
  collate  en_US.UTF-8
  ctype    en_US.UTF-8
  tz       America/Chicago
- date     2025-05-24
+ date     2025-07-21
  rstudio  2024.07.0-daily+219 Cranberry Hibiscus (desktop)
  pandoc   3.1.11 @ /Applications/RStudio.app/Contents/Resources/app/quarto/bin/tools/aarch64/ (via rmarkdown)
  quarto   1.4.555 @ /Applications/RStudio.app/Contents/Resources/app/quarto/bin/quarto
 
-─ Packages ────────────────────────────────────────────────────────────────────────
+─ Packages ──────────────────────────────────────────────────────────────────────────────────
  !  package          * version date (UTC) lib source
     AnnotationDbi      1.68.0  2024-11-08 [1] Bioconductor 3.20 (R 4.4.1)
     ape                5.8-1   2024-12-16 [1] CRAN (R 4.4.1)
@@ -321,7 +333,7 @@ loaded via a namespace (and not attached):
     colorspace         2.1-1   2024-07-26 [1] CRAN (R 4.4.0)
     cowplot            1.1.3   2024-01-22 [1] CRAN (R 4.4.0)
     crayon             1.5.3   2024-06-20 [1] CRAN (R 4.4.0)
-    data.table       * 1.17.0  2025-02-22 [1] CRAN (R 4.4.1)
+    data.table       * 1.17.4  2025-05-26 [1] CRAN (R 4.4.3)
     DBI                1.2.3   2024-06-02 [1] CRAN (R 4.4.0)
     default          * 1.0.0   2017-08-07 [1] CRAN (R 4.4.0)
     dichromat          2.0-0.1 2022-05-02 [1] CRAN (R 4.4.0)
@@ -335,7 +347,7 @@ loaded via a namespace (and not attached):
     fastmatch          1.1-6   2024-12-23 [1] CRAN (R 4.4.1)
     fgsea            * 1.32.4  2025-03-20 [1] Bioconductor 3.20 (R 4.4.3)
     fs                 1.6.6   2025-04-12 [1] CRAN (R 4.4.1)
-    generics           0.1.3   2022-07-05 [1] CRAN (R 4.4.0)
+    generics           0.1.4   2025-05-09 [1] CRAN (R 4.4.1)
     GenomeInfoDb       1.42.3  2025-01-27 [1] Bioconductor 3.20 (R 4.4.2)
     GenomeInfoDbData   1.2.13  2024-12-12 [1] Bioconductor
     ggfun              0.1.8   2024-12-03 [1] CRAN (R 4.4.1)
@@ -416,4 +428,4 @@ loaded via a namespace (and not attached):
  V ── Loaded and on-disk version mismatch.
  P ── Loaded and on-disk path mismatch.
 
-───────────────────────────────────────────────────────────────────────────────────
+─────────────────────────────────────────────────────────────────────────────────────────────
