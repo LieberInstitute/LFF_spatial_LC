@@ -5,7 +5,7 @@ od = '/processed-data/xenium_imageProcessing/';
 brain = 'Br6297';
 
 zarr_path = fullfile(Md, od, brain, 'xeniumranger_NM_DAPI', 'outs', 'cells.zarr.zip');
-
+% zarr_path = fullfile(Md, 'code', 'xenium_imageProcessing', 'xenium_ranger', 'xeniumranger_NM_DAPI', 'outs', 'cells.zarr.zip');
 % Import zarr and numpy
 zarr = py.importlib.import_module('zarr');
 np = py.importlib.import_module('numpy');
@@ -35,8 +35,8 @@ disp('Size of cellseg_mask')
 disp(size(cellmask))
 
 mkdir(fullfile(Md, od,brain))
-save(fullfile(Md, od, brain, 'NMcell.mat'),'cellmask','-v7.3')
-save(fullfile(Md, od, brain, 'NMnuc.mat'),'nucmask', '-v7.3')
+save(fullfile(Md, od, brain, 'NMcell1.mat'),'cellmask','-v7.3')
+save(fullfile(Md, od, brain, 'NMnuc1.mat'),'nucmask', '-v7.3')
 
 rgb_nucmask = label2rgb(uint16(nucmask), 'jet', 'k', 'shuffle');
 rgb_cellmask = label2rgb(uint16(cellmask), 'jet', 'k', 'shuffle');
