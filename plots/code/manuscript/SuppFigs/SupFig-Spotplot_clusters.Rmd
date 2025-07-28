@@ -33,9 +33,9 @@ unloadNamespace("datasets")
 ```
 
 
-read in the per-capture SPE and the colData of the filtered SPE
+read in the per-section SPE, already rotated into uniform orientation
 ```{r}
-spe <- readRDS("processed-data/04_QC/04-lffLC_noEdges_noLocOutliers_remainder1pctileUMIorGene-removed.RDS")
+spe <- readRDS("processed-data/14_Samui_prep/01-Samui_TissSect_SPE_RotsMirrors.RDS")
 
 # load clustering and the split-sections coldata, which has a column with pre-split spot ids we can use to match everything back to capture level
 louvs <- readRDS("processed-data/07_featureSelection_dimred_harmony_clustering/04-Initial_louvLeid_res0.5-1-2_clusterings.RDS")
@@ -45,11 +45,6 @@ setnames(louvs,2,"clusid")
 anno <- fread("processed-data/08_validitycheck_25hdg75svg_louv1/10-25hdg75svg_louv1_annots.txt")
 louvs <- merge.data.table(louvs,anno,by="clusid")
 
-splitcd <- fread("processed-data/06-QCed_SPE_splitToTissSect_colData.txt")
-splitcd <- splitcd[,.(rowname,original_spot_id)]
-
-louvs <- merge.data.table(louvs,splitcd,by.x="rn",by.y="rowname") # split section ids
-
 ## also attach LCnm subsets because we will use them in this figure
 lcnm <- fread("processed-data/10_subclustering/04-LCsubclus-by-NM_otherclusts-by-LCorLCNMadjacency.txt")
 lcnm <- lcnm[,.(rn,NMseg_subclus)]
@@ -58,12 +53,12 @@ louvs <- merge.data.table(louvs,lcnm,by="rn",all.x=T)
 louvs[anno=="LC"&NMseg_subclus=="LC_NMpos",plot_anno:="LC (NM+)"]
 louvs[anno=="LC"&NMseg_subclus=="LC_NMneg",plot_anno:="LC (NM-)"]
 
-louvs <- DataFrame(louvs,row.names=louvs$original_spot_id)[colnames(spe),]
+louvs <- DataFrame(louvs,row.names=louvs$rn)[colnames(spe),]
 stopifnot(nrow(louvs)==ncol(spe))
 
 colLabels(spe) <- louvs$plot_anno
 
-rm(splitcd,lcnm,louvs,anno)
+rm(lcnm,louvs,anno)
 gc(full=T)
 ```
 
@@ -92,7 +87,7 @@ names(pal2)[1] <- "LC (NM+)"
 stopifnot(all(names(pal2) %in% unique(spe$label)))
 rm(pal)
 ## make a plot for a sample containing all 10 clusters values to extract the legend from and append globally later: V13M06-332_B1
-tmpdat <- as.data.table(colData(spe))[sample_id=="V13M06-332_B1"]
+tmpdat <- as.data.table(colData(spe))[sample_id=="V13M06-332_B1s1"]
 leg.tmp <- ggplot(tmpdat,aes(x=array_col,y=array_row,color=label))+
   geom_point()+
   scale_color_manual(values=pal2)+
@@ -110,29 +105,46 @@ dev.off()
 # defactor
 spe$label <- as.character(spe$label)
 
+# get demo info to include with plots
+tmpcd <- unique(as.data.table(colData(spe))[,.(sample_id,Sex,APOE,YRI,Age)])
+tmpcd[,anc:=ifelse(YRI>0.5,"AA","EA")]
 
-plt <- vis_grid_clus(spe,clustervar="label",auto_crop = T,point_size = 1.18,return_plots=T,height=3.75,width=3.75,spatial = T,sort_clust = FALSE,image_id = "lowres",alpha=0.5)
-
-plt <- lapply(plt,FUN=function(x){
-    y <- x+guides(fill="none")+
-        scale_fill_manual(values=pal2)+
-        theme(axis.text.x=element_blank(),
-              axis.text.y=element_blank(),
-              title=element_text(size=9,hjust=0.5))
-    y <- rasterize(y,dpi=300,layers="Points",dev="cairo_png")
-    return(y)
+plt <- lapply(unique(spe$sample_id),function(s){
+  p <- vis_clus(spe[,spe$sample_id==s],clustervar="label",auto_crop = T,point_size = 1.18,return_plots=T,height=1.875,width=1.875,spatial = T,sort_clust = FALSE,image_id = "lowres",alpha=0.5)
+    sampsex <- tmpcd[sample_id==s,Sex]
+    sampapo <- gsub(tmpcd[sample_id==s,APOE],pattern=" ",replacement="")
+    sampanc <- tmpcd[sample_id==s,anc]
+    sampage <- tmpcd[sample_id==s,Age]
+    
+    p <- p+
+      ggtitle(paste0(s,"\n(",sampsex,", ",sampapo,", ",sampanc,", ",round(sampage),"yr)"))+
+      guides(color="none",fill="none")+
+      scale_color_manual(values=pal2)+
+      scale_fill_manual(values=pal2)+
+      theme(legend.position="none")+
+      theme(axis.text.x=element_blank(),
+            axis.text.y=element_blank(),
+            plot.title=element_text(size=8,hjust=0.5),
+            title=element_text(size=8,hjust=0.5))
+        
+    q <- rasterize(p,dpi=300,layers="Points",dev="cairo_png")
+    return(q)
 })
 
-### save--2 plots per row at 4 wide x 4 high + 3 for legend and spaces, 5in per row by 43 samples (22 rows) = 110in
-## saved legend, modified in AI to place as desired withut messing around with other masks etc etc.
+### save--3 plots per row x 2 rows (legend to go in the center of ea page)
+
 pdf("plots/manuscript/SuppFigs/SupFig-Cluster_spotplots_allsamps.pdf",width=7.5,height=10,onefile=TRUE)
   i<-1
-  for (i in seq(1,length(plt),4)){
-    j <- i+3
+  for (i in seq(1,length(plt),6)){
+    j <- i+5
     if(j>length(plt)){j <- length(plt)}
-      do.call("grid.arrange",plt[i:j])
+      do.call("grid.arrange",c(plt[i:j],ncol=3,nrow=2))
 }
 
+## save legend, mmodify in AI to place as desired withut messing around with other masks etc etc.  
+p <- plt[[1]]
+pdf("plots/manuscript/SuppFigs/Sfig-allspotplots_legendholder.pdf",height=5,width=5)
+do.call("grid.arrange",list(arrangeGrob(p,leg.tmp),ncol=2,widths=c(3,2)))
 dev.off()
 ```
 
