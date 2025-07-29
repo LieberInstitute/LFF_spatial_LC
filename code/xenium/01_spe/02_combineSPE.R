@@ -13,7 +13,9 @@ colData(spe_DAPI)$sample_type <- "DAPI"
 colData(spe_NM_DAPI)$sample_type <- "NM_DAPI"
 
 # Step 2: Combine the two SPEs
-combined_spe <- rbind(spe_DAPI, spe_NM_DAPI)
+combined_spe <- cbind(spe_DAPI, spe_NM_DAPI)
 
 # Check the result
 table(colData(combined_spe)$sample_type)
+
+saveRDS(combined_spe, here("processed-data/xenium/", "raw_combined_spe.RDS"))
