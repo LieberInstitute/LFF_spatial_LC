@@ -3,8 +3,8 @@
 #SBATCH --mem=55G
 #SBATCH --time=00:30:00
 #SBATCH -n 1
-#SBATCH --output=logs/%x.txt
-#SBATCH --error=logs/%x.txt    # file to collect standard output
+#SBATCH --output=../logs/%x.txt
+#SBATCH --error=../logs/%x.txt    # file to collect standard output
 
 
 echo "**** Job starts ****"
