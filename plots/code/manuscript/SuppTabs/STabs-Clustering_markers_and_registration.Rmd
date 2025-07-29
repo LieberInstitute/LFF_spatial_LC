@@ -1,0 +1,174 @@
+---
+title: "STabs-Clustering_markers_and_registration"
+format: html
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(fig.height = 10,fig.width = 7,include = FALSE)
+#### sets tab autocompletion for directories to begin from the directory containing the .Rproj session, instead of the script's directory if different
+knitr::opts_knit$set(root.dir = here::here())
+
+library(data.table)
+library(SpatialExperiment)
+# library(SpatialFeatureExperiment)
+
+## rstudio GUI tweaks
+# require(colorout)
+# ColorOut()
+options('styler.addins_style_transformer' = 'biocthis::bioc_style()')
+##
+
+## enable forked parallel processing with BiocParallel::multicoreParam, future::, etc. seemed to need this a couple times, but otherwise havent so its here as a preventative measure. part of this is adding the line 
+# OBJC_DISABLE_INITIALIZE_FORK_SAFETY=YES
+# to Renviron.site. see e.g. top response on https://stackoverflow.com/questions/73638290/python-on-mac-is-it-safe-to-set-objc-disable-initialize-fork-safety-yes-globall 
+library(parallelly)
+options(parallelly.supportsMulticore.disableOn='')
+options(parallelly.fork.enable=TRUE)
+library(BiocParallel)
+options(bphost='localhost')
+
+## last of all, unload the base package datasets, whose data keep getting in the way of autocompletions (e.g., Theoph is priortized over TRUE)
+unloadNamespace('datasets')
+```
+
+### Sup tabs related to Fig 2.
+Supp Tabs
+Silwidth and..ugh that other thing
+1 vs all markers 
+Within-oligos markers
+Within-astros markers
+Between ACHESERT markers
+Tables-registration with Weber Divecha data
+RCTD spotwise result table
+Cluster props per sample
+Full nnSVG, binomial deviance gene results for feature set used with a column marking whether feature was included in the dimensionality reductions
+
+```{r}
+anno <- fread("processed-data/08_validitycheck_25hdg75svg_louv1/10-25hdg75svg_louv1_annots.txt")
+
+silwidth <- readRDS("processed-data/07_featureSelection_dimred_harmony_clustering/06a-init_SNNk10_louvainClusts_silwidths.RDS")
+pur <- readRDS("processed-data/07_featureSelection_dimred_harmony_clustering/06b-init_SNNk10_louvain_clustpuritys.RDS")
+
+## process silwidth
+silwidth <- as.data.table(silwidth$snnHARMONYlmbna_HDG_SVG_2575_louv_res1,keep.rownames=T)
+setnames(silwidth,"rn","spot_id")
+silwidth[cluster=="LC.1",cluster:="X6"]
+silwidth[cluster=="5HT.1",cluster:="X3"]
+silwidth[cluster=="5HT.2",cluster:="X5"]
+silwidth[other=="LC.1",other:="X6"]
+silwidth[other=="5HT.1",other:="X3"]
+silwidth[other=="5HT.2",other:="X5"]
+
+silwidth <- merge.data.table(silwidth,anno[,.(clusid,anno)],by.x="cluster",by.y="clusid")
+silwidth[,cluster:=anno]
+silwidth[,anno:=NULL]
+
+silwidth <- merge.data.table(silwidth,anno[,.(clusid,anno)],by.x="other",by.y="clusid")
+silwidth[,other:=anno]
+silwidth[,anno:=NULL]
+
+## process pur to add in-line
+pur <- as.data.table(pur$snnHARMONYlmbna_HDG_SVG_2575_louv_res1,keep.rownames=T)
+pur[maximum=="LC.1",maximum:="X6"]
+pur[maximum=="5HT.1",maximum:="X3"]
+pur[maximum=="5HT.2",maximum:="X5"]
+pur <- merge.data.table(pur,anno[,.(clusid,anno)],by.x="maximum",by.y="clusid")
+pur[,maximum:=anno]
+pur[,anno:=NULL]
+setnames(pur,c("maximum","purity"),c("Domain w. Max Purity","Purity"))
+
+## join
+setnames(silwidth,c("cluster","other","width"),c("Assigned Domain","Next Best Match","Silhouette Width"))
+silwidth <- merge.data.table(silwidth,pur,by.x="spot_id",by.y="rn")
+
+## add rmsds
+rmsd <- readRDS("processed-data/07_featureSelection_dimred_harmony_clustering/06c-init_SNNk10_louvain_clustRMSDs.RDS")
+rmsd <- as.data.table(rmsd$snnHARMONYlmbna_HDG_SVG_2575_louv_res1,keep.rownames=T)
+rmsd[V1=="LC.1",V1:="X6"]
+rmsd[V1=="5HT.1",V1:="X3"]
+rmsd[V1=="5HT.2",V1:="X5"]
+rmsd <- merge.data.table(rmsd,anno[,.(clusid,anno)],by.x="V1",by.y="clusid")
+rmsd[,V1:=anno]
+rmsd[,anno:=NULL]
+rmsd[,V2:=round(V2,digits=3)]
+setnames(rmsd,"V2","Domainwise Root-Mean Square Dev.")
+
+# join
+silwidth <- merge.data.table(silwidth,rmsd,by.x="Assigned Domain",by.y="V1",all.x=T)
+
+# reorder
+silwidth <- silwidth[,.(spot_id,`Assigned Domain`,`Domain w. Max Purity`,Purity,`Next Best Match`,`Silhouette Width`,`Domainwise Root-Mean Square Dev.`)]
+silwidth[,Purity:=round(Purity,digits=3)]
+silwidth[,`Silhouette Width`:=round(`Silhouette Width`,digits=3)]
+
+fwrite(silwidth,"plots/manuscript/SuppTabs/ST-Spot_Silwidths_ClusPurity_and_ClusterRMSDs.txt",sep='\t',quote=F,row.names=F,col.names=T)
+rm(silwidth,rmsd,pur)
+```
+
+1 vs. all markers, within-oligos markers, within-astros markers (pairwise), within-achesert markers (pairwise), 
+```{r}
+## 1 vs all
+mk <- fread("processed-data/13_markers_and_registration_final/01-HDGSVG2575louv1_regWrapOut_1vAll_markers.txt")
+setnames(mk,c("Domain","Gene Symbol","Ensembl Gene ID","FDR","logFC","p","t statistic"))
+fwrite(mk,"plots/manuscript/SuppTabs/ST-1vAll_markers.txt",sep='\t',quote=F,row.names=F,col.names=T)
+rm(mk)
+
+## Astro pairwise
+ast <- readRDS("processed-data/13_markers_and_registration_final/01-HDGSVG2575louv1_regWrapOut.RDS")
+ast <- as.data.table(ast$pairwise)
+keepcol <- c("gene","ensembl",grep(names(ast),pattern="Astro|Astro-Oligo",value=T))
+keepcol <- grep(keepcol,pattern="Oligo_Astro|LC|ACHE|Vascular|Oligo_Complex|-Oligo",value=T,invert=T)
+ast <- ast[,..keepcol]
+setnames(ast,c("Gene Symbol","Ensembl Gene ID","t statistic","p","FDR","logFC"))
+ast[,`Tested Domain`:="Astro"]
+ast[,`Other Domain`:="Astro-Oligo"]
+
+ast <- ast[,.(`Tested Domain`,`Other Domain`,`Gene Symbol`,FDR,logFC,p,`t statistic`,`Ensembl Gene ID`)]
+ast[,FDR:=round(FDR,digits=3)]
+ast[,logFC:=round(logFC,digits=3)]
+ast[,p:=round(p,digits=3)]
+ast[,`t statistic`:=round(`t statistic`,digits=3)]
+fwrite(ast,"plots/manuscript/SuppTabs/ST-Astro_pairwise_markers.txt",sep='\t',quote=F,row.names=F,col.names=T)
+rm(ast,keepcol)
+
+## ACHE SERT pairwise
+ache <- readRDS("processed-data/13_markers_and_registration_final/01-HDGSVG2575louv1_regWrapOut.RDS")
+ache <- as.data.table(ache$pairwise)
+keepcol <- grep(names(ache),pattern="ACHE",value=T)
+keepcol <- grep(keepcol,pattern="Astro|Vascular|Oligo|-LC|LC-",value=T,invert=T)
+keepcol <- c("gene","ensembl",grep(keepcol,pattern="ACHE|SERT_LC",value=T))
+
+ache <- ache[,..keepcol]
+setnames(ache,c("Gene Symbol","Ensembl Gene ID","t statistic","p","FDR","logFC"))
+ache[,`Tested Domain`:="ACHE_SERT_LC_WM"]
+ache[,`Other Domain`:="ACHE_SERT_Npep"]
+
+ache <- ache[,.(`Tested Domain`,`Other Domain`,`Gene Symbol`,FDR,logFC,p,`t statistic`,`Ensembl Gene ID`)]
+ache[,FDR:=round(FDR,digits=3)]
+ache[,logFC:=round(logFC,digits=3)]
+ache[,p:=round(p,digits=3)]
+ache[,`t statistic`:=round(`t statistic`,digits=3)]
+fwrite(ache,"plots/manuscript/SuppTabs/ST-ACHESERT_pairwise_markers.txt",sep='\t',quote=F,row.names=F,col.names=T)
+rm(ache)
+
+## 
+olig <- readRDS("processed-data/13_markers_and_registration_final/01-HDGSVG2575louv1_regWrapOut.RDS")
+olig <- as.data.table(olig$enrichment)
+
+olig <- melt.data.table(olig,id.vars=c("ensembl","gene"))
+olig[,stat:=gsub(variable,pattern="^(logFC|fdr|p_value|t_stat)_.*$",replacement="\\1")]
+olig[,Domain:=gsub(variable,pattern="^(logFC|fdr|p_value|t_stat)_(.*)$",replacement="\\2")]
+
+olig[,variable:=NULL]
+olig2 <- dcast(olig,Domain+gene+ensembl~stat)
+
+setnames(olig2,c("Domain","Gene Symbol","Ensembl Gene ID","FDR","logFC","p","t statistic"))
+olig2[,FDR:=round(FDR,digits=3)]
+olig2[,logFC:=round(logFC,digits=3)]
+olig2[,p:=round(p,digits=3)]
+olig2[,`t statistic`:=round(`t statistic`,digits=3)]
+
+olig2 <- olig2[,.(`Domain`,`Gene Symbol`,FDR,logFC,p,`t statistic`,`Ensembl Gene ID`)]
+fwrite(olig2,"plots/manuscript/SuppTabs/ST-Oligo_1vOthers_markers.txt",sep='\t',quote=F,row.names=F,col.names=T)
+rm(olig,olig2,keepcol)
+```
