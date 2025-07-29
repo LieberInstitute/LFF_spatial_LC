@@ -1,3 +1,4 @@
+setwd('/dcs05/lieber/marmaypag/LFF_spatialLC_LIBD4140/LFF_spatial_LC/')
 library(Banksy)
 library(SummarizedExperiment)
 library(SpatialExperiment)
@@ -15,10 +16,13 @@ library(escheR)
 ##########################################################################################
 
 # Read in the data
-spe <- readRDS(here("processed-data", "01_build_spe", "raw_spe_N24.RDS"))
-outlier_ids <- read.csv(here("processed-data", "02_xenium_qc", "outlier_ids.csv"))$x
-spe <- spe[, -which(colnames(spe) %in% outlier_ids)]
-rm (outlier_ids)
+spe <- readRDS(here('processed-data/xenium/raw_combined_spe.RDS'))
+rowData(spe)$Gene <- rownames(rowData(spe))
+colnames(spe) <- paste0(spe$Barcode, "_", spe$sample_id)
+
+empty_cells <- colnames(spe)[colSums(counts(spe)) == 0]
+spe <- spe[, colSums(counts(spe)) > 0]
+
 spe <- spe[which(rowData(spe)$Type=="Gene Expression"), ]
 print(spe)
 
@@ -30,15 +34,15 @@ use_agf <- FALSE
 cnm <- sprintf("clust_M%s_lam%s_k50_res%s", as.numeric(use_agf), lambda, res)
 
 
-brnums <- unique(spe$BrNum)
-if(!file.exists(here("processed-data", "03_clustering", sprintf("banksy_clustering_lambda%s_res%s.csv", lambda, res)))){
+brnums <- unique(spe$sample_type)
+if(!file.exists(here("processed-data", "xenium", "03_clustering", sprintf("banksy_clustering_lambda%s_res%s.csv", lambda, res)))){
   spe <- scuttle::logNormCounts(spe)
 
   # Create a list of each of the SPEs
   spe_list <- list()
 
   for (i in 1:length(brnums)) {
-    spe_list[[i]] <- spe[, spe$BrNum == brnums[i]]
+    spe_list[[i]] <- spe[, spe$sample_type == brnums[i]]
   }
 
   k_geom <- 10
@@ -53,7 +57,7 @@ if(!file.exists(here("processed-data", "03_clustering", sprintf("banksy_clusteri
   # Run BANKSY PCA
 
   spe_joint <- runBanksyPCA(spe_joint, use_agf = use_agf, 
-                      lambda = lambda, group = "BrNum", seed = 1000)
+                      lambda = lambda, group = "sample_type", seed = 1000)
 
   # Run UMAP on the BANKSY PCA embedding
   spe_joint <- runBanksyUMAP(spe_joint, use_agf = use_agf,  
@@ -65,35 +69,35 @@ if(!file.exists(here("processed-data", "03_clustering", sprintf("banksy_clusteri
 
   clusts <- cbind(colData(spe_joint)[, cnm], rownames(colData(spe_joint)))
   print(head(clusts))
-  write.csv(clusts, here("processed-data", "03_clustering", sprintf("banksy_clustering_lambda%s_res%s.csv", lambda, res)))
+  write.csv(clusts, here("processed-data", "xenium", "03_clustering", sprintf("banksy_clustering_lambda%s_res%s.csv", lambda, res)))
   
-  pdf(here("plots", "03_clustering", sprintf("banksy_clustering_%s.pdf", cnm)))
+  pdf(here("plots", "xenium", "03_clustering", sprintf("banksy_clustering_%s.pdf", cnm)))
   for (i in 1:length(brnums)){
-      sub_spe <- spe[, spe$BrNum == brnums[i]]
+      sub_spe <- spe[, spe$sample_type == brnums[i]]
 
       print(head(colData(sub_spe)))
 
       p <- make_escheR(sub_spe) %>%
           add_ground("Banksy")+
-          ggtitle(paste(brnums[[i]], unique(sub_spe$Dx)[[1]]))
+          ggtitle(brnums[[i]])
       print(p)
 
     }
 } else{
-  clusts <- read.csv(here("processed-data", "03_clustering", sprintf("banksy_clustering_lambda%s_res%s.csv", lambda, res)))
+  clusts <- read.csv(here("processed-data", "xenium", "03_clustering", sprintf("banksy_clustering_lambda%s_res%s.csv", lambda, res)))
   print(head(clusts))
   colData(spe)[["Banksy"]] <- as.character(clusts$V1)
 
   # split the spe again and plot each one 
-  pdf(here("plots", "03_clustering", sprintf("banksy_clustering_%s.pdf", cnm)))
+  pdf(here("plots", "xenium", "03_clustering", sprintf("banksy_clustering_%s.pdf", cnm)))
   for (i in 1:length(brnums)){
-      sub_spe <- spe[, spe$BrNum == brnums[i]]
+      sub_spe <- spe[, spe$sample_type == brnums[i]]
 
       print(head(colData(sub_spe)))
 
       p <- make_escheR(sub_spe) %>%
           add_ground("Banksy")+
-          ggtitle(paste(brnums[[i]], unique(sub_spe$Dx)[[1]]))
+          ggtitle(brnums[[i]])
       print(p)
 
     }
