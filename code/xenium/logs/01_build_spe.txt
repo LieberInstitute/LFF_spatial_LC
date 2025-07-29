@@ -1,8 +1,8 @@
 **** Job starts ****
-Thu Jul 24 04:46:28 PM EDT 2025
+Tue Jul 29 11:42:08 AM EDT 2025
 **** JHPCE info ****
 User: mtippani
-Job id: 20421925
+Job id: 21073160
 Job name: 01_build_spe
 Hostname: jhpce3
 Task id: 
@@ -114,7 +114,7 @@ The following objects are masked from ‘package:matrixStats’:
 ✖ lubridate::second<-() masks S4Vectors::second<-()
 ✖ dplyr::slice()        masks IRanges::slice()
 ℹ Use the conflicted package (<http://conflicted.r-lib.org/>) to force all conflicts to become errors
-Rows: 14607 Columns: 14
+Rows: 14477 Columns: 14
 ── Column specification ────────────────────────────────────────────────────────
 Delimiter: ","
 chr  (2): cell_id, segmentation_method
@@ -123,4 +123,4 @@ dbl (12): x_centroid, y_centroid, transcript_counts, control_probe_counts, g...
 ℹ Use `spec()` to retrieve the full column specification for this data.
 ℹ Specify the column types or set `show_col_types = FALSE` to quiet this message.
 **** Job ends ****
-Thu Jul 24 04:46:38 PM EDT 2025
+Tue Jul 29 11:42:21 AM EDT 2025
