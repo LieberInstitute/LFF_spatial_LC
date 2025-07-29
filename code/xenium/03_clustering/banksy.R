@@ -73,7 +73,7 @@ if(!file.exists(here("processed-data", "xenium", "03_clustering", sprintf("banks
   
   pdf(here("plots", "xenium", "03_clustering", sprintf("banksy_clustering_%s.pdf", cnm)))
   for (i in 1:length(brnums)){
-      sub_spe <- spe[, spe$sample_type == brnums[i]]
+      sub_spe <- spe_joint[, spe_joint$sample_type == brnums[i]]
 
       print(head(colData(sub_spe)))
 
