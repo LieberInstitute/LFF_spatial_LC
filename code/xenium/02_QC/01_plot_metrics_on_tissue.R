@@ -7,63 +7,46 @@ library(escheR)
 library(scater)
 library(scattermore)
 
-spe <- readRDS(here('processed-data/xenium_imageProcessing/Br6297/xeniumranger_NM_DAPI/outs/raw_NM_DAPI.RDS'))
+spe <- readRDS(here('processed-data/xenium/raw_combined_spe.RDS'))
 
 plot_coldata_on_tissue <- function(x, column_name){
     plist <- list()
-    brnums <- unique(x$sample_id)
+    brnums <- unique(x$sample_type)
     for (i in 1:length(brnums)){
-        x_sub <- x[, x$BrNum == brnums[i]]
-        p <- make_escheR(x_sub) %>%
+        x_sub <- x[, x$sample_type == brnums[i]]
+         p <- (make_escheR(x_sub) %>%
             add_fill(column_name)+
             ggtitle(brnums[i])+
             geom_scattermore()
-        plist[[i]] <- p
+			)
+			 plist[[i]] = p
     }
     return(plist)
 }
 
+plots <- plot_coldata_on_tissue(spe, "total_counts")
+plots1 <- plot_coldata_on_tissue(spe, "control_probe_counts")
+plots2 <- plot_coldata_on_tissue(spe, "unassigned_codeword_counts")
+plots3 <- plot_coldata_on_tissue(spe, "cell_area")
+plots4 <- plot_coldata_on_tissue(spe, "nucleus_area")
+plots5 <- plot_coldata_on_tissue(spe, "transcript_counts")
 
+pdf(here("plots", "xenium", "01_QC_metrics.pdf"))
+plotColData(spe, y="total_counts", x="sample_type")+geom_scattermore()
+plots
 
-pdf(here("plots", "xenium_imageProcessing/Br6297", "01_total_counts.pdf"))
-plotColData(spe, y="total_counts", x="sample_id")+geom_scattermore()
-p <- make_escheR(spe) %>%
-    add_fill("total_counts")+ geom_scattermore()
-	print(p)
-dev.off()
+plotColData(spe, y="control_probe_counts", x="sample_type")+geom_scattermore()
+plots1
 
+plotColData(spe, y="unassigned_codeword_counts", x="sample_type")+geom_scattermore()
+plots2
 
-pdf(here("plots", "xenium_imageProcessing/Br6297", "01_control_probe_counts.pdf"))
-plotColData(spe, y="control_probe_counts", x="sample_id")+geom_scattermore()
-p <- make_escheR(spe) %>%
-    add_fill("control_probe_counts")+ geom_scattermore()
-	print(p)
-dev.off()
+plotColData(spe, y="cell_area", x="sample_type")+geom_scattermore()
+plots3
 
-pdf(here("plots", "xenium_imageProcessing/Br6297",  "01_unassigned_codewords.pdf"))
-plotColData(spe, y="unassigned_codeword_counts", x="sample_id")+geom_scattermore()
-p <- make_escheR(spe) %>%
-    add_fill("unassigned_codeword_counts")+ geom_scattermore()
-	print(p)
-dev.off()
+plotColData(spe, y="nucleus_area", x="sample_type")+geom_scattermore()
+plots4
 
-pdf(here("plots", "xenium_imageProcessing/Br6297",  "01_cell_area.pdf"))
-plotColData(spe, y="cell_area", x="sample_id")+geom_scattermore()
-p <- make_escheR(spe) %>%
-    add_fill("cell_area")+ geom_scattermore()
-	print(p)
-dev.off()
-
-pdf(here("plots", "xenium_imageProcessing/Br6297", "01_nucleus_area.pdf"))
-plotColData(spe, y="nucleus_area", x="sample_id")+geom_scattermore()
-p <- make_escheR(spe) %>%
-    add_fill("nucleus_area")+ geom_scattermore()
-	print(p)
-dev.off()
-
-pdf(here("plots", "xenium_imageProcessing/Br6297", "01_transcript_counts.pdf"))
-plotColData(spe, y="transcript_counts", x="sample_id")+ geom_scattermore()
-p <- make_escheR(spe) %>%
-    add_fill("transcript_counts")+ geom_scattermore()
-	print(p)
+plotColData(spe, y="transcript_counts", x="sample_type")+ geom_scattermore()
+plots5
 dev.off()
