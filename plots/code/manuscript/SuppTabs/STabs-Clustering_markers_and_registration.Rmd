@@ -38,10 +38,6 @@ Silwidth and..ugh that other thing
 Within-oligos markers
 Within-astros markers
 Between ACHESERT markers
-Tables-registration with Weber Divecha data
-RCTD spotwise result table
-Cluster props per sample
-Full nnSVG, binomial deviance gene results for feature set used with a column marking whether feature was included in the dimensionality reductions
 
 ```{r}
 anno <- fread("processed-data/08_validitycheck_25hdg75svg_louv1/10-25hdg75svg_louv1_annots.txt")
@@ -101,7 +97,7 @@ silwidth <- silwidth[,.(spot_id,`Assigned Domain`,`Domain w. Max Purity`,Purity,
 silwidth[,Purity:=round(Purity,digits=3)]
 silwidth[,`Silhouette Width`:=round(`Silhouette Width`,digits=3)]
 
-fwrite(silwidth,"plots/manuscript/SuppTabs/ST-Spot_Silwidths_ClusPurity_and_ClusterRMSDs.txt",sep='\t',quote=F,row.names=F,col.names=T)
+fwrite(silwidth,"plots/manuscript/SuppTabs/TabDelims/ST-Spot_Silwidths_ClusPurity_and_ClusterRMSDs.txt",sep='\t',quote=F,row.names=F,col.names=T)
 rm(silwidth,rmsd,pur)
 ```
 
@@ -109,8 +105,14 @@ rm(silwidth,rmsd,pur)
 ```{r}
 ## 1 vs all
 mk <- fread("processed-data/13_markers_and_registration_final/01-HDGSVG2575louv1_regWrapOut_1vAll_markers.txt")
+mk[,fdr:=round(fdr,3)]
+mk[,logFC:=round(logFC,3)]
+mk[,p_value:=round(p_value,3)]
+mk[,t_stat:=round(t_stat,3)]
+
 setnames(mk,c("Domain","Gene Symbol","Ensembl Gene ID","FDR","logFC","p","t statistic"))
-fwrite(mk,"plots/manuscript/SuppTabs/ST-1vAll_markers.txt",sep='\t',quote=F,row.names=F,col.names=T)
+
+fwrite(mk,"plots/manuscript/SuppTabs/TabDelims/ST-1vAll_markers.txt",sep='\t',quote=F,row.names=F,col.names=T)
 rm(mk)
 
 ## Astro pairwise
@@ -128,7 +130,7 @@ ast[,FDR:=round(FDR,digits=3)]
 ast[,logFC:=round(logFC,digits=3)]
 ast[,p:=round(p,digits=3)]
 ast[,`t statistic`:=round(`t statistic`,digits=3)]
-fwrite(ast,"plots/manuscript/SuppTabs/ST-Astro_pairwise_markers.txt",sep='\t',quote=F,row.names=F,col.names=T)
+fwrite(ast,"plots/manuscript/SuppTabs/TabDelims/ST-Astro_pairwise_markers.txt",sep='\t',quote=F,row.names=F,col.names=T)
 rm(ast,keepcol)
 
 ## ACHE SERT pairwise
@@ -148,27 +150,372 @@ ache[,FDR:=round(FDR,digits=3)]
 ache[,logFC:=round(logFC,digits=3)]
 ache[,p:=round(p,digits=3)]
 ache[,`t statistic`:=round(`t statistic`,digits=3)]
-fwrite(ache,"plots/manuscript/SuppTabs/ST-ACHESERT_pairwise_markers.txt",sep='\t',quote=F,row.names=F,col.names=T)
+fwrite(ache,"plots/manuscript/SuppTabs/TabDelims/ST-ACHESERT_pairwise_markers.txt",sep='\t',quote=F,row.names=F,col.names=T)
 rm(ache)
 
 ## 
-olig <- readRDS("processed-data/13_markers_and_registration_final/01-HDGSVG2575louv1_regWrapOut.RDS")
-olig <- as.data.table(olig$enrichment)
+olig <- fread("processed-data/13_markers_and_registration_final/03-HDGSVG2575louv1_regWrapOut_Oligo_1vOthers_markers.txt")
 
-olig <- melt.data.table(olig,id.vars=c("ensembl","gene"))
-olig[,stat:=gsub(variable,pattern="^(logFC|fdr|p_value|t_stat)_.*$",replacement="\\1")]
-olig[,Domain:=gsub(variable,pattern="^(logFC|fdr|p_value|t_stat)_(.*)$",replacement="\\2")]
+olig[cluster=="Oligo_Complex",cluster:="Oligo-Other Cell Types Mixed"]
+olig[cluster=="Oligo_Astro",cluster:="Oligo-Astro"]
+olig[cluster=="Oligo",comp:="Oligo-Astro, Oligo-Other Cell Types Mixed"]
+olig[cluster=="Oligo-Astro",comp:="Oligo, Oligo-Other Cell Types Mixed"]
+olig[cluster=="Oligo-Other Cell Types Mixed",comp:="Oligo, Oligo-Astro"]
 
-olig[,variable:=NULL]
-olig2 <- dcast(olig,Domain+gene+ensembl~stat)
+setnames(olig,c("Domain","Gene Symbol","Ensembl Gene ID","FDR","logFC","p","t statistic","Domains Compared to"))
+olig[,FDR:=round(FDR,digits=3)]
+olig[,logFC:=round(logFC,digits=3)]
+olig[,p:=round(p,digits=3)]
+olig[,`t statistic`:=round(`t statistic`,digits=3)]
 
-setnames(olig2,c("Domain","Gene Symbol","Ensembl Gene ID","FDR","logFC","p","t statistic"))
-olig2[,FDR:=round(FDR,digits=3)]
-olig2[,logFC:=round(logFC,digits=3)]
-olig2[,p:=round(p,digits=3)]
-olig2[,`t statistic`:=round(`t statistic`,digits=3)]
-
-olig2 <- olig2[,.(`Domain`,`Gene Symbol`,FDR,logFC,p,`t statistic`,`Ensembl Gene ID`)]
-fwrite(olig2,"plots/manuscript/SuppTabs/ST-Oligo_1vOthers_markers.txt",sep='\t',quote=F,row.names=F,col.names=T)
+olig2 <- olig[,.(`Domain`,`Domains Compared to`,`Gene Symbol`,FDR,logFC,p,`t statistic`,`Ensembl Gene ID`)]
+fwrite(olig2,"plots/manuscript/SuppTabs/TabDelims/ST-Oligo_1vOthers_markers.txt",sep='\t',quote=F,row.names=F,col.names=T)
 rm(olig,olig2,keepcol)
 ```
+
+
+remaining: 
+registration with Weber Divecha data
+RCTD spotwise result table
+Cluster props per sample
+Full nnSVG, binomial deviance gene results for feature set used with a column marking whether feature was included in the dimensionality reductions
+
+
+## webdiv regist
+```{r}
+wdr <- readRDS("processed-data/13_markers_and_registration_final/02-LC3_registration_to_WeberDivecha23_final.RDS")
+
+wdr2 <- lapply(wdr,function(x){
+    y <- rbindlist(x,idcol="tmpcol")
+    y[,WeberDivecha_Annot_Set:=gsub(tmpcol,pattern="^(.*)_top_(.*)$",replacement="\\1")]
+    y[,nTopMarkers:=as.numeric(gsub(tmpcol,pattern="^(.*)_top_(.*)$",replacement="\\2"))]
+    y[,tmpcol:=NULL]
+    setnames(y,"LFF_clus","Domain")
+
+    z <- melt.data.table(y,id.vars=c("WeberDivecha_Annot_Set","nTopMarkers","Domain"))
+    setnames(z,c("variable","value"),c("Spot","Spearman Correlation"))
+
+    return(z)
+})
+
+# concat and reorder
+wdr2 <- rbindlist(wdr2)
+wdr2 <- wdr2[,.(Domain,Spot,`Spearman Correlation`,WeberDivecha_Annot_Set,nTopMarkers)]
+
+# clean up
+wdr2[,WeberDivecha_Annot_Set:=gsub(WeberDivecha_Annot_Set,pattern="Webdiv_(.*)",replacement="\\1")]
+wdr2[,Platform:=gsub(WeberDivecha_Annot_Set,pattern="^(snuc|spat)_(.*)$",replacement="\\1")]
+wdr2[,WeberDivecha_Annot_Set:=gsub(WeberDivecha_Annot_Set,pattern="(snuc|spat)_(.*)$",replacement="\\2")]
+wdr2[Platform=="snuc",Platform:="snRNA-seq"]
+wdr2[Platform=="spat",Platform:="Visium"]
+
+# clean up method-label colllapsed values
+wdr2[,Spot:=as.character(Spot)]
+wdr2[,Spot:=
+    apply(.SD,MARGIN=1,simplify=T,FUN=function(x){
+        pat <- paste0(x[2],"_(.*)")
+        y <- gsub(x[1],pattern=pat,replacement="\\1")
+        return(y)}),
+    .SDcols=c("Spot","WeberDivecha_Annot_Set")]
+wdr2[,Spot:=gsub(Spot,pattern="^x(.*)$",replacement="\\1")]
+wdr2[Spot=="TRUE",Spot:=WeberDivecha_Annot_Set]
+wdr2[Spot=="FALSE",Spot:=paste0("NOT ",WeberDivecha_Annot_Set)]
+wdr2[,Spot:=gsub(Spot,pattern="annot_region",replacement="Manually Annotated LC Region")]
+
+
+wdr2 <- wdr2[,.(Domain,)]
+setnames(wdr2,c("Spot","WeberDivecha_Annot_Set"),c("WeberDivecha Annotation","WeberDivecha Annotation Type"))
+
+setnames(wdr2,"Platform","WeberDivecha Platform")
+wdr2[,`Spearman Correlation`:=round(`Spearman Correlation`,digits=3)]
+
+fwrite(wdr2,"plots/manuscript/SuppTabs/TabDelims/ST-WeberDivecha_Registration.txt",sep='\t',quote=F,row.names=F,col.names=T)
+
+rm(wdr,wdr2)
+```
+
+Cluster props per sample
+```{r}
+tmpcd <- fread("processed-data/06-QCed_SPE_splitToTissSect_colData.txt")
+louvs <- readRDS("processed-data/07_featureSelection_dimred_harmony_clustering/04-Initial_louvLeid_res0.5-1-2_clusterings.RDS")
+louvs <- louvs$HARMONYlmbna_HDG_SVG_2575[,.(rn,snnHARMONYlmbna_HDG_SVG_2575_louv_res1)]
+setnames(louvs,2,"clusid")
+
+anno <- fread("processed-data/08_validitycheck_25hdg75svg_louv1/10-25hdg75svg_louv1_annots.txt")
+louvs <- merge.data.table(louvs,anno[,.(clusid,anno)],by="clusid")
+
+tmpcd <- merge.data.table(tmpcd,louvs,by.x="rowname",by.y="rn")
+
+ans <- tmpcd[,.N,by=c("sample_id","anno")]
+ans[,totspot:=sum(N),by="sample_id"]
+ans[,prop:=N/totspot]
+ans[,prop:=round(prop,4)]
+ans <- ans[,.(sample_id,anno,prop,N,totspot)]
+setnames(ans,c("sample_id","anno","N","totspot","prop"),c("Tissue Section ID","Domain","N Domain Spots","N Tissue Spots","Proportion"))
+
+fwrite(ans,"plots/manuscript/SuppTabs/TabDelims/ST-Domain_props_per_section.txt",sep='\t',quote=F,row.names=F,col.names=T)
+rm(ans)
+
+ans <- tmpcd[,.N,by=c("brnum","anno")]
+ans[,totspot:=sum(N),by="brnum"]
+ans[,prop:=N/totspot]
+ans[,prop:=round(prop,4)]
+ans <- ans[,.(brnum,anno,prop,N,totspot)]
+setnames(ans,c("brnum","anno","N","totspot","prop"),c("Donor ID","Domain","N Domain Spots","N Tissue Spots","Proportion"))
+
+fwrite(ans,"plots/manuscript/SuppTabs/TabDelims/ST-Domain_props_per_donor.txt",sep='\t',quote=F,row.names=F,col.names=T)
+rm(ans,louvs,anno)
+
+### keep colData w/ annots for RCTD tables
+```
+
+Full nnSVG, binomial deviance gene results for feature set used with a column marking whether feature was included in the dimensionality reductions
+```{r}
+nns <- readRDS("processed-data/07_featureSelection_dimred_harmony_clustering/01b-nnSVG_n2s2_nobatch_out.RDS")
+nns <- rbindlist(nns,idcol="sample_id")
+keepcol <- unique(c("sample_id","gene_name","nnSVG_pval","nnSVG_padj",grep(names(nns),pattern="nnSVG",value=T),"gene_id"))
+nns <- nns[,..keepcol]
+
+featset <- readRDS("processed-data/07_featureSelection_dimred_harmony_clustering/01d_HiDevG_HVG_SVG_andmixed_featsets.RDS")
+featset <- featset$HDG_SVG_2575
+
+nns[,`Gene for PCA, Harmony, Clustering`:=ifelse(gene_id %in% featset,"Yes","No")]
+keepcol <- c(keepcol[1:2],"Gene for PCA, Harmony, Clustering",keepcol[3:length(keepcol)])
+nns <- nns[,..keepcol]
+
+setnames(nns,c("sample_id","gene_name","gene_id"),c("Tissue Section ID","Gene Symbol","Ensembl Gene ID"))
+
+fwrite(nns,"plots/manuscript/SuppTabs/TabDelims/ST-Full_nnSVG_results.txt",sep='\t',quote=F,row.names=F,col.names=T)
+rm(nns,keepcol)
+###
+## nns summary level
+nnss <- fread("processed-data/07_featureSelection_dimred_harmony_clustering/01c-nnsvg_s2n2_nobatch_meangeneranks.txt")
+nnss[,`Gene for PCA, Harmony, Clustering`:=ifelse(gene_id %in% featset,"Yes","No")]
+fwrite(nnss,"plots/manuscript/SuppTabs/TabDelims/ST-nnSVG_ranks_by_sample.txt",sep='\t',quote=F,row.names=F,col.names=T)
+rm(nnss)
+# as Jacqui (power user of HDGs) says affirming this approach: "because you didn't specify any covariates/batch for the devianceFeatureSelection it doesn't matter if you did or did not split the capture area since the model was agnostic to the origin of any and all spots"
+
+devgen <- fread("processed-data/04_QC/05-deviance_binomial_gene_deviances_panSPE_brnumAsBatch_or_slideAsBatch.txt")
+
+## for now we only want the deviances/ranks under a no batch condition
+devgen <- devgen[,.(gene_id,gene_name,rank_nobatch,dev_nobatch)]
+devgen[,`Gene for PCA, Harmony, Clustering`:=ifelse(gene_id %in% featset,"Yes","No")]
+devgen <- devgen[,.(gene_name,`Gene for PCA, Harmony, Clustering`,rank_nobatch,dev_nobatch,gene_id)]
+setorderv(devgen,"rank_nobatch")
+devgen[,dev_nobatch:=round(dev_nobatch,2)]
+setnames(devgen,c("gene_id","gene_name","rank_nobatch","dev_nobatch"),c("Ensembl Gene ID","Gene Symbol","Rank (n=85 sections)","Deviance (n=85 sections)"))
+
+fwrite(devgen,"plots/manuscript/SuppTabs/TabDelims/ST-Full_binomial_deviance_results.txt",sep='\t',quote=F,row.names=F,col.names=T)
+rm(devgen,featset)
+```
+
+
+RCTD spotwise result table
+```{r}
+rctds <- readRDS("processed-data/10_subclustering/11-RCTDmulti4_webdivLabel-LabelMerged-LabelWithInhibSubclusts_concatresults.RDS")
+
+rctdlab <- rctds$label_merged
+aname <- c("rn","sample_id",grep(names(rctdlab),pattern="full_weights",value=T))
+bname <- c("rn","sample_id",grep(names(rctdlab),pattern="multi_weight",value=T))
+rctdsa <- rctdlab[,..aname]
+rctdsb <- rctdlab[,..bname]
+
+setnames(rctdsa,names(rctdsa),gsub(names(rctdsa),pattern="_full_weights",replacement=""))
+setnames(rctdsb,names(rctdsb),gsub(names(rctdsb),pattern="_multi_weight",replacement=""))
+
+rctdsa <- merge.data.table(rctdsa,louvs[,.(rn,anno)],by="rn")
+rctdsb <- merge.data.table(rctdsb,louvs[,.(rn,anno)],by="rn")
+
+rctdsa <- melt.data.table(rctdsa,id.vars=c("rn","sample_id","anno"),variable.name="WeberDivecha snRNAseq Label_Merged",value.name="RCTD Full (Any n cell types) Weight")
+rctdsb <- melt.data.table(rctdsb,id.vars=c("rn","sample_id","anno"),variable.name="WeberDivecha snRNAseq Label_Merged",value.name="RCTD Multi (Max 4 cell types) Weight")
+
+rctdsc <- merge.data.table(rctdsa,rctdsb,by=c("rn","sample_id","WeberDivecha snRNAseq Label_Merged","anno"),all=T)
+rctdsc[,`RCTD Full (Any n cell types) Weight`:=round(`RCTD Full (Any n cell types) Weight`,4)]
+rctdsc[,`RCTD Multi (Max 4 cell types) Weight`:=round(`RCTD Multi (Max 4 cell types) Weight`,4)]
+
+setnames(rctdsc,c("rn","sample_id","anno"),c("Visium Spot ID","Tissue Section ID","Domain"))
+
+fwrite(rctdsc,"plots/manuscript/SuppTabs/TabDelims/ST-RCTD_full_and_multi_WebDivLabMerged_results.txt",sep='\t',quote=F,row.names=F,col.names=T)
+rm(rctdsa,rctdsb,rctdsc,rctdlab,aname,bname)
+
+## using the labels as collapsed as initial cluster, annotated cluster
+
+rctdlab <- rctds$label
+aname <- c("rn","sample_id",grep(names(rctdlab),pattern="full_weights",value=T))
+bname <- c("rn","sample_id",grep(names(rctdlab),pattern="multi_weight",value=T))
+rctdsa <- rctdlab[,..aname]
+rctdsb <- rctdlab[,..bname]
+
+setnames(rctdsa,names(rctdsa),gsub(names(rctdsa),pattern="_full_weights",replacement=""))
+setnames(rctdsb,names(rctdsb),gsub(names(rctdsb),pattern="_multi_weight",replacement=""))
+
+rctdsa <- merge.data.table(rctdsa,louvs[,.(rn,anno)],by="rn")
+rctdsb <- merge.data.table(rctdsb,louvs[,.(rn,anno)],by="rn")
+
+rctdsa <- melt.data.table(rctdsa,id.vars=c("rn","sample_id","anno"),variable.name="WeberDivecha snRNAseq Label_Merged with Originating Label",value.name="RCTD Full (Any n cell types) Weight")
+rctdsb <- melt.data.table(rctdsb,id.vars=c("rn","sample_id","anno"),variable.name="WeberDivecha snRNAseq Label_Merged with Originating Label",value.name="RCTD Multi (Max 4 cell types) Weight")
+
+rctdsc <- merge.data.table(rctdsa,rctdsb,by=c("rn","sample_id","WeberDivecha snRNAseq Label_Merged with Originating Label","anno"),all=T)
+rctdsc[,`RCTD Full (Any n cell types) Weight`:=round(`RCTD Full (Any n cell types) Weight`,4)]
+rctdsc[,`RCTD Multi (Max 4 cell types) Weight`:=round(`RCTD Multi (Max 4 cell types) Weight`,4)]
+
+rctdsc <- rctdsc[`WeberDivecha snRNAseq Label_Merged with Originating Label` %in% grep(`WeberDivecha snRNAseq Label_Merged with Originating Label`,pattern="inhibitory",value=T)]
+rctdsc <- rctdsc[,`WeberDivecha snRNAseq Label_Merged with Originating Label`:=as.character(`WeberDivecha snRNAseq Label_Merged with Originating Label`)]
+
+rctdsc <- rctdsc[!(`RCTD Full (Any n cell types) Weight`==0&`RCTD Multi (Max 4 cell types) Weight`==0)]
+
+setnames(rctdsc,c("rn","sample_id","anno"),c("Visium Spot ID","Tissue Section ID","Domain"))
+
+fwrite(rctdsc,"plots/manuscript/SuppTabs/TabDelims/ST-RCTD_full_and_multi_WebDivLab-LabMerged_inhibitory_results_nonzeroWeightsOnly.txt",sep='\t',quote=F,row.names=F,col.names=T)
+rm(rctdsa,rctdsb,rctdsc,rctdlab,aname,bname)
+```
+
+seshinf
+```{r}
+sessionInfo()
+sessioninfo::session_info()
+```
+R version 4.4.3 (2025-02-28)
+Platform: aarch64-apple-darwin20
+Running under: macOS Sequoia 15.3.2
+
+Matrix products: default
+BLAS:   /System/Library/Frameworks/Accelerate.framework/Versions/A/Frameworks/vecLib.framework/Versions/A/libBLAS.dylib 
+LAPACK: /Library/Frameworks/R.framework/Versions/4.4-arm64/Resources/lib/libRlapack.dylib;  LAPACK version 3.12.0
+
+locale:
+[1] en_US.UTF-8/en_US.UTF-8/en_US.UTF-8/C/en_US.UTF-8/en_US.UTF-8
+
+time zone: America/Chicago
+tzcode source: internal
+
+attached base packages:
+[1] stats4    stats     graphics  grDevices
+[5] utils     methods   base     
+
+other attached packages:
+ [1] BiocParallel_1.40.0        
+ [2] parallelly_1.43.0          
+ [3] SpatialExperiment_1.16.0   
+ [4] SingleCellExperiment_1.28.1
+ [5] SummarizedExperiment_1.36.0
+ [6] Biobase_2.66.0             
+ [7] GenomicRanges_1.58.0       
+ [8] GenomeInfoDb_1.42.3        
+ [9] IRanges_2.40.1             
+[10] S4Vectors_0.44.0           
+[11] BiocGenerics_0.52.0        
+[12] MatrixGenerics_1.18.1      
+[13] matrixStats_1.5.0          
+[14] data.table_1.17.4          
+[15] rlang_1.1.5                
+
+loaded via a namespace (and not attached):
+ [1] Matrix_1.7-3           
+ [2] jsonlite_2.0.0         
+ [3] compiler_4.4.3         
+ [4] rjson_0.2.23           
+ [5] crayon_1.5.3           
+ [6] Rcpp_1.0.14            
+ [7] magick_2.8.6           
+ [8] parallel_4.4.3         
+ [9] lattice_0.22-6         
+[10] here_1.0.1             
+[11] R6_2.6.1               
+[12] XVector_0.46.0         
+[13] S4Arrays_1.6.0         
+[14] knitr_1.50             
+[15] DelayedArray_0.32.0    
+[16] gsubfn_0.7             
+[17] proto_1.0.0            
+[18] rprojroot_2.0.4        
+[19] GenomeInfoDbData_1.2.13
+[20] pillar_1.10.2          
+[21] xfun_0.52              
+[22] SparseArray_1.6.2      
+[23] cli_3.6.4              
+[24] magrittr_2.0.3         
+[25] zlibbioc_1.52.0        
+[26] grid_4.4.3             
+[27] lifecycle_1.0.4        
+[28] vctrs_0.6.5            
+[29] glue_1.8.0             
+[30] evaluate_1.0.3         
+[31] codetools_0.2-20       
+[32] abind_1.4-8            
+[33] httr_1.4.7             
+[34] tools_4.4.3            
+[35] UCSC.utils_1.2.0       
+> sessioninfo::session_info()
+─ Session info ──────────────────────────
+ setting  value
+ version  R version 4.4.3 (2025-02-28)
+ os       macOS Sequoia 15.3.2
+ system   aarch64, darwin20
+ ui       X11
+ language (EN)
+ collate  en_US.UTF-8
+ ctype    en_US.UTF-8
+ tz       America/Chicago
+ date     2025-07-29
+ pandoc   NA
+ quarto   NA
+
+─ Packages ──────────────────────────────
+ !  package              * version date (UTC) lib source
+    abind                  1.4-8   2024-09-12 [1] CRAN (R 4.4.1)
+    Biobase              * 2.66.0  2024-11-08 [1] Bioconductor 3.20 (R 4.4.1)
+    BiocGenerics         * 0.52.0  2024-11-08 [1] Bioconductor 3.20 (R 4.4.1)
+    BiocParallel         * 1.40.0  2024-11-23 [1] Bioconductor 3.20 (R 4.4.2)
+ VP cli                    3.6.4   2025-04-23 [2] CRAN (R 4.4.1) (on disk 3.6.5)
+    codetools              0.2-20  2024-03-31 [1] CRAN (R 4.4.3)
+    crayon                 1.5.3   2024-06-20 [1] CRAN (R 4.4.0)
+    data.table           * 1.17.4  2025-05-26 [1] CRAN (R 4.4.3)
+    DelayedArray           0.32.0  2024-11-08 [1] Bioconductor 3.20 (R 4.4.1)
+    evaluate               1.0.3   2025-01-10 [1] CRAN (R 4.4.1)
+    GenomeInfoDb         * 1.42.3  2025-01-27 [1] Bioconductor 3.20 (R 4.4.2)
+    GenomeInfoDbData       1.2.13  2024-12-12 [1] Bioconductor
+    GenomicRanges        * 1.58.0  2024-11-08 [1] Bioconductor 3.20 (R 4.4.1)
+    glue                   1.8.0   2024-09-30 [1] CRAN (R 4.4.1)
+    gsubfn                 0.7     2018-03-16 [1] CRAN (R 4.4.0)
+    here                   1.0.1   2020-12-13 [1] CRAN (R 4.4.0)
+    httr                   1.4.7   2023-08-15 [1] CRAN (R 4.4.0)
+    IRanges              * 2.40.1  2024-12-05 [1] Bioconductor 3.20 (R 4.4.2)
+    jsonlite               2.0.0   2025-03-27 [1] CRAN (R 4.4.1)
+    knitr                  1.50    2025-03-16 [1] CRAN (R 4.4.2)
+    lattice                0.22-6  2024-03-20 [1] CRAN (R 4.4.3)
+    lifecycle              1.0.4   2023-11-07 [1] CRAN (R 4.4.0)
+    magick                 2.8.6   2025-03-23 [1] CRAN (R 4.4.1)
+    magrittr               2.0.3   2022-03-30 [1] CRAN (R 4.4.0)
+    Matrix                 1.7-3   2025-03-11 [1] CRAN (R 4.4.1)
+    MatrixGenerics       * 1.18.1  2025-01-09 [1] Bioconductor 3.20 (R 4.4.2)
+    matrixStats          * 1.5.0   2025-01-07 [1] CRAN (R 4.4.1)
+    parallelly           * 1.43.0  2025-03-24 [1] CRAN (R 4.4.1)
+    pillar                 1.10.2  2025-04-05 [1] CRAN (R 4.4.1)
+    proto                  1.0.0   2016-10-29 [1] CRAN (R 4.4.0)
+    R6                     2.6.1   2025-02-15 [1] CRAN (R 4.4.1)
+    Rcpp                   1.0.14  2025-01-12 [1] CRAN (R 4.4.1)
+    rjson                  0.2.23  2024-09-16 [1] CRAN (R 4.4.1)
+ VP rlang                * 1.1.5   2025-04-11 [2] CRAN (R 4.4.1) (on disk 1.1.6)
+    rprojroot              2.0.4   2023-11-05 [1] CRAN (R 4.4.0)
+    S4Arrays               1.6.0   2024-11-08 [1] Bioconductor 3.20 (R 4.4.1)
+    S4Vectors            * 0.44.0  2024-11-08 [1] Bioconductor 3.20 (R 4.4.1)
+    sessioninfo            1.2.3   2025-02-05 [1] CRAN (R 4.4.1)
+    SingleCellExperiment * 1.28.1  2024-11-23 [1] Bioconductor 3.20 (R 4.4.2)
+    SparseArray            1.6.2   2025-02-20 [1] Bioconductor 3.20 (R 4.4.2)
+    SpatialExperiment    * 1.16.0  2024-11-08 [1] Bioconductor 3.20 (R 4.4.1)
+    SummarizedExperiment * 1.36.0  2024-11-08 [1] Bioconductor 3.20 (R 4.4.1)
+    UCSC.utils             1.2.0   2024-11-08 [1] Bioconductor 3.20 (R 4.4.1)
+    vctrs                  0.6.5   2023-12-01 [1] CRAN (R 4.4.0)
+    xfun                   0.52    2025-04-02 [1] CRAN (R 4.4.1)
+    XVector                0.46.0  2024-11-08 [1] Bioconductor 3.20 (R 4.4.1)
+    zlibbioc               1.52.0  2024-11-08 [1] Bioconductor 3.20 (R 4.4.1)
+
+ [1] /Library/Frameworks/R.framework/Versions/4.4-arm64/Resources/library
+ [2] /Users/bmulvey/Library/R/arm64/4.4/library
+
+ * ── Packages attached to the search path.
+ V ── Loaded and on-disk version mismatch.
+ P ── Loaded and on-disk path mismatch.
+
+─────────────────────────────────────────
