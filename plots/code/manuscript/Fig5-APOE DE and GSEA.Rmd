@@ -86,73 +86,46 @@ ab4$Astro[gene_name %in% c("HSPA1B", "HSPA1A", "CD74","SPARC","CP","SLC7A11"),la
 
 pltdetabs <- rbindlist(ab4,idcol = "clust")
 
-## get a legend
-legplt <- ggplot(pltdetabs,aes(x=P.Value,y=logFC,col=clust))+
-    geom_point()+
-    labs(col="Visium<br>Domain")+
+### make plot
+p <- ggplot(pltdetabs[!(chr %in% c("chrMT"))],aes(x=logFC,y=-log10(P.Value),col=clust)) +
+    geom_point(size=0.9,stroke=0,alpha=0.7) +
+    facet_wrap(~clust,scales="free_x")+
+    labs(x="log2FC (+: APOE4-up)",y="-log10 P-value") +
+    geom_hline(yintercept = -log10(0.05), linetype="dashed", color="red",linewidth=0.5) +
+    geom_text_repel(seed = 23942,aes(y = -log10(P.Value),
+            x = logFC,
+            label = ifelse(is.na(label), "", label)),
+        min.segment.length = 0,
+        size = 2,
+        show.legend=FALSE,
+        max.iter=100000,
+        max.overlaps=10000,
+        max.time=3,
+        segment.size=0.4,
+        force_pull = 0.65,
+        fontface = "italic")+
     scale_color_manual(values=pal)+
+    labs(color="Domain")+
     theme(legend.text=element_markdown(size=7,color="#000000"),
-          legend.box.background=element_blank(),
-          legend.title=element_markdown(size=8,color = "#000000"),
-          legend.key.width=unit(0.083,"in"))
+        legend.box.background=element_blank(),
+        legend.title=element_markdown(size=8,color = "#000000"),
+        legend.key.width=unit(0.083,"in"),
+        legend.key.height=unit(0.083,"in"),
+        strip.background = element_blank(),
+        strip.text = element_blank(),
+        legend.margin = margin(0,-0.08,0,-0.07,unit="in"))
 
-leg.plt <- extract_legend(legplt)
+
+p<-rasterize(p,layers="points",dpi=450,dev="cairo_png")
+
+pdf(paste0("plots/manuscript/Fig5/5AB-AllE4vsAllE2_Volcano_LCandAstro.pdf"),width=5,height=2,onefile=FALSE)
+p
 dev.off()
-####
-
-### make plots
-fn <- c("LC","Astro")
-
-i<-1
-for (i in c(1:2)){
-    x <- names(pal)[i]
-    n <- fn[i]
-    
-    p <- ggplot(pltdetabs[!(chr %in% c("chrMT"))&clust==x],aes(x=logFC,y=-log10(P.Value),col=clust)) +
-        geom_point(size=0.9,stroke=0,alpha=0.7) +
-        labs(x="log2FC (+: APOE4-up)",y="-log10 P-value") +
-        geom_hline(yintercept = -log10(0.05), linetype="dashed", color="red",linewidth=0.5) +
-        geom_text_repel(seed = 23942,aes(y = -log10(P.Value),
-                x = logFC,
-                label = ifelse(is.na(label), "", label)),
-            min.segment.length = 0,
-            size = 2,
-            show.legend=FALSE,
-            max.iter=100000,
-            max.overlaps=10000,
-            max.time=3,
-            segment.size=0.4,
-            force_pull = 0.65,
-            fontface = "italic")+
-        scale_color_manual(values=pal)+
-        guides(color="none")
-
-    
-    if(n=="Astro"){
-        p <- p+theme(legend.text=element_markdown(size=7))
-        w<-3
-        
-        p<-rasterize(p,layers="points",dpi=450,dev="cairo_png")
-    
-        pdf(paste0("plots/manuscript/Fig5/5AB-AllE4vsAllE2_Volcano_",n,".pdf"),width=w,height=2,onefile=FALSE)
-        do.call("grid.arrange",list(p,leg.plt,ncol=2,widths=c(3,1)))
-        dev.off()
-        
-    } else {
-        w <- 2
-        
-        p<-rasterize(p,layers="points",dpi=450,dev="cairo_png")
-    
-        pdf(paste0("plots/manuscript/Fig5/5AB-AllE4vsAllE2_Volcano_",n,".pdf"),width=w,height=2,onefile=FALSE)
-        print(p)
-        dev.off()
-    }
-}
 
 rm(p,pltdetabs,legplt,leg.plt,ab4,detabs)
 ```
 
-3C: GSEA: msigdb
+5C: GSEA: msigdb
 ```{r}
 msigs <- readRDS("processed-data/12_DEanalyses_removedsampsAndFinalNMseg/03bi-MulticlusterDE_OneInterxnPerModel_dropMixClusts_GSEAmsigdb.RDS")
 
@@ -187,7 +160,7 @@ msiglc[pathway=="GOBP_ACIDIC_AMINO_ACID_TRANSPORT",pathway:="Acidic Amino Acid\n
 msiglc[pathway=="REACTOME_BINDING_AND_UPTAKE_OF_LIGANDS_BY_SCAVENGER_RECEPTORS",pathway:="Ligand Uptake by\nScavenger Receptors"]
 msiglc[pathway=="GOBP_NEURON_FATE_COMMITMENT",pathway:="Neuron Fate\nCommitment"]
 
-pdf("plots/manuscript/Fig4/4C-LC_allE4vsAllE2_msigdbGSEA.pdf",height=4,width=4.25)
+pdf("plots/manuscript/Fig5/5C-LC_allE4vsAllE2_msigdbGSEA.pdf",height=4,width=4.25)
 ggplot(msiglc,aes(y=pathway,x=-log10(pval),color=NES,size=abs(NES)))+
     geom_point()+
     scale_color_gradient2(low="red",high="blue")+
@@ -209,7 +182,7 @@ dev.off()
 rm(fn,i,w,p,x,msiglc,msigs)
 ```
 
-### 3DE: Ancestry-E4E2 comparisons (logFCs colored by signif)
+### 5DE: Ancestry-E4E2 comparisons (logFCs colored by signif)
 ```{r}
 detabs <- readRDS("processed-data/12_DEanalyses_removedsampsAndFinalNMseg/02b-voomLmFit_objs_and_DE_tables_LabSex_LabE2vE4_LabSingleGenos_LabAnces_LabAncesE4E2_noMixClusts_YRIcontAndCat_JUL2025.RDS")
 detabs <- detabs$cat_ances$YRIAPOlabel$detabs
@@ -292,7 +265,7 @@ lapply(unique(ancapo2$domain),function(d){
 })
 ```
 
-3FG: Venns of signif genes
+5FG: Venns of signif genes
 ```{r}
 yriastup <- ancapo2[adj.P.Val_YRI<0.05&logFC_YRI>0&domain=="Astro",gene_name]
 yriastdn <- ancapo2[adj.P.Val_YRI<0.05&logFC_YRI<0&domain=="Astro",gene_name]
