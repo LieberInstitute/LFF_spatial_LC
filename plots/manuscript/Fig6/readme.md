@@ -1,0 +1,1 @@
+correlations shown in the scatter plots are unadjusted pearson cor.test between spot-level logcounts and spot-level NM intensity in the same samples. (the full rigorous LMM results are in supp tabs, but the sign of the correlation test and the LMM coefficient for gene expression effect on NM is consistent)

@@ -1,0 +1,196 @@
+---
+title: "Fig6-SpotNM_LMMs"
+format: html
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(fig.height = 10,fig.width = 7,include = FALSE)
+#### sets tab autocompletion for directories to begin from the directory containing the .Rproj session, instead of the script's directory if different
+knitr::opts_knit$set(root.dir = here::here())
+
+library(data.table)
+library(ggplot2)
+library(ggtext)
+library(gridExtra)
+# library(SpatialFeatureExperiment)
+
+## rstudio GUI tweaks
+# require(colorout)
+# ColorOut()
+options('styler.addins_style_transformer' = 'biocthis::bioc_style()')
+##
+
+## enable forked parallel processing with BiocParallel::multicoreParam, future::, etc. seemed to need this a couple times, but otherwise havent so its here as a preventative measure. part of this is adding the line 
+# OBJC_DISABLE_INITIALIZE_FORK_SAFETY=YES
+# to Renviron.site. see e.g. top response on https://stackoverflow.com/questions/73638290/python-on-mac-is-it-safe-to-set-objc-disable-initialize-fork-safety-yes-globall 
+library(parallelly)
+options(parallelly.supportsMulticore.disableOn='')
+options(parallelly.fork.enable=TRUE)
+library(BiocParallel)
+options(bphost='localhost')
+
+
+## ggplot defaults
+theme_set(theme_bw()+theme(axis.text.x = element_text(size = 8,color = '#000000'), axis.title.x = element_text(size = 9,color = '#000000'), axis.text.y = element_text(size = 8,color = '#000000'), axis.title.y = element_text(size =9,color = '#000000'), plot.title = element_markdown(size = 10,hjust=0.5,color = '#000000'), strip.text = element_text(size=11), legend.text = element_text(size=7,color = '#000000'), legend.title = element_text(size=8,hjust=0.5,color = '#000000'),axis.ticks = element_line(linewidth=0.5),panel.grid.major = element_line(linewidth=0.5),panel.grid.minor=element_line(linewidth=0.25),plot.title.position='plot'))
+
+## last of all, unload the base package datasets, whose data keep getting in the way of autocompletions (e.g., Theoph is priortized over TRUE)
+unloadNamespace('datasets')
+```
+
+### using an E4 carrier yes/no (i.e., E4 or E2) model
+```{r}
+nmlm <- readRDS("processed-data/12_DEanalyses_removedsampsAndFinalNMseg/11-LCNMspots_NMmetric_LMMed_by_geneLogcounts_3apoeFactorizations.RDS")
+
+nmi <- nmlm$E4carrierYN$Intensity_NM
+nmp <- nmlm$E4carrierYN$Prop_NM
+
+nmi[,bonfP:=p*(length(unique(nmlm$gene_name)))]
+nmp[,bonfP:=p*(length(unique(nmlm$gene_name)))]
+nmi[bonfP>1,bonfP:=1]
+nmp[bonfP>1,bonfP:=1]
+
+## check if any non-gene features were significantly associated
+nmi[gene_name!=variable &variable!="LRTvs_no_gene_coef"& p<0.05]
+#     gene_name variable          coef
+#        <char>   <char>         <num>
+#  1:       DBH      Age -0.0009718147
+#  2:    SLC6A2      Age -0.0009717981
+#  3:      APOE   APOE.x  0.0101268892
+#  4:      CHGB      Age -0.0009920979
+#  5:    MT.ND1      Age -0.0010982648
+#  6:    MT.CO1      Age -0.0011546129
+#  7:    MT.CO1      Sex  0.0236634038
+#  8:    MT.ND4      Age -0.0010313770
+#  9:    MT.CYB      Age -0.0010245239
+# 10:    MT.CYB      Sex  0.0200976755
+#var_group     Chisq    Df            p
+#        <char>     <num> <num>        <num>
+#  1:      <NA>  4.189558     1 4.067370e-02
+#  2:      <NA>  4.003680     1 4.540102e-02
+#  3:      <NA> 67.058580     1 2.635580e-16
+#  4:      <NA>  3.927644     1 4.749843e-02
+#  5:      <NA>  4.554034     1 3.284128e-02
+#  6:      <NA>  4.498759     1 3.391947e-02
+#  7:         M  4.631333     1 3.139316e-02
+#  8:      <NA>  4.180122     1 4.090076e-02
+#  9:      <NA>  4.155482     1 4.149996e-02
+# 10:         M  3.929867     1 4.743570e-02
+
+## weak decreases in LC markers and mitochondrial genes with age; increased mitochondrial genes in males (which we knew)
+## also, APOE expression significantly assoc with lower NM intensity
+
+
+## check if any non-gene features were significantly associated w nm proportion
+nmp[gene_name!=variable &variable!="LRTvs_no_gene_coef"& p<0.05]
+#    gene_name  variable        coef var_group      Chisq    Df            p logLik   NMvar
+#       <char>    <char>       <num>    <char>      <num> <num>        <num>  <num>  <char>
+# 1: MTRNR2L12 E4carrier  0.01033318       Yes   4.408608     1 3.575801e-02     NA Prop_NM
+# 2:   C5orf63       Sex -0.01123681         M   5.389835     1 2.025438e-02     NA Prop_NM
+# 3:      APOE    APOE.x -0.01068722      <NA> 133.703074     1 6.344919e-31     NA Prop_NM
+
+## mtrnr2l12 is a sample-specifically variable gene that will be discarded from feature selection in the future and should be disregarded generally
+## again, APOE is associated
+```
+
+### panel A: NM intensity and proportion associations with APOE expression
+found the best way to plot this for intensity was make plot of tissue section-level NMscore by section mean expression of gene for sections with 20+ NM+ LC spots. proportion is harder to interpret given the deadspace on visium, so we won't go there.
+
+# so we'll need the SPE with LC NM+ cells, log counts, and metadata with tissue NM scores
+```{r}
+lc3 <- readRDS("processed-data/06-countsOnly_noImgData_QCed_SPE_split_to_tissSections.RDS")
+
+# calc spot log counts
+lc3 <- scater::computeLibraryFactors(lc3)
+lc3 <- scater::logNormCounts(lc3)
+
+# load clusters + annots
+louvs <- readRDS("processed-data/07_featureSelection_dimred_harmony_clustering/04-Initial_louvLeid_res0.5-1-2_clusterings.RDS")
+louvs <- louvs[["HARMONYlmbna_HDG_SVG_2575"]][,.(rn,snnHARMONYlmbna_HDG_SVG_2575_louv_res1)]
+setnames(louvs,2,"clusid")
+
+finalann <- fread("processed-data/08_validitycheck_25hdg75svg_louv1/10-25hdg75svg_louv1_annots.txt")
+
+louvs <- merge.data.table(louvs,finalann,by="clusid")
+louvs <- DataFrame(louvs,row.names=louvs$rn)[colnames(lc3),]
+
+colLabels(lc3) <- louvs$anno
+lc3 <- lc3[,!(lc3$brnum %in% paste0("Br",c(5517,5276,5712)))]
+
+## read in nm subclusterings
+lcnm <- fread("processed-data/10_subclustering/04-LCsubclus-by-NM_otherclusts-by-LCorLCNMadjacency.txt")
+lcnm <- lcnm[,.(rn,NMseg_subclus)]
+lcnm <- DataFrame(lcnm,row.names=lcnm$rn)[colnames(lc3),]
+
+## assign
+lc3$lcnm <- lcnm$NMseg_subclus
+
+## get LC NM+ spot spe and its coldata w/ nm metrics; calculate mean and median NM intensity per sample
+lc3 <- lc3[,lc3$lcnm=="LC_NMpos"]
+lcnmcd <- as.data.table(colData(lc3[,lc3$lcnm=="LC_NMpos"]))
+lcnmcd[,med_NMI:=median(Intensity_NM,na.rm=T),by="sample_id"]
+lcnmcd[,mn_NMI:=mean(Intensity_NM,na.rm=T),by="sample_id"]
+
+# rownames to gene symbs
+rownames(lc3) <- rowData(lc3)$gene_name
+
+## append FLARE genomic ancestry estimates so we can make the modeled points fitting all fixed effects
+flares <- fread("raw-data/ancestryAndHaplotypes/FLARE/global_ancestry_estimates.txt")
+flares[ID=="Br6119",ID:="Br6119(re-dis)"]
+
+lcnmcd <- merge.data.table(lcnmcd,flares,by.x="brnum",by.y="ID",all.x=T)
+stopifnot(all(!is.na(lcnmcd$YRI)))
+# clean up
+rm(finalann,lcnm,louvs)
+```
+
+
+
+## we can wrap this all in a function and make these plots for multiple genes of interest (GPX3, APOE)
+```{r}
+saveplt <- function(g){
+    pltdat <- as.data.frame(t(as.matrix(logcounts(lc3[g,]))))
+    pltdat <- as.data.table(pltdat,keep.rownames=T)
+    setnames(pltdat,g,"g_xpr") # since the value of g will be a variable in coldata
+    pltdat <- merge.data.table(lcnmcd,pltdat,by.x="rowname",by.y="rn")
+    pltdat[,nspot:=.N,by="sample_id"]
+    ## calc mean and med spot GPX3 expr per sample
+    pltdat[,medgene:=median(g_xpr,na.rm=T),by="sample_id"]
+    pltdat[,meangene:=mean(g_xpr,na.rm=T),by="sample_id"]
+
+
+    pltdat[,ageco:=nmi[gene_name==g&variable=="Age",coef]]
+    pltdat[,sexco:=ifelse(Sex=="M",nmi[gene_name==g&variable=="Sex",coef],0)]
+    pltdat[,yrico:=nmi[gene_name==g&variable=="YRI",coef]]
+    pltdat[,apoco:=ifelse(APOE %in% c("E4/ E4","E3/ E4"),nmi[gene_name==g&variable=="APOE",coef],0)]
+    if (g=="APOE"){
+        pltdat[,gco:=nmi[gene_name==g&variable=="APOE.x",coef]]} else{
+        pltdat[,gco:=nmi[gene_name==g&variable==g,coef]]    
+    }
+    pltdat[,fitval:=Age*ageco+sexco+YRI*yrico+apoco+g_xpr*gco]
+    
+    cortest <- cor.test(pltdat$g_xpr,pltdat$tissueNMscore,method="pearson")
+    if(round(cortest$p.value,3)==0){
+        cortext <- paste0("Pearson r=",round(cortest$estimate,2),"\n(p<0.001)")
+    } else{
+        cortext <- paste0("Pearson r=",round(cortest$estimate,2),"\n(p<",round(cortest$p.value,3),")")
+    }
+
+    p <- ggplot(unique(pltdat[nspot>19,.(sample_id,tissueNMscore,meangene,nspot)]),aes(x=meangene,y=tissueNMscore))+
+        geom_point()+
+        annotate("text", x = Inf, y = Inf, label = cortext, hjust = 1.05, vjust = 1.05,size=2)+
+        labs(y="Tissue NM Intensity Score",x=paste0("Mean *",g,"* Expression<br>in NM+ LC Spots"))+
+        theme(axis.title.x=element_markdown(size=9),axis.title.y=element_markdown(size=9),
+            axis.text.x=element_text(size=8),axis.text.y=element_text(size=8))
+
+    pdf(paste0("plots/manuscript/Fig6/6x-Meanlogcounts_",g,"_sectionNMscore.pdf"),height=2.5,width=2.5)
+    print(p)
+    dev.off()
+}
+
+saveplt("APOE")
+saveplt("GPX3")
+
+rm(saveplt,flares)
+gc(full=T)
+```
+
