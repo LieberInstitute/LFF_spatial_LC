@@ -157,18 +157,7 @@ saveplt <- function(g){
     pltdat[,medgene:=median(g_xpr,na.rm=T),by="sample_id"]
     pltdat[,meangene:=mean(g_xpr,na.rm=T),by="sample_id"]
 
-
-    pltdat[,ageco:=nmi[gene_name==g&variable=="Age",coef]]
-    pltdat[,sexco:=ifelse(Sex=="M",nmi[gene_name==g&variable=="Sex",coef],0)]
-    pltdat[,yrico:=nmi[gene_name==g&variable=="YRI",coef]]
-    pltdat[,apoco:=ifelse(APOE %in% c("E4/ E4","E3/ E4"),nmi[gene_name==g&variable=="APOE",coef],0)]
-    if (g=="APOE"){
-        pltdat[,gco:=nmi[gene_name==g&variable=="APOE.x",coef]]} else{
-        pltdat[,gco:=nmi[gene_name==g&variable==g,coef]]    
-    }
-    pltdat[,fitval:=Age*ageco+sexco+YRI*yrico+apoco+g_xpr*gco]
-    
-    cortest <- cor.test(pltdat$g_xpr,pltdat$tissueNMscore,method="pearson")
+    cortest <- cor.test(pltdat$g_xpr,pltdat$Intensity_NM,method="pearson")
     if(round(cortest$p.value,3)==0){
         cortext <- paste0("Pearson r=",round(cortest$estimate,2),"\n(p<0.001)")
     } else{
@@ -176,7 +165,7 @@ saveplt <- function(g){
     }
 
     p <- ggplot(unique(pltdat[nspot>19,.(sample_id,tissueNMscore,meangene,nspot)]),aes(x=meangene,y=tissueNMscore))+
-        geom_point()+
+        geom_point(size=0.75)+
         annotate("text", x = Inf, y = Inf, label = cortext, hjust = 1.05, vjust = 1.05,size=2)+
         labs(y="Tissue NM Intensity Score",x=paste0("Mean *",g,"* Expression<br>in NM+ LC Spots"))+
         theme(axis.title.x=element_markdown(size=9),axis.title.y=element_markdown(size=9),
