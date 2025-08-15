@@ -201,18 +201,19 @@ dev.off()
 ```{r}
 pbulk <- readRDS("processed-data/12_DEanalyses_removedsampsAndFinalNMseg/02b-voomLmFit_objs_and_DE_tables_LabSex_LabE2vE4_LabSingleGenos_LabAnces_LabAncesE4E2_noMixClusts_YRIcontAndCat_JUL2025.RDS")
 
-gmat <- pbulk$cont_ances$SexByLabel$voomLFt$EList$E
+gmat <- pbulk$cont_ances$sexlabel$voomLFt$EList$E
 # subset to LC
 gmat <- gmat[,colnames(gmat) %in% grep(colnames(gmat),pattern="LC_V|^Astro_V",value=T)]
 # make symbols
-rownames(gmat) <- pbulk$SexByLabel$voomLFt$genes$gene_name
+rownames(gmat) <- pbulk$cont_ances$sexlabel$voomLFt$genes$gene_name
 
 # get sample metadata in the same arrangement for LC pbulks
-cd <- as.data.frame(pbulk$SexByLabel$voomLFt$targets)[colnames(gmat),]
+cd <- as.data.frame(pbulk$cont_ances$sexlabel$voomLFt$targets)[colnames(gmat),]
 
 # model matrix for "single cluster" (the label_sex thing doesn't work here)
 modmat <- model.matrix(~0+label_sex+APOE+Age+YRI,data = cd)
 
+## not correctin for astro_F,astro_M,LC_f,LC_M (i.e., first 4 columns of the model matrix)
 testres <- jaffelab::cleaningY(gmat,modmat,4)
 
 testres2 <- testres[c("HMGCS1","SC5D"),]
