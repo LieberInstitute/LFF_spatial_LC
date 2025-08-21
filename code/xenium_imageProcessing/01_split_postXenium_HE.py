@@ -161,7 +161,9 @@ for i, p in enumerate(props, 1):
     elif arr.ndim == 3 and arr.shape[2] == 1:
         arr = np.repeat(arr, 3, axis=2)
     savepath = os.path.join(outdir, f"sample_{i:02d}_y{y0}_x{x0}_h{y1-y0}_w{x1-x0}.tif")
-    tiff.imwrite(savepath, arr, photometric='rgb')
+    scale = 0.25 / 0.21
+    arr_resized = cv2.resize(arr, None, fx=scale, fy=scale, interpolation=cv2.INTER_LINEAR)
+    tiff.imwrite(savepath, arr_resized, photometric='rgb')
     print(f"[OK] Saved: {savepath}")
 
 print("[DONE]")
