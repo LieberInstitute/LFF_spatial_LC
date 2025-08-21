@@ -1,0 +1,33 @@
+**** Job starts ****
+Thu Aug 21 02:31:51 PM EDT 2025
+**** JHPCE info ****
+User: mtippani
+Job id: 21639952
+Job name: split_postXeniumHE
+Node name: compute-121
+Task id: 2
+Loading LIBD SLURM module for visium_hd/1.0
+Loading LIBD SLURM module for htslib/1.18
+
+Currently Loaded Modules:
+  1) JHPCE_ROCKY9_DEFAULT_ENV   3) conda/3-24.3.0   5) visium_hd/1.0
+  2) JHPCE_tools/3.0            4) htslib/1.18
+
+ 
+
+Processing:  LC_PostXenium_0032707_Slide1_40x_04_30_2025_HRD.tif
+Input file : /dcs05/lieber/marmaypag/LFF_spatialLC_LIBD4140/LFF_spatial_LC/raw-data/xenium/post-xenium_images/LC_PostXenium_0032707_Slide1_40x_04_30_2025_HRD.tif
+Output dir : /dcs05/lieber/marmaypag/LFF_spatialLC_LIBD4140/LFF_spatial_LC/processed-data/xenium_imageProcessing/split_samples/0032707_Slide1
+[INFO] Reading preview: /dcs05/lieber/marmaypag/LFF_spatialLC_LIBD4140/LFF_spatial_LC/raw-data/xenium/post-xenium_images/LC_PostXenium_0032707_Slide1_40x_04_30_2025_HRD.tif
+Traceback (most recent call last):
+  File "/dcs05/lieber/marmaypag/LFF_spatialLC_LIBD4140/LFF_spatial_LC/code/xenium_imageProcessing/01_split_postXenium_HE.py", line 124, in <module>
+    preview, full_w, full_h, sx, sy = read_preview_with_tifffile(fname, PREVIEW_MAXDIM)
+  File "/dcs05/lieber/marmaypag/LFF_spatialLC_LIBD4140/LFF_spatial_LC/code/xenium_imageProcessing/01_split_postXenium_HE.py", line 33, in read_preview_with_tifffile
+    with tiff.TiffFile(path) as tf:
+  File "/jhpce/shared/libd/core/visium_hd/1.0/hd_env/lib/python3.9/site-packages/tifffile/tifffile.py", line 4259, in __init__
+    fh = FileHandle(file, mode=mode, name=name, offset=offset, size=size)
+  File "/jhpce/shared/libd/core/visium_hd/1.0/hd_env/lib/python3.9/site-packages/tifffile/tifffile.py", line 14644, in __init__
+    self.open()
+  File "/jhpce/shared/libd/core/visium_hd/1.0/hd_env/lib/python3.9/site-packages/tifffile/tifffile.py", line 14663, in open
+    self._fh = open(
+PermissionError: [Errno 13] Permission denied: '/dcs05/lieber/marmaypag/LFF_spatialLC_LIBD4140/LFF_spatial_LC/raw-data/xenium/post-xenium_images/LC_PostXenium_0032707_Slide1_40x_04_30_2025_HRD.tif'
