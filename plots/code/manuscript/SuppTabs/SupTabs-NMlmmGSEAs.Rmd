@@ -1,5 +1,5 @@
 ---
-title: "SupTabs-NMlmmGSEAs"
+title: "SupTabs-NMlmms"
 author: "Bernie Mulvey"
 date: "2025-08-20"
 output: html_document
@@ -52,6 +52,42 @@ saveRDS(supdat,"plots/manuscript/SuppData/SupDat-NMlmmGSEAs_Unabridged.RDS")
 # write tables of signif, top-20-for-gene-set-library enrichments only
 fwrite(nmi[Adjusted.P.value<0.05&Rank<=20],"plots/manuscript/SuppTabs/TabDelims/NMintensity_Enrichr_sigTop20perSetLib.txt",sep='\t',quote=F,row.names=F)
 fwrite(nmp[Adjusted.P.value<0.05&Rank<=20],"plots/manuscript/SuppTabs/TabDelims/NMprop_Enrichr_sigTop20perSetLib.txt",sep='\t',quote=F,row.names=F)
+```
+
+## write tables of the LMM results themselves
+```{r}
+nmlmm <- readRDS("processed-data/12_DEanalyses_removedsampsAndFinalNMseg/11-LCNMspots_NMmetric_LMMed_by_geneLogcounts_3apoeFactorizations.RDS")
+
+nmlmm <- nmlmm$E4carrierYN
+nmi <- nmlmm$Intensity_NM
+nmp <- nmlmm$Prop_NM
+
+nmi[variable==gene_name|variable=="APOE.x",gene_Bonferroni_p:=p*(length(unique(nmi$gene_name)))]
+nmi[gene_Bonferroni_p>1,gene_Bonferroni_p:=1]
+nmi[variable==gene_name|variable=="APOE.x",gene_FDR:=p.adjust(p,"BH",n=length(unique(nmi$gene_name)))]
+
+nmp[variable==gene_name|variable=="APOE.x",gene_Bonferroni_p:=p*(length(unique(nmp$gene_name)))]
+nmp[gene_Bonferroni_p>1,gene_Bonferroni_p:=1]
+nmp[variable==gene_name|variable=="APOE.x",gene_FDR:=p.adjust(p,"BH",n=length(unique(nmp$gene_name)))]
+
+nmi[variable=="APOE.x",variable:="APOE"]
+nmp[variable=="APOE.x",variable:="APOE"]
+
+nmi[,coef:=round(coef,5)]
+nmi[,Chisq:=round(Chisq,2)]
+nmi[,logLik:=round(logLik,2)]
+
+nmp[,coef:=round(coef,5)]
+nmp[,Chisq:=round(Chisq,2)]
+nmp[,logLik:=round(logLik,2)]
+
+fixn <- c("Gene Symbol", "Model Variable", "Model Coefficient for Variable","Which group coefficient applies to","Chisq Test Stat","Degrees of Freedom","p value","log Likelihood (compared to model without gene variable)","Spot-level NM measurement","Bonferroni-corrected p-value for gene association","FDR-corrected p-value for gene association")
+
+setnames(nmi,fixn)
+setnames(nmp,fixn)
+
+fwrite(nmi,"plots/manuscript/SuppTabs/TabDelims/NMintensity_E4E2binary_LMMres.txt",sep='\t',quote=F,row.names=F)
+fwrite(nmp,"plots/manuscript/SuppTabs/TabDelims/NMproportion_E4E2binary_LMMres.txt",sep='\t',quote=F,row.names=F)
 ```
 
 repinf
