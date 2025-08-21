@@ -1,12 +1,11 @@
 #!/bin/bash
-#SBATCH -p katun
 #SBATCH --mem=10G
-#SBATCH --job-name=countNuclei
+#SBATCH --job-name=split_postXeniumHE
 #SBATCH -c 1
 #SBATCH -t 1-00:00:00
-#SBATCH -o logs/countNuclei_py_%a.txt
-#SBATCH -e logs/countNuclei_py_%a.txt
-#SBATCH --array=1-24%10
+#SBATCH -o logs/split_postXeniumHE_%a.txt
+#SBATCH -e logs/split_postXeniumHE_%a.txt
+#SBATCH --array=1-5%5
 
 set -e
 
@@ -21,14 +20,16 @@ echo "Node name: ${HOSTNAME}"
 echo "Task id: ${SLURM_ARRAY_TASK_ID}"
 
 module load visium_hd/1.0
-
-## List current modules for reproducibility
 module list
 
-python countNuclei.py
+# --------- CONFIG ---------
+SLIDES_DIR="/dcs05/lieber/marmaypag/LFF_spatialLC_LIBD4140/LFF_spatial_LC/raw-data/xenium/post-xenium_images"
+slides=( $(ls -1 "$SLIDES_DIR") )
+idx=$((SLURM_ARRAY_TASK_ID - 1))
+sample="${slides[$idx]}"    
+
+echo "Processing:  ${sample}"
+python 01_split_postXenium_HE.py "${sample}"
 
 echo "**** Job ends ****"
 date
-
-## This script was made using slurmjobs version 1.2.5
-## available from http://research.libd.org/slurmjobs/
