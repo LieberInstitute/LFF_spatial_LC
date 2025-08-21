@@ -55,3 +55,18 @@ def read_preview_with_tifffile(path, maxdim=4000):
     else:
         sx, sy = full_w / w, full_h / h
     return preview, full_w, full_h, sx, sy
+    
+# ---- tissue mask on preview ----
+def tissue_mask_from_preview(rgb_u8):
+    hsv = cv2.cvtColor(rgb_u8, cv2.COLOR_RGB2HSV)
+    h, s, v = cv2.split(hsv)
+    sat_mask = s > 20
+    inv_gray = 255 - cv2.cvtColor(rgb_u8, cv2.COLOR_RGB2GRAY)
+    _, otsu = cv2.threshold(inv_gray, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+    mask = (otsu > 0) & sat_mask
+    # clean up
+    mask = morphology.remove_small_holes(mask, area_threshold=500)
+    mask = morphology.remove_small_objects(mask, min_size=500)
+    mask = morphology.binary_closing(mask, morphology.disk(5))
+    mask = morphology.binary_opening(mask, morphology.disk(3))
+    return mask.astype(np.uint8)
