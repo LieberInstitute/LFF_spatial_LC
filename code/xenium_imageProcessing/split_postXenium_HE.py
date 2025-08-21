@@ -80,3 +80,6 @@ def find_components(mask, min_area_frac=0.0005):
     thr = min_area_frac * (H*W)
     keep = [p for p in props if p.area >= thr]
     return keep
+    
+def expand_box(y0, x0, y1, x1, pad, H, W):
+    return max(0, y0-pad), max(0, x0-pad), min(H, y1+pad), min(W, x1+pad)
