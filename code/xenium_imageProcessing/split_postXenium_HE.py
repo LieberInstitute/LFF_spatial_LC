@@ -12,3 +12,5 @@ fname = here('raw-data/xenium/post-xenium_images/LC_PostXenium_0068968_Slide5_40
 outdir = here('processed-data/xenium_imageProcessing/split_samples/0068968_Slide5/')
 
 os.makedirs(outdir, exist_ok=True)
+
+# Optional tuning knobs:
