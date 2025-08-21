@@ -83,3 +83,30 @@ def find_components(mask, min_area_frac=0.0005):
     
 def expand_box(y0, x0, y1, x1, pad, H, W):
     return max(0, y0-pad), max(0, x0-pad), min(H, y1+pad), min(W, x1+pad)
+    
+# ---- region reader: lazy if possible ----
+def read_region_lazy(path, y0, y1, x0, x1):
+    try:
+        import zarr
+        store = tiff.imread(path, aszarr=True)
+        za = zarr.open(store, mode="r")
+        if za.ndim == 2:
+            region = za[y0:y1, x0:x1]
+        elif za.ndim == 3:
+            if za.shape[2] in (1, 3, 4):  # HWC
+                region = za[y0:y1, x0:x1, :]
+            else:  # CHW -> HWC
+                region = np.moveaxis(za, 0, -1)[y0:y1, x0:x1, :]
+        else:
+            raise RuntimeError(f"Unsupported zarr dims: {za.shape}")
+        return np.array(region)
+    except Exception:
+        warnings.warn("Lazy zarr read unavailable; loading full image (may be large).")
+        arr = tiff.imread(path)
+        if arr.ndim == 2:
+            return arr[y0:y1, x0:x1]
+        elif arr.ndim == 3:
+            if arr.shape[-1] in (1, 3, 4):  # HWC
+                return arr[y0:y1, x0:x1, :]
+            else:  # CHW -> HWC
+                return np.moveaxis(arr, 0, -1)[y0:y1, x0:x1, :]
