@@ -110,3 +110,50 @@ def read_region_lazy(path, y0, y1, x0, x1):
                 return arr[y0:y1, x0:x1, :]
             else:  # CHW -> HWC
                 return np.moveaxis(arr, 0, -1)[y0:y1, x0:x1, :]
+                
+# ---- main ----
+print(f"[INFO] Reading preview: {fname}")
+preview, full_w, full_h, sx, sy = read_preview_with_tifffile(fname, PREVIEW_MAXDIM)
+print(f"[INFO] Full-res: {full_w} x {full_h} | Preview: {preview.shape[1]} x {preview.shape[0]} | scale sx={sx:.3f}, sy={sy:.3f}")
+
+mask = tissue_mask_from_preview(preview)
+props = find_components(mask, min_area_frac=MIN_AREA_FRAC)
+
+if EXPECTED_N and len(props) > EXPECTED_N:
+    # keep the largest N by area
+    props = sorted(props, key=lambda r: r.area, reverse=True)[:EXPECTED_N]
+
+# sort left->right, then top->bottom for reproducible order
+props = sorted(props, key=lambda p: (p.bbox[1], p.bbox[0]))
+
+if not props:
+    raise SystemExit("[ERROR] No tissue components found. Tune MIN_AREA_FRAC or check the slide.")
+
+print(f"[INFO] Found {len(props)} tissue blobs. Exporting crops to: {outdir}")
+
+for i, p in enumerate(props, 1):
+    min_row, min_col, max_row, max_col = p.bbox  # preview coords
+    # map to full-res
+    y0 = int(round(min_row * sy))
+    x0 = int(round(min_col * sx))
+    y1 = int(round(max_row * sy))
+    x1 = int(round(max_col * sx))
+    y0, x0, y1, x1 = expand_box(y0, x0, y1, x1, MARGIN_FULLRES, full_h, full_w)
+    region = read_region_lazy(fname, y0, y1, x0, x1)
+    # ensure 8-bit RGB for portability when saving
+    arr = region
+    if arr.dtype != np.uint8:
+        pmin, pmax = np.percentile(arr, (1, 99))
+        if pmax <= pmin:
+            pmin, pmax = float(arr.min()), float(arr.max())
+        arr = np.clip((arr - pmin) / max(pmax - pmin, 1e-8), 0, 1)
+        arr = (arr * 255).astype(np.uint8)
+    if arr.ndim == 2:
+        arr = np.stack([arr]*3, axis=-1)
+    elif arr.ndim == 3 and arr.shape[2] == 1:
+        arr = np.repeat(arr, 3, axis=2)
+    savepath = os.path.join(outdir, f"sample_{i:02d}_y{y0}_x{x0}_h{y1-y0}_w{x1-x0}.tif")
+    tiff.imwrite(savepath, arr, photometric='rgb')
+    print(f"[OK] Saved: {savepath}")
+
+print("[DONE]")
