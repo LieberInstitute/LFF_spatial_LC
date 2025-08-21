@@ -14,3 +14,4 @@ outdir = here('processed-data/xenium_imageProcessing/split_samples/0068968_Slide
 os.makedirs(outdir, exist_ok=True)
 
 # Optional tuning knobs:
+PREVIEW_MAXDIM = 4000     # preview max dimension (pixels)
