@@ -17,3 +17,4 @@ os.makedirs(outdir, exist_ok=True)
 PREVIEW_MAXDIM = 4000     # preview max dimension (pixels)
 MARGIN_FULLRES = 200      # padding around each box at full-res
 MIN_AREA_FRAC = 0.0005    # min component area relative to preview image area
+EXPECTED_N = 7            # if >0, keep largest N components; set 0 to keep all
