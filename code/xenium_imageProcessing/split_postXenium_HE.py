@@ -70,3 +70,13 @@ def tissue_mask_from_preview(rgb_u8):
     mask = morphology.binary_closing(mask, morphology.disk(5))
     mask = morphology.binary_opening(mask, morphology.disk(3))
     return mask.astype(np.uint8)
+    
+    
+# ---- find components & boxes ----
+def find_components(mask, min_area_frac=0.0005):
+    labels = measure.label(mask, connectivity=2)
+    props = measure.regionprops(labels)
+    H, W = mask.shape
+    thr = min_area_frac * (H*W)
+    keep = [p for p in props if p.area >= thr]
+    return keep
