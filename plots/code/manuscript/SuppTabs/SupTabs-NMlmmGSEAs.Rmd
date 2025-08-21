@@ -1,0 +1,129 @@
+---
+title: "SupTabs-NMlmmGSEAs"
+author: "Bernie Mulvey"
+date: "2025-08-20"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(fig.height = 10,fig.width = 7,include = FALSE)
+#### sets tab autocompletion for directories to begin from the directory containing the .Rproj session, instead of the script's directory if different
+knitr::opts_knit$set(root.dir = here::here())
+
+library(data.table)
+# library(SpatialFeatureExperiment)
+
+## rstudio GUI tweaks
+require(colorout)
+ColorOut()
+options("styler.addins_style_transformer" = "biocthis::bioc_style()")
+##
+
+## last of all, unload the base package datasets, whose data keep getting in the way of autocompletions (e.g., Theoph is priortized over TRUE)
+unloadNamespace("datasets")
+```
+
+```{r}
+nmlm <- readRDS("processed-data/12_DEanalyses_removedsampsAndFinalNMseg/13-enrichr_fdrsig_and_bonfP_genes_NMintensityAndProp-to-geneXpr_lmms.RDS")
+
+nmlm2 <- lapply(nmlm,function(x){
+    z <- lapply(x,function(y){
+        a <- rbindlist(y,idcol="Spot-Level NM Metric")
+        return(a)
+    })
+    z <- rbindlist(z,idcol="NM-Gene Significance Threshold")
+    return(z)
+})
+nmlm2 <- rbindlist(nmlm2,idcol="Coefficient Sign")
+
+nmi <- nmlm2[`Spot-Level NM Metric`=="Intensity_NM"]
+nmp <- nmlm2[`Spot-Level NM Metric`=="Prop_NM"]
+
+keepn <- names(nmi)[c(3,2,1,5,4,6,7,8,11,12,13)]
+nmi <- nmi[,..keepn]
+nmp <- nmp[,..keepn]
+
+nmi[Adjusted.P.value<0.1,N_Shared_Genes:=apply(.SD,1,function(x){length(unlist(strsplit(x,";")))}),.SDcols="Genes"]
+nmp[Adjusted.P.value<0.1,N_Shared_Genes:=apply(.SD,1,function(x){length(unlist(strsplit(x,";")))}),.SDcols="Genes"]
+
+supdat <- list(`Enrichr_NMintensity_assoc_genes`=nmi,`Enrichr_NMproportion_assoc_genes`=nmp)
+saveRDS(supdat,"plots/manuscript/SuppData/SupDat-NMlmmGSEAs_Unabridged.RDS")
+
+# write tables of signif, top-20-for-gene-set-library enrichments only
+fwrite(nmi[Adjusted.P.value<0.05&Rank<=20],"plots/manuscript/SuppTabs/TabDelims/NMintensity_Enrichr_sigTop20perSetLib.txt",sep='\t',quote=F,row.names=F)
+fwrite(nmp[Adjusted.P.value<0.05&Rank<=20],"plots/manuscript/SuppTabs/TabDelims/NMprop_Enrichr_sigTop20perSetLib.txt",sep='\t',quote=F,row.names=F)
+```
+
+repinf
+```{r}
+sessionInfo()
+sessioninfo::session_info()
+```
+
+R version 4.4.3 (2025-02-28)
+Platform: aarch64-apple-darwin20
+Running under: macOS Sequoia 15.3.2
+
+Matrix products: default
+BLAS:   /System/Library/Frameworks/Accelerate.framework/Versions/A/Frameworks/vecLib.framework/Versions/A/libBLAS.dylib 
+LAPACK: /Library/Frameworks/R.framework/Versions/4.4-arm64/Resources/lib/libRlapack.dylib;  LAPACK version 3.12.0
+
+locale:
+[1] en_US.UTF-8/en_US.UTF-8/en_US.UTF-8/C/en_US.UTF-8/en_US.UTF-8
+
+time zone: America/Chicago
+tzcode source: internal
+
+attached base packages:
+[1] stats     graphics  grDevices utils     methods   base     
+
+other attached packages:
+[1] colorout_1.3-0.2  data.table_1.17.4 rlang_1.1.5      
+
+loaded via a namespace (and not attached):
+ [1] compiler_4.4.3    here_1.0.1        fastmap_1.2.0     rprojroot_2.0.4   cli_3.6.4        
+ [6] htmltools_0.5.8.1 tools_4.4.3       rstudioapi_0.17.1 yaml_2.3.10       rmarkdown_2.29   
+[11] knitr_1.50        xfun_0.52         digest_0.6.37     evaluate_1.0.3    sessioninfo_1.2.3
+> sessioninfo::session_info()
+─ Session info ─────────────────────────────────────────────────────────────────────────────────
+ setting  value
+ version  R version 4.4.3 (2025-02-28)
+ os       macOS Sequoia 15.3.2
+ system   aarch64, darwin20
+ ui       RStudio
+ language (EN)
+ collate  en_US.UTF-8
+ ctype    en_US.UTF-8
+ tz       America/Chicago
+ date     2025-08-20
+ rstudio  2024.07.0-daily+219 Cranberry Hibiscus (desktop)
+ pandoc   3.1.11 @ /Applications/RStudio.app/Contents/Resources/app/quarto/bin/tools/aarch64/ (via rmarkdown)
+ quarto   1.4.555 @ /Applications/RStudio.app/Contents/Resources/app/quarto/bin/quarto
+
+─ Packages ─────────────────────────────────────────────────────────────────────────────────────
+ !  package     * version date (UTC) lib source
+ VP cli           3.6.4   2025-04-23 [2] CRAN (R 4.4.1) (on disk 3.6.5)
+    colorout    * 1.3-0.2 2024-05-01 [1] Github (jalvesaq/colorout@c6113a2)
+    data.table  * 1.17.4  2025-05-26 [1] CRAN (R 4.4.3)
+    digest        0.6.37  2024-08-19 [1] CRAN (R 4.4.1)
+    evaluate      1.0.3   2025-01-10 [1] CRAN (R 4.4.1)
+    fastmap       1.2.0   2024-05-15 [1] CRAN (R 4.4.0)
+    here          1.0.1   2020-12-13 [1] CRAN (R 4.4.0)
+    htmltools     0.5.8.1 2024-04-04 [1] CRAN (R 4.4.0)
+    knitr         1.50    2025-03-16 [1] CRAN (R 4.4.2)
+ VP rlang       * 1.1.5   2025-04-11 [2] CRAN (R 4.4.1) (on disk 1.1.6)
+    rmarkdown     2.29    2024-11-04 [1] CRAN (R 4.4.1)
+    rprojroot     2.0.4   2023-11-05 [1] CRAN (R 4.4.0)
+    rstudioapi    0.17.1  2024-10-22 [1] CRAN (R 4.4.1)
+    sessioninfo   1.2.3   2025-02-05 [1] CRAN (R 4.4.1)
+    xfun          0.52    2025-04-02 [1] CRAN (R 4.4.1)
+    yaml          2.3.10  2024-07-26 [1] CRAN (R 4.4.0)
+
+ [1] /Library/Frameworks/R.framework/Versions/4.4-arm64/Resources/library
+ [2] /Users/bmulvey/Library/R/arm64/4.4/library
+
+ * ── Packages attached to the search path.
+ V ── Loaded and on-disk version mismatch.
+ P ── Loaded and on-disk path mismatch.
+
+────────────────────────────────────────────────────────────────────────────────────────────────
