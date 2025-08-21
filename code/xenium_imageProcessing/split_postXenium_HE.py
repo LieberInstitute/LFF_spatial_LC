@@ -15,3 +15,4 @@ os.makedirs(outdir, exist_ok=True)
 
 # Optional tuning knobs:
 PREVIEW_MAXDIM = 4000     # preview max dimension (pixels)
+MARGIN_FULLRES = 200      # padding around each box at full-res
