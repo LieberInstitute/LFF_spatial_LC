@@ -18,3 +18,5 @@ Currently Loaded Modules:
 Processing:  LC_PostXenium_0068654_Slide4_40x_05_07_2025_HRD.tif
 /dcs05/lieber/marmaypag/LFF_spatialLC_LIBD4140/LFF_spatial_LC/code/xenium_imageProcessing/01_split_postXenium_HE.py:112: UserWarning: Lazy zarr read unavailable; loading full image (may be large).
   warnings.warn("Lazy zarr read unavailable; loading full image (may be large).")
+/var/spool/slurm/d/job21639954/slurm_script: line 32: 1754551 Killed                  python 01_split_postXenium_HE.py "${sample}"
+slurmstepd: error: Detected 1 oom-kill event(s) in StepId=21639954.batch. Some of your processes may have been killed by the cgroup out-of-memory handler.
