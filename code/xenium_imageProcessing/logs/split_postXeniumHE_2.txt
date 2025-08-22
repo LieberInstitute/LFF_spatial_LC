@@ -1,10 +1,10 @@
 **** Job starts ****
-Thu Aug 21 02:31:51 PM EDT 2025
+Fri Aug 22 12:46:56 PM EDT 2025
 **** JHPCE info ****
 User: mtippani
-Job id: 21639952
+Job id: 21658414
 Job name: split_postXeniumHE
-Node name: compute-121
+Node name: compute-155
 Task id: 2
 Loading LIBD SLURM module for visium_hd/1.0
 Loading LIBD SLURM module for htslib/1.18
@@ -16,18 +16,20 @@ Currently Loaded Modules:
  
 
 Processing:  LC_PostXenium_0032707_Slide1_40x_04_30_2025_HRD.tif
+/dcs05/lieber/marmaypag/LFF_spatialLC_LIBD4140/LFF_spatial_LC/code/xenium_imageProcessing/01_split_postXenium_HE.py:112: UserWarning: Lazy zarr read unavailable; loading full image (may be large).
+  warnings.warn("Lazy zarr read unavailable; loading full image (may be large).")
 Input file : /dcs05/lieber/marmaypag/LFF_spatialLC_LIBD4140/LFF_spatial_LC/raw-data/xenium/post-xenium_images/LC_PostXenium_0032707_Slide1_40x_04_30_2025_HRD.tif
 Output dir : /dcs05/lieber/marmaypag/LFF_spatialLC_LIBD4140/LFF_spatial_LC/processed-data/xenium_imageProcessing/split_samples/0032707_Slide1
 [INFO] Reading preview: /dcs05/lieber/marmaypag/LFF_spatialLC_LIBD4140/LFF_spatial_LC/raw-data/xenium/post-xenium_images/LC_PostXenium_0032707_Slide1_40x_04_30_2025_HRD.tif
-Traceback (most recent call last):
-  File "/dcs05/lieber/marmaypag/LFF_spatialLC_LIBD4140/LFF_spatial_LC/code/xenium_imageProcessing/01_split_postXenium_HE.py", line 124, in <module>
-    preview, full_w, full_h, sx, sy = read_preview_with_tifffile(fname, PREVIEW_MAXDIM)
-  File "/dcs05/lieber/marmaypag/LFF_spatialLC_LIBD4140/LFF_spatial_LC/code/xenium_imageProcessing/01_split_postXenium_HE.py", line 33, in read_preview_with_tifffile
-    with tiff.TiffFile(path) as tf:
-  File "/jhpce/shared/libd/core/visium_hd/1.0/hd_env/lib/python3.9/site-packages/tifffile/tifffile.py", line 4259, in __init__
-    fh = FileHandle(file, mode=mode, name=name, offset=offset, size=size)
-  File "/jhpce/shared/libd/core/visium_hd/1.0/hd_env/lib/python3.9/site-packages/tifffile/tifffile.py", line 14644, in __init__
-    self.open()
-  File "/jhpce/shared/libd/core/visium_hd/1.0/hd_env/lib/python3.9/site-packages/tifffile/tifffile.py", line 14663, in open
-    self._fh = open(
-PermissionError: [Errno 13] Permission denied: '/dcs05/lieber/marmaypag/LFF_spatialLC_LIBD4140/LFF_spatial_LC/raw-data/xenium/post-xenium_images/LC_PostXenium_0032707_Slide1_40x_04_30_2025_HRD.tif'
+[INFO] Full-res: 108000 x 60116 | Preview: 4000 x 2227 | scale sx=27.000, sy=26.994
+[INFO] Found 7 tissue blobs. Exporting crops to: /dcs05/lieber/marmaypag/LFF_spatialLC_LIBD4140/LFF_spatial_LC/processed-data/xenium_imageProcessing/split_samples/0032707_Slide1
+[OK] Saved: /dcs05/lieber/marmaypag/LFF_spatialLC_LIBD4140/LFF_spatial_LC/processed-data/xenium_imageProcessing/split_samples/0032707_Slide1/sample_01_y38429_x10789_h12088_w22675.tif
+[OK] Saved: /dcs05/lieber/marmaypag/LFF_spatialLC_LIBD4140/LFF_spatial_LC/processed-data/xenium_imageProcessing/split_samples/0032707_Slide1/sample_02_y10976_x14218_h16920_w10768.tif
+[OK] Saved: /dcs05/lieber/marmaypag/LFF_spatialLC_LIBD4140/LFF_spatial_LC/processed-data/xenium_imageProcessing/split_samples/0032707_Slide1/sample_03_y9626_x31174_h20565_w15088.tif
+[OK] Saved: /dcs05/lieber/marmaypag/LFF_spatialLC_LIBD4140/LFF_spatial_LC/processed-data/xenium_imageProcessing/split_samples/0032707_Slide1/sample_04_y32571_x48157_h17001_w21892.tif
+[OK] Saved: /dcs05/lieber/marmaypag/LFF_spatialLC_LIBD4140/LFF_spatial_LC/processed-data/xenium_imageProcessing/split_samples/0032707_Slide1/sample_05_y10355_x49480_h19215_w12388.tif
+[OK] Saved: /dcs05/lieber/marmaypag/LFF_spatialLC_LIBD4140/LFF_spatial_LC/processed-data/xenium_imageProcessing/split_samples/0032707_Slide1/sample_06_y10949_x69946_h20915_w13738.tif
+[OK] Saved: /dcs05/lieber/marmaypag/LFF_spatialLC_LIBD4140/LFF_spatial_LC/processed-data/xenium_imageProcessing/split_samples/0032707_Slide1/sample_07_y27334_x87064_h20349_w10660.tif
+[DONE]
+**** Job ends ****
+Fri Aug 22 01:11:27 PM EDT 2025
