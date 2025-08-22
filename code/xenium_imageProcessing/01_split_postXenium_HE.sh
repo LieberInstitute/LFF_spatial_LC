@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH --mem=10G
+#SBATCH --mem=40G
 #SBATCH --job-name=split_postXeniumHE
 #SBATCH -c 1
 #SBATCH -t 1-00:00:00
