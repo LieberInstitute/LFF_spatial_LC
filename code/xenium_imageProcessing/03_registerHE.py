@@ -154,3 +154,18 @@ for ch in range(he_can.shape[2]):
     he_reg[..., ch] = cv2.warpAffine(he_can[..., ch], M, (W, H),
                                      flags=cv2.INTER_LINEAR,
                                      borderMode=cv2.BORDER_CONSTANT, borderValue=0.0)
+
+# ---------------- save outputs ----------------
+imwrite(out_henuc, henuc_reg.astype(np.uint8))
+imwrite(out_he, (np.clip(he_reg, 0, 1) * 65535).astype(np.uint16))
+print("Wrote:", out_henuc)
+print("Wrote:", out_he)
+
+# ---------------- quick QC overlay (DAPI edges in lime over HE) ----------------
+plt.figure(figsize=(8,8))
+plt.imshow(np.clip(he_reg, 0, 1))
+plt.contour(dapi_mask > 0, levels=[0.5], colors=['lime'], linewidths=0.7)
+plt.axis('off'); plt.tight_layout()
+plt.savefig(out_overlay, dpi=300, bbox_inches='tight', pad_inches=0)
+plt.close()
+print("Wrote:", out_overlay)
