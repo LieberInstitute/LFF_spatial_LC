@@ -13,11 +13,11 @@ except Exception:
     dist = None  # will fall back to edges
 
 
-HEPath   = '/Users/madhavi.tippani/Downloads/sample_01_y14881_x9092_h14339_w17472.tif'
-DAPIPath = '/Users/madhavi.tippani/Downloads/nucmask_binary-1.tif'
-out_he       = '/Users/madhavi.tippani/Downloads/HE_registered_to_DAPI.tif'
-out_henuc    = '/Users/madhavi.tippani/Downloads/HE_nuclei_registered_to_DAPI.tif'
-out_overlay  = '/Users/madhavi.tippani/Downloads/overlay_on_dapi.png'
+HEPath   = '/dcs05/lieber/marmaypag/LFF_spatialLC_LIBD4140/LFF_spatial_LC/processed-data/xenium_imageProcessing/split_samples/0068641_Slide3/sample_01_y28519_x12427_h22008_w13137.tif'
+DAPIPath = '/dcs05/lieber/marmaypag/LFF_spatialLC_LIBD4140/LFF_spatial_LC/processed-data/xenium_imageProcessing/Br0946/nucmask_binary.tif'
+out_he       = '/dcs05/lieber/marmaypag/LFF_spatialLC_LIBD4140/LFF_spatial_LC/processed-data/xenium_imageProcessing/Br0946/HE_registered_to_DAPI.tif'
+out_henuc    = '/dcs05/lieber/marmaypag/LFF_spatialLC_LIBD4140/LFF_spatial_LC/processed-data/xenium_imageProcessing/Br0946/HE_nuclei_registered_to_DAPI.tif'
+out_overlay  = '/dcs05/lieber/marmaypag/LFF_spatialLC_LIBD4140/LFF_spatial_LC/processed-data/xenium_imageProcessing/Br0946/overlay_on_dapi.png'
 
 
 # ---------------- load ----------------
