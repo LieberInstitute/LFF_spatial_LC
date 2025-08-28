@@ -26,3 +26,19 @@ dapi = imread(DAPIPath) # 2D mask (cells)
 assert dapi.ndim == 2, f"DAPI must be 2D, got {dapi.shape}"
 H, W = dapi.shape
 print("HE:", he.shape, he.dtype, " DAPI:", dapi.shape, dapi.dtype)
+
+
+# ---------------- H&E nuclei segmentation ----------------
+hed = rgb2hed(img_as_float32(he))     # Hematoxylin/Eosin/DAB in OD space
+Hc  = hed[..., 0]
+Hn  = Hc.copy()
+Hn  = (Hn - np.min(Hn)) / (np.ptp(Hn) + 1e-8)
+Hn  = exposure.equalize_adapthist(Hn, clip_limit=0.02)
+t   = threshold_otsu(Hn)
+he_nuc = Hn > t
+he_nuc = binary_opening(he_nuc, disk(1))
+he_nuc = remove_small_holes(he_nuc, area_threshold=64)
+he_nuc = remove_small_objects(he_nuc, min_size=64)
+he_nuc = he_nuc.astype(np.float32)
+
+dapi_mask = (dapi > 0).astype(np.float32)
