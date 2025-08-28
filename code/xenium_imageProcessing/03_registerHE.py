@@ -1,13 +1,13 @@
-import argparse
-import math
-import os
-from typing import Tuple, Optional
-
-import numpy as np
+import numpy as np, cv2, matplotlib.pyplot as plt
 from tifffile import imread, imwrite
-from skimage.transform import resize, rotate, AffineTransform, warp
 from skimage import img_as_float32, exposure
-from skimage.color import rgb2gray
+from skimage.color import rgb2hed
+from skimage.filters import threshold_otsu
+from skimage.morphology import remove_small_objects, remove_small_holes, binary_opening, disk
 from skimage.feature import canny
+from skimage.transform import rotate, resize
 from skimage.registration import phase_cross_correlation
-from skimage.morphology import binary_erosion
+try:
+    from scipy.ndimage import distance_transform_edt as dist
+except Exception:
+    dist = None  # will fall back to edges
