@@ -16,11 +16,15 @@ try:
 except Exception:
     dist = None  # will fall back to edges
 
-HEPath   = '/dcs05/lieber/marmaypag/LFF_spatialLC_LIBD4140/LFF_spatial_LC/processed-data/xenium_imageProcessing/split_samples/0068641_Slide3/sample_01_y28519_x12427_h22008_w13137.tif'
-DAPIPath = '/dcs05/lieber/marmaypag/LFF_spatialLC_LIBD4140/LFF_spatial_LC/processed-data/xenium_imageProcessing/Br0946/nucmask_binary.tif'
-out_he       = '/dcs05/lieber/marmaypag/LFF_spatialLC_LIBD4140/LFF_spatial_LC/processed-data/xenium_imageProcessing/Br0946/HE_registered_to_DAPI.tif'
-out_henuc    = '/dcs05/lieber/marmaypag/LFF_spatialLC_LIBD4140/LFF_spatial_LC/processed-data/xenium_imageProcessing/Br0946/HE_nuclei_registered_to_DAPI.tif'
-out_overlay  = '/dcs05/lieber/marmaypag/LFF_spatialLC_LIBD4140/LFF_spatial_LC/processed-data/xenium_imageProcessing/Br0946/overlay_on_dapi.png'
+brnum_arg = sys.argv[1]
+slide_arg = sys.argv[2]
+sample_arg = sys.argv[3]
+
+HEPath   = '/dcs05/lieber/marmaypag/LFF_spatialLC_LIBD4140/LFF_spatial_LC/processed-data/xenium_imageProcessing/split_samples/{slide_arg}/{sample_arg}'
+DAPIPath = '/dcs05/lieber/marmaypag/LFF_spatialLC_LIBD4140/LFF_spatial_LC/processed-data/xenium_imageProcessing/{brnum_arg}/nucmask_binary.tif'
+out_he       = '/dcs05/lieber/marmaypag/LFF_spatialLC_LIBD4140/LFF_spatial_LC/processed-data/xenium_imageProcessing/{brnum_arg}/HE_registered_to_DAPI.tif'
+out_henuc    = '/dcs05/lieber/marmaypag/LFF_spatialLC_LIBD4140/LFF_spatial_LC/processed-data/xenium_imageProcessing/{brnum_arg}/HE_nuclei_registered_to_DAPI.tif'
+out_overlay  = '/dcs05/lieber/marmaypag/LFF_spatialLC_LIBD4140/LFF_spatial_LC/processed-data/xenium_imageProcessing/{brnum_arg}/overlay_on_dapi.png'
 
 
 # ---------------- load ----------------
