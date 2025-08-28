@@ -78,3 +78,17 @@ for ang in np.arange(89.4, 90.6, 0.05):
 
 print(f"Best angle ≈ {best_angle:.2f}° (score={best_score:.4f})")
 
+# ---------------- rotate & center both to DAPI frame (no rescaling), then translation ----------------
+# Rotate he_nuc and center to DAPI canvas
+he_nuc_rot = rotate(he_nuc, angle=best_angle, resize=True,
+                    order=0, mode='constant', cval=0, preserve_range=True).astype(np.float32)
+Hr, Wr = he_nuc_rot.shape
+ys = max(0, (Hr - H) // 2); xs = max(0, (Wr - W) // 2)
+yd = max(0, (H  - Hr) // 2); xd = max(0, (W  - Wr) // 2)
+he_nuc_can = np.zeros((H, W), dtype=np.float32)
+ys0, xs0 = ys, xs
+ye0, xe0 = ys + min(H, Hr), xs + min(W, Wr)
+yd0, xd0 = yd, xd
+he_nuc_can[yd0:yd0+(ye0-ys0), xd0:xd0+(xe0-xs0)] = he_nuc_rot[ys0:ye0, xs0:xe0]
+
+dapi_can = dapi_mask.astype(np.float32)
