@@ -92,3 +92,34 @@ yd0, xd0 = yd, xd
 he_nuc_can[yd0:yd0+(ye0-ys0), xd0:xd0+(xe0-xs0)] = he_nuc_rot[ys0:ye0, xs0:xe0]
 
 dapi_can = dapi_mask.astype(np.float32)
+
+# Build registration fields (distance transforms preferred)
+if dist is not None:
+    he_field   = (dist(he_nuc_can > 0)).astype(np.float32)
+    dapi_field = (dist(dapi_can   > 0)).astype(np.float32)
+else:
+    he_field   = canny(he_nuc_can, sigma=1.0).astype(np.float32)
+    dapi_field = canny(dapi_can,   sigma=1.0).astype(np.float32)
+
+# Hann window to reduce boundary effects
+wy = np.hanning(H); wx = np.hanning(W)
+win = (wy[:, None] * wx[None, :]).astype(np.float32)
+heF   = he_field   * win
+dapiF = dapi_field * win
+
+# Downsample for speed (reuse ds)
+heF_ds   = resize(heF,   (Hds, Wds), preserve_range=True, anti_aliasing=True).astype(np.float32)
+dapiF_ds = resize(dapiF, (Hds, Wds), preserve_range=True, anti_aliasing=True).astype(np.float32)
+heM_ds   = resize((he_nuc_can > 0).astype(np.float32),   (Hds, Wds), preserve_range=True).astype(np.float32)
+dapiM_ds = resize((dapi_can   > 0).astype(np.float32),   (Hds, Wds), preserve_range=True).astype(np.float32)
+
+# Masked phase correlation (if your skimage supports masks), else unmasked
+try:
+    shift, err, _ = phase_cross_correlation(dapiF_ds, heF_ds, upsample_factor=100,
+                                            reference_mask=dapiM_ds, moving_mask=heM_ds)
+except TypeError:
+    shift, err, _ = phase_cross_correlation(dapiF_ds, heF_ds, upsample_factor=100)
+
+dy = float(shift[0] * ds)  # +dy moves HE down
+dx = float(shift[1] * ds)  # +dx moves HE right
+print(f"Translation: dy={dy:.2f}, dx={dx:.2f} (err={err:.6f})")
