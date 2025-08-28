@@ -10,6 +10,7 @@ from skimage.registration import phase_cross_correlation
 import matplotlib
 matplotlib.use("Agg")  # non-GUI backend
 import matplotlib.pyplot as plt
+import sys
 
 try:
     from scipy.ndimage import distance_transform_edt as dist
