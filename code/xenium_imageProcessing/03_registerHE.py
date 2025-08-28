@@ -11,3 +11,10 @@ try:
     from scipy.ndimage import distance_transform_edt as dist
 except Exception:
     dist = None  # will fall back to edges
+
+
+HEPath   = '/Users/madhavi.tippani/Downloads/sample_01_y14881_x9092_h14339_w17472.tif'
+DAPIPath = '/Users/madhavi.tippani/Downloads/nucmask_binary-1.tif'
+out_he       = '/Users/madhavi.tippani/Downloads/HE_registered_to_DAPI.tif'
+out_henuc    = '/Users/madhavi.tippani/Downloads/HE_nuclei_registered_to_DAPI.tif'
+out_overlay  = '/Users/madhavi.tippani/Downloads/overlay_on_dapi.png'
