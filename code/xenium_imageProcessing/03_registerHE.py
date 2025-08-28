@@ -123,3 +123,34 @@ except TypeError:
 dy = float(shift[0] * ds)  # +dy moves HE down
 dx = float(shift[1] * ds)  # +dx moves HE right
 print(f"Translation: dy={dy:.2f}, dx={dx:.2f} (err={err:.6f})")
+
+# ---------------- apply SAME (angle + dx,dy) to nuclei mask and RGB HE, on DAPI canvas ----------------
+# 1) H&E nuclei mask (nearest-neighbor)
+henuc_rot = rotate(he_nuc, angle=best_angle, resize=True,
+                   order=0, mode='constant', cval=0, preserve_range=True).astype(np.float32)
+Hr, Wr = henuc_rot.shape
+ys = max(0, (Hr - H) // 2); xs = max(0, (Wr - W) // 2)
+yd = max(0, (H  - Hr) // 2); xd = max(0, (W  - Wr) // 2)
+henuc_can = np.zeros((H, W), dtype=np.float32)
+henuc_can[yd:yd+min(H, Hr), xd:xd+min(W, Wr)] = henuc_rot[ys:ys+min(H, Hr), xs:xs+min(W, Wr)]
+M = np.array([[1, 0, dx],
+              [0, 1, dy]], dtype=np.float32)
+henuc_reg = cv2.warpAffine(henuc_can, M, (W, H),
+                           flags=cv2.INTER_NEAREST,
+                           borderMode=cv2.BORDER_CONSTANT, borderValue=0.0)
+henuc_reg = (henuc_reg > 0.5).astype(np.uint8)  # keep binary
+
+# 2) RGB H&E (bilinear)
+he_f   = img_as_float32(he)
+he_rot = rotate(he_f, angle=best_angle, resize=True,
+                order=1, mode='constant', cval=0, preserve_range=True).astype(np.float32)
+Hr, Wr = he_rot.shape[:2]
+ys = max(0, (Hr - H) // 2); xs = max(0, (Wr - W) // 2)
+yd = max(0, (H  - Hr) // 2); xd = max(0, (W  - Wr) // 2)
+he_can = np.zeros((H, W, he_rot.shape[2]), dtype=np.float32)
+he_can[yd:yd+min(H, Hr), xd:xd+min(W, Wr), :] = he_rot[ys:ys+min(H, Hr), xs:xs+min(W, Wr), :]
+he_reg = np.zeros_like(he_can, dtype=np.float32)
+for ch in range(he_can.shape[2]):
+    he_reg[..., ch] = cv2.warpAffine(he_can[..., ch], M, (W, H),
+                                     flags=cv2.INTER_LINEAR,
+                                     borderMode=cv2.BORDER_CONSTANT, borderValue=0.0)
