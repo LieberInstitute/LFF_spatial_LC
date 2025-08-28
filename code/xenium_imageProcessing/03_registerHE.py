@@ -46,3 +46,35 @@ dapi_mask = (dapi > 0).astype(np.float32)
 # ---------------- coarse angle search (89–91°, step 0.1) using edges ----------------
 he_edges   = canny(he_nuc, sigma=1.0).astype(np.float32)
 dapi_edges = canny(dapi_mask, sigma=1.0).astype(np.float32)
+
+
+# Downsample for speed (longest side ≈ 3000 px)
+target_max = 3000
+ds = max(1, int(max(H, W) / target_max))
+Hds, Wds = max(1, H // ds), max(1, W // ds)
+de_ds  = resize(dapi_edges, (Hds, Wds), preserve_range=True, anti_aliasing=True).astype(np.float32)
+
+best_angle, best_score = None, -1e9
+for ang in np.arange(89.4, 90.6, 0.05):
+    her = rotate(he_edges, angle=ang, resize=True, order=1, mode='constant', cval=0, preserve_range=True)
+    # center to DAPI size (downsampled)
+    Hr, Wr = her.shape
+    # compute center-to-canvas (downsampled) offsets for this angle
+    ys = max(0, (Hr - H) // 2); xs = max(0, (Wr - W) // 2)
+    yd = max(0, (H  - Hr) // 2); xd = max(0, (W  - Wr) // 2)
+    # crop/pad to (H,W)
+    her_can = np.zeros((H, W), dtype=np.float32)
+    ys0, xs0 = ys, xs
+    ye0, xe0 = ys + min(H, Hr), xs + min(W, Wr)
+    yd0, xd0 = yd, xd
+    her_can[yd0:yd0+(ye0-ys0), xd0:xd0+(xe0-xs0)] = her[ys0:ye0, xs0:xe0]
+    # downsample to match de_ds
+    her_ds = resize(her_can, (Hds, Wds), preserve_range=True, anti_aliasing=True).astype(np.float32)
+    a = (her_ds - her_ds.mean()) / (her_ds.std() + 1e-6)
+    b = (de_ds  - de_ds.mean())  / (de_ds.std()  + 1e-6)
+    score = float((a * b).mean())
+    if score > best_score:
+        best_score, best_angle = score, float(ang)
+
+print(f"Best angle ≈ {best_angle:.2f}° (score={best_score:.4f})")
+
