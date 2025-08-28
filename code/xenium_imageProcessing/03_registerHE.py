@@ -18,3 +18,11 @@ DAPIPath = '/Users/madhavi.tippani/Downloads/nucmask_binary-1.tif'
 out_he       = '/Users/madhavi.tippani/Downloads/HE_registered_to_DAPI.tif'
 out_henuc    = '/Users/madhavi.tippani/Downloads/HE_nuclei_registered_to_DAPI.tif'
 out_overlay  = '/Users/madhavi.tippani/Downloads/overlay_on_dapi.png'
+
+
+# ---------------- load ----------------
+he   = imread(HEPath)   # RGB H&E
+dapi = imread(DAPIPath) # 2D mask (cells)
+assert dapi.ndim == 2, f"DAPI must be 2D, got {dapi.shape}"
+H, W = dapi.shape
+print("HE:", he.shape, he.dtype, " DAPI:", dapi.shape, dapi.dtype)
