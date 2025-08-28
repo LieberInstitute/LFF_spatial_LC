@@ -11,7 +11,9 @@ try:
     from scipy.ndimage import distance_transform_edt as dist
 except Exception:
     dist = None  # will fall back to edges
-
+import matplotlib
+matplotlib.use("Agg")  # non-GUI backend
+import matplotlib.pyplot as plt
 
 HEPath   = '/dcs05/lieber/marmaypag/LFF_spatialLC_LIBD4140/LFF_spatial_LC/processed-data/xenium_imageProcessing/split_samples/0068641_Slide3/sample_01_y28519_x12427_h22008_w13137.tif'
 DAPIPath = '/dcs05/lieber/marmaypag/LFF_spatialLC_LIBD4140/LFF_spatial_LC/processed-data/xenium_imageProcessing/Br0946/nucmask_binary.tif'
