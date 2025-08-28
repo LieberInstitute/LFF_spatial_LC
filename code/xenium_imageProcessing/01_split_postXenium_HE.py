@@ -165,5 +165,107 @@ for i, p in enumerate(props, 1):
     arr_resized = cv2.resize(arr, None, fx=scale, fy=scale, interpolation=cv2.INTER_LINEAR)
     tiff.imwrite(savepath, arr_resized, photometric='rgb')
     print(f"[OK] Saved: {savepath}")
+    
+# ---- montage (low-res) from preview showing each split + sample number ----
+import math
+
+def make_numbered_thumb(img, label, target_h=320):
+    # resize to fixed height, keep aspect
+    h, w = img.shape[:2]
+    scale = target_h / max(h, 1)
+    tw = max(1, int(round(w * scale)))
+    thumb = cv2.resize(img, (tw, target_h), interpolation=cv2.INTER_AREA)
+
+    # draw a white box + black number in the top-left
+    pad = 8
+    box_w, box_h = 64, 44
+    cv2.rectangle(thumb, (pad, pad), (pad + box_w, pad + box_h), (255, 255, 255), thickness=-1)
+    cv2.putText(thumb, str(label), (pad + 10, pad + 32),
+                cv2.FONT_HERSHEY_SIMPLEX, 1.0, (0, 0, 0), 2, cv2.LINE_AA)
+    return thumb
+
+def stack_with_gaps(row_imgs, gap=12, bg=(255, 255, 255)):
+    """Horizontally stack a list of same-height images with gaps."""
+    if not row_imgs:
+        return None
+    h = row_imgs[0].shape[0]
+    # insert vertical gap blocks
+    pieces = []
+    for i, im in enumerate(row_imgs):
+        pieces.append(im)
+        if i < len(row_imgs) - 1:
+            pieces.append(np.full((h, gap, 3), bg, dtype=np.uint8))
+    return np.hstack(pieces)
+
+def build_montage(thumbs, cols=4, gap=12, bg=(255, 255, 255)):
+    """Arrange thumbs into a grid with gaps and return an RGB montage array."""
+    if not thumbs:
+        return None
+    n = len(thumbs)
+    cols = max(1, min(cols, n))
+    rows = math.ceil(n / cols)
+
+    # pad the last row with blank tiles to make a full grid
+    target_h = thumbs[0].shape[0]
+    blank = np.full((target_h, max(t.shape[1] for t in thumbs), 3), bg, dtype=np.uint8)
+
+    # split into rows
+    rows_imgs = []
+    k = 0
+    for r in range(rows):
+        row = []
+        for c in range(cols):
+            if k < n:
+                row.append(thumbs[k])
+            else:
+                row.append(blank[:, :thumbs[0].shape[1]])  # crop blank to typical width
+            k += 1
+        # make same height and pad widths
+        h = max(im.shape[0] for im in row)
+        wmax = max(im.shape[1] for im in row)
+        row_padded = []
+        for im in row:
+            # pad right side to wmax
+            pad_w = wmax - im.shape[1]
+            if pad_w > 0:
+                im = np.hstack([im, np.full((im.shape[0], pad_w, 3), bg, dtype=np.uint8)])
+            row_padded.append(im)
+        rows_imgs.append(stack_with_gaps(row_padded, gap=gap, bg=bg))
+
+    # stack rows with horizontal gap bars
+    maxw = max(rimg.shape[1] for rimg in rows_imgs)
+    gap_bar = np.full((gap, maxw, 3), bg, dtype=np.uint8)
+    canvas_parts = []
+    for i, rimg in enumerate(rows_imgs):
+        # pad row to max width
+        pad_w = maxw - rimg.shape[1]
+        if pad_w > 0:
+            rimg = np.hstack([rimg, np.full((rimg.shape[0], pad_w, 3), bg, dtype=np.uint8)])
+        canvas_parts.append(rimg)
+        if i < len(rows_imgs) - 1:
+            canvas_parts.append(gap_bar)
+    return np.vstack(canvas_parts)
+
+# Build thumbnails directly from preview-space crops
+thumbs = []
+for idx, p in enumerate(props, 1):
+    r0, c0, r1, c1 = p.bbox  # preview coords
+    # add a tiny pad in preview pixels so the thumb shows some margin
+    pad_preview = 6
+    r0 = max(0, r0 - pad_preview)
+    c0 = max(0, c0 - pad_preview)
+    r1 = min(preview.shape[0], r1 + pad_preview)
+    c1 = min(preview.shape[1], c1 + pad_preview)
+    crop_prev = preview[r0:r1, c0:c1].copy()
+    thumbs.append(make_numbered_thumb(crop_prev, idx, target_h=320))
+
+# Choose columns (e.g., up to 4 per row)
+montage = build_montage(thumbs, cols=min(4, len(thumbs)), gap=12, bg=(255, 255, 255))
+if montage is not None:
+    montage_path = os.path.join(outdir, "montage_preview_samples.tif")  # or .png
+    # Save as RGB TIFF
+    tiff.imwrite(montage_path, montage, photometric='rgb')
+    print(f"[OK] Saved montage: {montage_path}")
+
 
 print("[DONE]")
