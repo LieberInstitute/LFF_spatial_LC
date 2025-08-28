@@ -42,3 +42,7 @@ he_nuc = remove_small_objects(he_nuc, min_size=64)
 he_nuc = he_nuc.astype(np.float32)
 
 dapi_mask = (dapi > 0).astype(np.float32)
+
+# ---------------- coarse angle search (89–91°, step 0.1) using edges ----------------
+he_edges   = canny(he_nuc, sigma=1.0).astype(np.float32)
+dapi_edges = canny(dapi_mask, sigma=1.0).astype(np.float32)
