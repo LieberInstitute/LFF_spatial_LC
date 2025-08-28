@@ -7,13 +7,14 @@ from skimage.morphology import remove_small_objects, remove_small_holes, binary_
 from skimage.feature import canny
 from skimage.transform import rotate, resize
 from skimage.registration import phase_cross_correlation
+import matplotlib
+matplotlib.use("Agg")  # non-GUI backend
+import matplotlib.pyplot as plt
+
 try:
     from scipy.ndimage import distance_transform_edt as dist
 except Exception:
     dist = None  # will fall back to edges
-import matplotlib
-matplotlib.use("Agg")  # non-GUI backend
-import matplotlib.pyplot as plt
 
 HEPath   = '/dcs05/lieber/marmaypag/LFF_spatialLC_LIBD4140/LFF_spatial_LC/processed-data/xenium_imageProcessing/split_samples/0068641_Slide3/sample_01_y28519_x12427_h22008_w13137.tif'
 DAPIPath = '/dcs05/lieber/marmaypag/LFF_spatialLC_LIBD4140/LFF_spatial_LC/processed-data/xenium_imageProcessing/Br0946/nucmask_binary.tif'
@@ -57,7 +58,7 @@ Hds, Wds = max(1, H // ds), max(1, W // ds)
 de_ds  = resize(dapi_edges, (Hds, Wds), preserve_range=True, anti_aliasing=True).astype(np.float32)
 
 best_angle, best_score = None, -1e9
-for ang in np.arange(89.4, 90.6, 0.05):
+for ang in np.arange(89.5, 90.5, 0.1):
     her = rotate(he_edges, angle=ang, resize=True, order=1, mode='constant', cval=0, preserve_range=True)
     # center to DAPI size (downsampled)
     Hr, Wr = her.shape
@@ -94,6 +95,16 @@ yd0, xd0 = yd, xd
 he_nuc_can[yd0:yd0+(ye0-ys0), xd0:xd0+(xe0-xs0)] = he_nuc_rot[ys0:ye0, xs0:xe0]
 
 dapi_can = dapi_mask.astype(np.float32)
+
+#QC
+plt.figure(figsize=(8,8))
+plt.imshow(dapi_mask, cmap='gray')  # DAPI background
+plt.contour(he_nuc_can > 0.5, levels=[0.5], colors=['magenta'], linewidths=0.7)  # nuclei contour
+plt.axis('off'); plt.tight_layout()
+plt.savefig(out_overlay, dpi=300, bbox_inches='tight', pad_inches=0)
+plt.close()
+
+print("Saved overlay:", out_png)
 
 # Build registration fields (distance transforms preferred)
 if dist is not None:
