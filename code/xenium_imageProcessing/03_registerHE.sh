@@ -1,11 +1,11 @@
 #!/bin/bash
-#SBATCH --mem=60G
+#SBATCH --mem=100G
 #SBATCH --job-name=registerHE
 #SBATCH -c 1
 #SBATCH -t 1-00:00:00
 #SBATCH -o logs/registerHE_%a.txt
 #SBATCH -e logs/registerHE_%a.txt
-#SBATCH --array=2-29%5
+#SBATCH --array=1,3,5-7,9-19,21-24,26,27,29
 
 set -e
 
