@@ -1,0 +1,26 @@
+**** Job starts ****
+Thu Aug 28 04:36:14 PM EDT 2025
+**** JHPCE info ****
+User: mtippani
+Job id: 21687155
+Job name: registerHE
+Node name: compute-155
+Task id: 2
+Loading LIBD SLURM module for visium_hd/1.0
+Loading LIBD SLURM module for htslib/1.18
+
+Currently Loaded Modules:
+  1) JHPCE_ROCKY9_DEFAULT_ENV   3) conda/3-24.3.0   5) visium_hd/1.0
+  2) JHPCE_tools/3.0            4) htslib/1.18
+
+ 
+
+Br5529
+0032707_Slide1
+sample_02_y10976_x14218_h16920_w10768.tif
+HE: (20143, 12819, 3) uint8  DAPI: (13758, 22857) uint8
+Best angle ≈ 89.60° (score=0.0469)
+Traceback (most recent call last):
+  File "/dcs05/lieber/marmaypag/LFF_spatialLC_LIBD4140/LFF_spatial_LC/code/xenium_imageProcessing/03_registerHE.py", line 112, in <module>
+    print("Saved overlay:", out_png)
+NameError: name 'out_png' is not defined
