@@ -1,10 +1,10 @@
 **** Job starts ****
-Fri Aug 29 09:05:54 AM EDT 2025
+Fri Aug 29 10:10:56 AM EDT 2025
 **** JHPCE info ****
 User: mtippani
-Job id: 21690874
+Job id: 21691945
 Job name: registerHE
-Node name: compute-155
+Node name: compute-122
 Task id: 3
 Loading LIBD SLURM module for visium_hd/1.0
 Loading LIBD SLURM module for htslib/1.18
@@ -18,5 +18,12 @@ Currently Loaded Modules:
 Br6222
 0032707_Slide1
 sample_03_y9626_x31174_h20565_w15088.tif
-/var/spool/slurm/d/job21690874/slurm_script: line 34: 592678 Killed                  python 03_registerHE.py $brnum $slide $sample
-slurmstepd: error: Detected 1 oom-kill event(s) in StepId=21690874.batch. Some of your processes may have been killed by the cgroup out-of-memory handler.
+HE: (24482, 17962, 3) uint8  DAPI: (20506, 25668) uint8
+Best angle ≈ 90.40° (score=0.0732)
+Saved overlay
+Translation: dy=424.00, dx=-792.00 (err=nan)
+Wrote: /dcs05/lieber/marmaypag/LFF_spatialLC_LIBD4140/LFF_spatial_LC/processed-data/xenium_imageProcessing/Br6222/HE_nuclei_registered_to_DAPI.tif
+Wrote: /dcs05/lieber/marmaypag/LFF_spatialLC_LIBD4140/LFF_spatial_LC/processed-data/xenium_imageProcessing/Br6222/HE_registered_to_DAPI.tif
+Wrote: /dcs05/lieber/marmaypag/LFF_spatialLC_LIBD4140/LFF_spatial_LC/processed-data/xenium_imageProcessing/Br6222/overlay_on_dapi.png
+**** Job ends ****
+Fri Aug 29 10:25:02 AM EDT 2025

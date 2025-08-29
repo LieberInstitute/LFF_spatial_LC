@@ -1,10 +1,10 @@
 **** Job starts ****
-Thu Aug 28 04:35:05 PM EDT 2025
+Fri Aug 29 10:10:56 AM EDT 2025
 **** JHPCE info ****
 User: mtippani
-Job id: 21687153
+Job id: 21691944
 Job name: registerHE
-Node name: compute-155
+Node name: compute-122
 Task id: 1
 Loading LIBD SLURM module for visium_hd/1.0
 Loading LIBD SLURM module for htslib/1.18
@@ -20,7 +20,10 @@ Br5941
 sample_01_y38429_x10789_h12088_w22675.tif
 HE: (14390, 26994, 3) uint8  DAPI: (27353, 14405) uint8
 Best angle ≈ 89.50° (score=0.0295)
-Traceback (most recent call last):
-  File "/dcs05/lieber/marmaypag/LFF_spatialLC_LIBD4140/LFF_spatial_LC/code/xenium_imageProcessing/03_registerHE.py", line 112, in <module>
-    print("Saved overlay:", out_png)
-NameError: name 'out_png' is not defined
+Saved overlay
+Translation: dy=-10530.00, dx=-6399.00 (err=nan)
+Wrote: /dcs05/lieber/marmaypag/LFF_spatialLC_LIBD4140/LFF_spatial_LC/processed-data/xenium_imageProcessing/Br5941/HE_nuclei_registered_to_DAPI.tif
+Wrote: /dcs05/lieber/marmaypag/LFF_spatialLC_LIBD4140/LFF_spatial_LC/processed-data/xenium_imageProcessing/Br5941/HE_registered_to_DAPI.tif
+Wrote: /dcs05/lieber/marmaypag/LFF_spatialLC_LIBD4140/LFF_spatial_LC/processed-data/xenium_imageProcessing/Br5941/overlay_on_dapi.png
+**** Job ends ****
+Fri Aug 29 10:21:44 AM EDT 2025
