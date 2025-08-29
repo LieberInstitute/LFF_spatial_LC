@@ -5,7 +5,7 @@
 #SBATCH -t 1-00:00:00
 #SBATCH -o logs/split_postXeniumHE_%a.txt
 #SBATCH -e logs/split_postXeniumHE_%a.txt
-#SBATCH --array=1-5%5
+#SBATCH --array=1-29%5
 
 set -e
 
