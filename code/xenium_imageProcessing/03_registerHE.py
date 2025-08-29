@@ -26,6 +26,7 @@ DAPIPath = f'/dcs05/lieber/marmaypag/LFF_spatialLC_LIBD4140/LFF_spatial_LC/proce
 out_he       = f'/dcs05/lieber/marmaypag/LFF_spatialLC_LIBD4140/LFF_spatial_LC/processed-data/xenium_imageProcessing/{brnum_arg}/HE_registered_to_DAPI.tif'
 out_henuc    = f'/dcs05/lieber/marmaypag/LFF_spatialLC_LIBD4140/LFF_spatial_LC/processed-data/xenium_imageProcessing/{brnum_arg}/HE_nuclei_registered_to_DAPI.tif'
 out_overlay  = f'/dcs05/lieber/marmaypag/LFF_spatialLC_LIBD4140/LFF_spatial_LC/processed-data/xenium_imageProcessing/{brnum_arg}/overlay_on_dapi.png'
+out_overlay1  = f'/dcs05/lieber/marmaypag/LFF_spatialLC_LIBD4140/LFF_spatial_LC/processed-data/xenium_imageProcessing/{brnum_arg}/overlay_on_dapi1.png'
 
 
 # ---------------- load ----------------
@@ -106,10 +107,10 @@ plt.figure(figsize=(8,8))
 plt.imshow(dapi_mask, cmap='gray')  # DAPI background
 plt.contour(he_nuc_can > 0.5, levels=[0.5], colors=['magenta'], linewidths=0.7)  # nuclei contour
 plt.axis('off'); plt.tight_layout()
-plt.savefig(out_overlay, dpi=300, bbox_inches='tight', pad_inches=0)
+plt.savefig(out_overlay1, dpi=300, bbox_inches='tight', pad_inches=0)
 plt.close()
 
-print("Saved overlay:", out_png)
+print("Saved overlay")
 
 # Build registration fields (distance transforms preferred)
 if dist is not None:
