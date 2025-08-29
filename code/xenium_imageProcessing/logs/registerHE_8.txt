@@ -1,8 +1,8 @@
 **** Job starts ****
-Thu Aug 28 04:42:13 PM EDT 2025
+Fri Aug 29 09:15:00 AM EDT 2025
 **** JHPCE info ****
 User: mtippani
-Job id: 21687165
+Job id: 21691879
 Job name: registerHE
 Node name: compute-155
 Task id: 8
@@ -20,7 +20,10 @@ Br5854
 sample_01_y12098_x12070_h14510_w13549.tif
 HE: (17274, 16130, 3) uint8  DAPI: (17191, 17176) uint8
 Best angle ≈ 90.30° (score=0.0342)
-Traceback (most recent call last):
-  File "/dcs05/lieber/marmaypag/LFF_spatialLC_LIBD4140/LFF_spatial_LC/code/xenium_imageProcessing/03_registerHE.py", line 112, in <module>
-    print("Saved overlay:", out_png)
-NameError: name 'out_png' is not defined
+Saved overlay
+Translation: dy=-645.00, dx=435.00 (err=nan)
+Wrote: /dcs05/lieber/marmaypag/LFF_spatialLC_LIBD4140/LFF_spatial_LC/processed-data/xenium_imageProcessing/Br5854/HE_nuclei_registered_to_DAPI.tif
+Wrote: /dcs05/lieber/marmaypag/LFF_spatialLC_LIBD4140/LFF_spatial_LC/processed-data/xenium_imageProcessing/Br5854/HE_registered_to_DAPI.tif
+Wrote: /dcs05/lieber/marmaypag/LFF_spatialLC_LIBD4140/LFF_spatial_LC/processed-data/xenium_imageProcessing/Br5854/overlay_on_dapi.png
+**** Job ends ****
+Fri Aug 29 09:22:48 AM EDT 2025

@@ -1,10 +1,10 @@
 **** Job starts ****
-Thu Aug 28 04:57:02 PM EDT 2025
+Fri Aug 29 09:33:20 AM EDT 2025
 **** JHPCE info ****
 User: mtippani
-Job id: 21687180
+Job id: 21691895
 Job name: registerHE
-Node name: compute-155
+Node name: compute-169
 Task id: 19
 Loading LIBD SLURM module for visium_hd/1.0
 Loading LIBD SLURM module for htslib/1.18
@@ -18,9 +18,5 @@ Currently Loaded Modules:
 Br6538
 0068654_Slide4
 sample_02_y28128_x11243_h21720_w11153.tif
-HE: (25857, 13277, 3) uint8  DAPI: (13758, 28509) uint8
-Best angle ≈ 90.20° (score=0.0285)
-Traceback (most recent call last):
-  File "/dcs05/lieber/marmaypag/LFF_spatialLC_LIBD4140/LFF_spatial_LC/code/xenium_imageProcessing/03_registerHE.py", line 112, in <module>
-    print("Saved overlay:", out_png)
-NameError: name 'out_png' is not defined
+/var/spool/slurm/d/job21691895/slurm_script: line 34: 858993 Killed                  python 03_registerHE.py $brnum $slide $sample
+slurmstepd: error: Detected 1 oom-kill event(s) in StepId=21691895.batch. Some of your processes may have been killed by the cgroup out-of-memory handler.

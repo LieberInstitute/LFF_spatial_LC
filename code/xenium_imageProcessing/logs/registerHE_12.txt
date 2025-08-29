@@ -1,10 +1,10 @@
 **** Job starts ****
-Thu Aug 28 04:46:55 PM EDT 2025
+Fri Aug 29 09:22:48 AM EDT 2025
 **** JHPCE info ****
 User: mtippani
-Job id: 21687169
+Job id: 21691884
 Job name: registerHE
-Node name: compute-169
+Node name: compute-122
 Task id: 12
 Loading LIBD SLURM module for visium_hd/1.0
 Loading LIBD SLURM module for htslib/1.18
@@ -18,5 +18,5 @@ Currently Loaded Modules:
 Br6098
 0032704_Slide2
 sample_06_y34910_x68370_h17419_w19972.tif
-/var/spool/slurm/d/job21687169/slurm_script: line 34: 611276 Killed                  python 03_registerHE.py $brnum $slide $sample
-slurmstepd: error: Detected 1 oom-kill event(s) in StepId=21687169.batch. Some of your processes may have been killed by the cgroup out-of-memory handler.
+/var/spool/slurm/d/job21691884/slurm_script: line 34: 2369132 Killed                  python 03_registerHE.py $brnum $slide $sample
+slurmstepd: error: Detected 1 oom-kill event(s) in StepId=21691884.batch. Some of your processes may have been killed by the cgroup out-of-memory handler.
