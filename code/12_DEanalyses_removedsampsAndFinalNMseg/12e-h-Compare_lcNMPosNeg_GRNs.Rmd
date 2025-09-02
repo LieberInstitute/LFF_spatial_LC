@@ -1,5 +1,5 @@
 ---
-title: "12b-Compare_lcNMPosNeg_GRNs"
+title: "12e-h-Compare_lcNMPosNeg_GRNs"
 format: html
 date: "2025-09-01"
 ---
@@ -67,7 +67,6 @@ rnetsmin <- merge.data.table(rnets[[1]],rnets[[2]],by=c("TF","gene"))
 rnetsfilt <- merge.data.table(rnets[[3]],rnets[[4]],by=c("TF","gene"))
 rnets <- list(minfilt=rnetsmin,filt=rnetsfilt)
 rm(rnetsmin,rnetsfilt)
-# ggplot(rnets,aes(x=nmn,y=nmp))+geom_point()
 ```
 
 
@@ -113,10 +112,12 @@ ggplot(rnetspec[[2]],aes(x=nmn,y=nmp)) +
   theme(legend.position = "bottom") +
   guides(fill=guide_colorbar(title="Edge weight difference"))
 # oho look at that, it's a scorpion!
+```
 
 ## get list object to save: union of
 # •TFs with > 80% of edges unique to in nm- and nm+ specific edges?
 # this is agnostic to TF repressive/enhancing effect (i.e., if TF does some of each, it can still be included if vast majority of edges are specific to one network)
+```{r}
 rnetspectfs <- lapply(rnetspec,function(x){
     ## these columns are being added in-place by data.table so will ALSO become part of the rnetspec tables without explicitly returning them, handily.
 
@@ -154,6 +155,9 @@ rnet <- rnets$filt
 rnetspec <- rnetspec$filt
 rnetspectfs <- rnetspectfs$filt
 rm(rnets)
+
+## save the full edge comparison table
+saveRDS(rnet,"processed-data/12_DEanalyses_removedsampsAndFinalNMseg/12e1-Pbulkprefilt_LCNMposNeg_GRNs_allEdges_edgeWtComparisonsAndDomainSpecEdgeCalls.RDS")
 ```
 
 ### for TFs with evidence of cluster-specific activity (i.e., above), add ALL of their edges to the network that's condition-specific edges only
@@ -168,7 +172,8 @@ rnet_specEdgeORtf[,gene:=as.character(gene)]
 rnetsout <- list(pbulkfilt_rnet_specEdgesOnly=rnetspec[,.(TF,gene,nmp,nmn,diff,nmp_pn,nmn_pn,nmp_spec,nmn_spec)],
     pbulkfilt_rnet_specEdge_or_EdgeWith80pctSpecTF=rnet_specEdgeORtf)
 
-saveRDS(rnetsout,"processed-data/12_DEanalyses_removedsampsAndFinalNMseg/12e-Pbulkprefilt_LCNMposNeg_GRNs_EdgeFilts.RDS")
+saveRDS(rnetsout,"processed-data/12_DEanalyses_removedsampsAndFinalNMseg/12e2
+-Pbulkprefilt_LCNMposNeg_GRNs_NMdomainSpecEdge_or_SpecEdgeandSpecTF_filt.RDS")
 
 rm(rnetsout)
 ```
@@ -223,6 +228,14 @@ fwrite(mlxplot,"processed-data/12_DEanalyses_removedsampsAndFinalNMseg/12g-MLX_l
 ```
 
 make plots of these networks in cytoscape.
+
+## also save the list of cluster/domain specific or near-specific TFs from the pseudobulk-genes-prefiltered-GRN.
+```{r}
+write.table(rnetspectfs$nmp_specTFs,"processed-data/12_DEanalyses_removedsampsAndFinalNMseg/12h1-TFs_withOver80Pct_NMpos_spec_edges_inPbulkPrefiltGRN.txt",sep='\t',quote=F,row.names=F,col.names=F)
+write.table(rnetspectfs$nmn_specTFs,"processed-data/12_DEanalyses_removedsampsAndFinalNMseg/12h2-TFs_withOver80Pct_NMneg_spec_edges_inPbulkPrefiltGRN.txt",sep='\t',quote=F,row.names=F,col.names=F)
+## also save the list of all TFs that are in the network, i.e. for use as a background gene set if doing enrichment testing etc
+write.table(unique(rnets$filt$TF),"processed-data/12_DEanalyses_removedsampsAndFinalNMseg/12h3-AllTFs_in_pbulkPrefiltGRN.txt",sep='\t',quote=F,row.names=F,col.names=F)
+```
 
 seshinf
 ```{r}
