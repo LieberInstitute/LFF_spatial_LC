@@ -1,7 +1,7 @@
 ---
 title: "Fig2-Clusters, Markers, WeberDivecha registration, LC NMpos vs NMneg, LConly NMF-GSEA"
 format: html
-date: "05-19-2025"
+date: "09-05-2025"
 ---
 
 ```{r setup, include=FALSE}
@@ -45,11 +45,11 @@ theme_set(theme_bw()+theme(axis.text.x = element_text(size = 9), axis.title.x = 
 unloadNamespace('datasets')
 ```
 
-## For the clustering spotplots, we want to use the H&E images and plot by capture area, so we will need to load the big daddy SPE
+## For the clustering spotplots, we want to use the H&E images plotted by single tissue section, so use the Samui RDS
 ```{r}
-lc2 <- readRDS("processed-data/04_QC/04-lffLC_noEdges_noLocOutliers_remainder1pctileUMIorGene-removed.RDS")
+lc2 <- readRDS("processed-data/14_Samui_prep/01-Samui_TissSect_SPE_RotsMirrors.RDS")
 
-# load clustering and the split-sections coldata, which has a column with pre-split spot ids we can use to match everything back to capture level
+# this spe doesn't have the plot-ready versions of domain names so import
 louvs <- readRDS("processed-data/07_featureSelection_dimred_harmony_clustering/04-Initial_louvLeid_res0.5-1-2_clusterings.RDS")
 louvs <- louvs$HARMONYlmbna_HDG_SVG_2575[,.(rn,snnHARMONYlmbna_HDG_SVG_2575_louv_res1)]
 setnames(louvs,2,"clusid")
@@ -57,30 +57,14 @@ setnames(louvs,2,"clusid")
 anno <- fread("processed-data/08_validitycheck_25hdg75svg_louv1/10-25hdg75svg_louv1_annots.txt")
 louvs <- merge.data.table(louvs,anno,by="clusid")
 
-splitcd <- fread("processed-data/06-QCed_SPE_splitToTissSect_colData.txt")
-splitcd <- splitcd[,.(rowname,original_spot_id)]
+## LC NM+- sublabels are already in the SPE for later.
 
-louvs <- merge.data.table(louvs,splitcd,by.x="rn",by.y="rowname") # split section ids
-
-## also attach LCnm subsets because we will use them in this figure
-lcnm <- fread("processed-data/10_subclustering/04-LCsubclus-by-NM_otherclusts-by-LCorLCNMadjacency.txt")
-lcnm <- lcnm[,.(rn,NMseg_subclus)]
-
-louvs <- merge.data.table(louvs,lcnm,by="rn",all.x=T)
-louvs$anno[louvs$anno=="Oligo_Complex"] <- "Oligo and Other Types Mixed"
-louvs$anno[louvs$anno=="Astro_Oligo"] <- "Astro-Oligo Mixed"
-louvs$anno[louvs$anno=="Oligo_Astro"] <- "Oligo-Astro Mixed"
-louvs$anno[louvs$anno=="ACHE_SERT_LC_WM"] <- "*ACHE*, *SERT*, LC, Oligo Mixed"
-louvs$anno[louvs$anno=="ACHE_SERT_Npep"] <- "*ACHE*, *SERT*, Neuropeptide Mixed"
-
-
-louvs <- DataFrame(louvs,row.names=louvs$original_spot_id)[colnames(lc2),]
+louvs <- DataFrame(louvs,row.names=louvs$rn)[colnames(lc2),]
 stopifnot(nrow(louvs)==ncol(lc2))
 
-colLabels(lc2) <- louvs$anno
-lc2$lcnm_subclus <- louvs$NMseg_subclus
+colLabels(lc2) <- louvs$plot_anno
 
-rm(splitcd,lcnm)
+rm(louvs,anno)
 gc(full=T)
 ```
 
@@ -102,9 +86,9 @@ extract_legend <- function(my_ggp) {
 ```
 
 ## Fig 2A: 2x2 grid of plots with the clusters indicated
-show the following captures: V13M06-331_A1, V13M06-333_B1, V13M06-404_B1, V13M06-403_D1. But first make a shared legend to extract
+show ONE section for ea of the following captures: V13M06-331_A1, V13M06-333_B1, V13M06-404_B1, V13M06-403_D1. But first make a shared legend to extract
 ```{r}
-tmpdat <- as.data.table(colData(lc2[,lc2$sample_id=="V13M06-331_A1"])[,c("label","array_row","array_col")])
+tmpdat <- as.data.table(colData(lc2[,lc2$sample_id=="V13M06-331_A1s1"])[,c("label","array_row","array_col")])
 
 tmpplt <- ggplot(tmpdat,aes(x=array_col,y=array_row,col=label))+
     geom_point()+
@@ -120,11 +104,29 @@ leg.tmp <- extract_legend(tmpplt)
 dev.off()
 ####
 
-samps <- c("V13M06-331_A1","V13M06-333_B1","V13M06-404_B1","V13M06-403_D1")
+samps <- c("V13M06-331_A1s1","V13M06-333_B1s2","V13M06-404_B1s2","V13M06-403_D1s1")
+
+tmpcd <- unique(as.data.table(colData(lc2))[,.(sample_id,capture_id,Sex,APOE,YRI)])
+# uh somehow donor id isn't in here but we can nab that rq
+demos <- fread("raw-data/demos.txt")
+demos[,capture_id:=paste0(slide,"_",array)]
+tmpcd <- merge.data.table(tmpcd,demos[,.(capture_id,Donors)])
+rm(demos)
 
 plts <- lapply(samps,function(s){
-    p <- vis_clus(lc2,sampleid=s,spatial = T,na_color = NA,auto_crop = T,point_size = 0.6,alpha=0.65,clustervar = "label",colors = pal,image_id = "lowres")+
+  subcd <- tmpcd[sample_id==s]
+  ttl <- paste0(subcd$Donors,
+                " (",
+                gsub(subcd$APOE,pattern=" ",replacement=""),
+                ", ",
+                ifelse(subcd$YRI>0.5,"AA","EA"),
+                ", ",
+                subcd$Sex,
+                ")"
+                )
+  p <- vis_clus(lc2,sampleid=s,spatial = T,na_color = NA,auto_crop = T,point_size = 0.6,alpha=0.65,clustervar = "label",colors = pal,image_id = "lowres")+
         guides(color="none",fill="none")+
+        ggtitle(ttl)+
         theme(plot.title = element_text(size=9,hjust=0.5,margin=margin(0,0,0,0,unit="in")),
               panel.border = element_blank(),
               plot.margin = margin(-0.1,0.025,-0.475,-0.45,unit="in"))
@@ -141,7 +143,54 @@ rm(plts,tmpdat,tmpplt,leg.tmp,samps)
 gc(full=T)
 ```
 
-Fig 2B: marker heatmap
+Fig 2B: Spot balance across E2/E4 • Sex • YRICEU groups (sharing legend with A and C)
+```{r}
+tmpcd <- as.data.table(colData(lc2))[,.(sample_id,Sex,APOE,YRI,label)]
+tmpcd[,YRI:=ifelse(YRI>0.5,"AA","EA")]
+tmpcd[,APOE:=ifelse(APOE %in% c("E4/ E4","E3/ E4"),"E4","E2")]
+tmpcd[,group:=paste0(APOE, " ", YRI, " ",Sex)]
+
+pltdat <- tmpcd[,.N,by=c("group","label")]
+pltdat[,group:=factor(group,levels=c(
+  "E4 AA F",
+  "E4 AA M",
+  "E4 EA M",
+  "E2 AA F",
+  "E2 AA M",
+  "E2 EA F",
+  "E2 EA M"
+))]
+pltdat[,totN:=sum(N),by="group"]
+pltdat[,grouplabprop:=N/totN]
+
+stopifnot(all(names(pal) %in% pltdat$label))
+
+pdf("plots/manuscript/Fig2/2B_Domainprops_by_group.pdf",height=2.56,width=1.25,onefile = FALSE)
+ggplot(pltdat,aes(x=group,y=grouplabprop,fill=label))+
+  geom_col()+
+  guides(fill="none")+
+  scale_fill_manual(values = pal)+
+  scale_y_continuous(limits=c(0,1),expand=c(0,0))+
+  labs(x="Demographic Group",y="Proportion of Spots")+
+  theme(
+        axis.text.x=element_markdown(angle=45,hjust=1,vjust=1.1,size=8,colour = "#000000"),
+        axis.text.y=element_text(size=8,colour = "#000000"),
+        axis.title.x=element_text(size=9,colour = "#000000"),
+        axis.title.y=element_text(size=9,colour = "#000000", margin=margin(0,0,0,-0.02,unit="in")),
+        legend.title=element_text(size=8,hjust=0.5,colour = "#000000"),
+        legend.text=element_text(size=7,colour = "#000000"),
+        legend.background=element_blank(),
+        legend.margin=margin(0,-0.08,0,-0.1,unit="in"),
+        axis.ticks.x = element_line(linewidth=0.5,colour="#000000"),
+        axis.ticks.y = element_line(linewidth=0.5,colour="#000000"),
+        panel.grid.major.x = element_line(linewidth=0.5),
+        panel.grid.major.y = element_blank(),
+        panel.grid.minor.y = element_blank()
+  )
+dev.off()
+```
+
+Fig 2C: marker heatmap
 ```{r}
 ### get markers
 globalmk <- fread("processed-data/13_markers_and_registration_final/01-HDGSVG2575louv1_regWrapOut_1vAll_markers.txt")
@@ -223,7 +272,7 @@ pltdat$label <- louvs2$anno
 pltdat$label <- factor(pltdat$label,levels=clusord)
 ```
 
-# 2B-continued make the plot.
+# 2C-continued make the plot.
 ```{r}
 # z score 99 %ile is 3point something. So we can just plot a symmetric -3,0,3 to get most of the variation in the significant things  
 
@@ -262,7 +311,7 @@ htmap <- ComplexHeatmap::Heatmap(
 ### save plot; add title 
 
 # unstack the legends in illustator; ital the gene names in illustrator.
-CairoPDF("plots/manuscript/Fig2/2B-topSignifMarkersByLFC_heatmap.pdf", height = 4.5, width = 3.5)
+CairoPDF("plots/manuscript/Fig2/2C-topSignifMarkersByLFC_heatmap.pdf", height = 4.5, width = 3.5)
 
 draw(htmap,
     annotation_legend_side = "right",
@@ -274,7 +323,7 @@ dev.off()
 rm(pltdat,pltdat2,louvs2,gns,cnames,clusts,pal2,clusord,mkg,htmap)
 ```
 
-Fig 2C: WeberDivecha registration. we ran this when vetting different clustering/feature approaches.
+Fig 2D: WeberDivecha registration. we ran this when vetting different clustering/feature approaches.
 ```{r}
 webdivreg <- readRDS("processed-data/13_markers_and_registration_final/02-LC3_registration_to_WeberDivecha23_final.RDS")
 
@@ -298,7 +347,7 @@ pltdat[,LFF_clus:=as.character(LFF_clus)]
 pltdat <- pltdat[
     LFF_clus %in% c("LC","ACHE_SERT_LC_WM","ACHE_SERT_Npep","Astro","Oligo") 
     & 
-    WebDiv_label %in% c("label_merged_x5HT","label_merged_xNE","label_merged_xastrocytes","label_merged_xinhibitory","label_merged_xexcitatory","label_merged_xoligodendrocytes","unsupervised_5HT_TRUE","supervised_NE_TRUE","annot_region_TRUE","annot_spot_TRUE")]
+    WebDiv_label %in% c("label_merged_x5HT","label_merged_xastrocytes","label_merged_xinhibitory","label_merged_xexcitatory","label_merged_xoligodendrocytes","supervised_NE_TRUE","annot_spot_TRUE")]
 
 ## prettify
 pltdat[,WebDiv_label:=gsub(WebDiv_label,pattern="label_merged_x",replacement="snSeq ")]
@@ -308,26 +357,30 @@ pltdat[WebDiv_label=="snSeq astrocytes",WebDiv_label:="snSeq Astrocytes"]
 pltdat[WebDiv_label=="snSeq oligodendrocytes",WebDiv_label:="snSeq Oligo"]
 
 pltdat[WebDiv_label=="supervised_NE_TRUE",WebDiv_label:="snSeq Manual NE"]
-pltdat[WebDiv_label=="unsupervised_5HT_TRUE",WebDiv_label:="snSeq Unsuperv. 5HT"]
-pltdat[WebDiv_label=="annot_region_TRUE",WebDiv_label:="Vis. LC Region, Manual"]
+# pltdat[WebDiv_label=="unsupervised_5HT_TRUE",WebDiv_label:="snSeq Unsuperv. 5HT"]
+# pltdat[WebDiv_label=="annot_region_TRUE",WebDiv_label:="Vis. LC Region, Manual"]
 pltdat[WebDiv_label=="annot_spot_TRUE",WebDiv_label:="Vis. LC Spot, Manual"]
 
-pltdat[,LFF_clus:=gsub(LFF_clus,pattern="_",replacement=" ")]
 
-pltdat[,WebDiv_label:=factor(WebDiv_label,levels=c(paste0("snSeq ",c("Oligo", "Astrocytes", "Unsuperv. 5HT", "5HT", "Inhibitory", "Excitatory", "NE","Manual NE")),"Vis. LC Spot, Manual","Vis. LC Region, Manual"))]
-pltdat[,LFF_clus:=factor(LFF_clus,levels=c("Oligo","Astro","ACHE SERT Npep","ACHE SERT LC WM","LC"))]
+pltdat[,WebDiv_label:=factor(WebDiv_label,levels=c(paste0("snSeq ",c("Oligo", "Astrocytes", "5HT", "Inhibitory", "Excitatory", "Manual NE")),"Vis. LC Spot, Manual"))]
+
+pltdat[,LFF_clus:=gsub(LFF_clus,pattern="_",replacement=" ")]
+pltdat[,LFF_clus:=gsub(LFF_clus,pattern="ACHE",replacement="\\*ACHE\\*,")]
+pltdat[,LFF_clus:=gsub(LFF_clus,pattern="SERT",replacement="\\*SERT\\*,")]
+pltdat[LFF_clus=="*ACHE*, *SERT*, LC WM",LFF_clus:="*ACHE*, *SERT*, LC, WM"]
+pltdat[,LFF_clus:=factor(LFF_clus,levels=rev(c("Oligo","Astro","*ACHE*, *SERT*, Npep","*ACHE*, *SERT*, LC, WM","LC")))]
 
 ## plot and save
 
-pdf("plots/manuscript/Fig2/2C-WeberDivecha_registration.pdf",height=3.5,width=3.5)
+pdf("plots/manuscript/Fig2/2D-WeberDivecha_registration.pdf",height=3.5,width=3.5)
 ggplot(pltdat,aes(x=LFF_clus,y=WebDiv_label,fill=value))+
     geom_tile()+
     scale_x_discrete(expand = c(0,0)) +
     scale_y_discrete(expand = c(0,0)) +
     scale_fill_continuous(type="viridis",limits=c(min(pltdat$value),max(pltdat$value)))+
-    labs(x="Cluster (This Dataset)",y="LC-NE snSeq/Visium\n(Weber, Divecha 2023)",fill="Spearman Cor.\n(Top ~4500 En-\nriched Genes)")+
+    labs(x="Domain (This Dataset)",y="LC-NE snSeq/Visium\n(Weber, Divecha 2023)",fill="Spearman Cor.\n(Top ~4500 En-\nriched Genes)")+
     theme(
-        axis.text.x=element_text(angle=45,hjust=1,size=8,colour = "#000000"),
+        axis.text.x=element_markdown(angle=45,hjust=1,size=8,colour = "#000000"),
         axis.text.y=element_text(size=8,colour = "#000000"),
         axis.title.x=element_text(size=9,colour = "#000000"),
         axis.title.y=element_text(size=9,colour = "#000000", margin=margin(0,0,0,-0.02,unit="in")),
