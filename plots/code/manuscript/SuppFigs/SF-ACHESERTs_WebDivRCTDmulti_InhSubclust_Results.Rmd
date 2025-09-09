@@ -39,8 +39,13 @@ theme_set(theme_bw()+theme(axis.text.x = element_text(size = 8,color = "#000000"
 unloadNamespace("datasets")
 ```
 
+# make sup fig and sup data file
 ```{r}
 rctdresults <- readRDS("processed-data/10_subclustering/11-RCTDmulti4_webdivLabel-LabMerge-LabWithInhibSubclusts_samplewise_results.RDS")
+
+# hold for later
+supdat <- rctdresults[c("label","label_merged")]
+#
 
 rctdresults <- rctdresults$label
 
@@ -81,6 +86,25 @@ ggplot(rctdresults,aes(x=variable,y=value))+
 dev.off()
 ```
 
+supp data file:
+```{r}
+newsupdat <- list()
+i<-1
+for (i in c(1:2)){
+    j<-c("multi","full")
+    for (rctd in j){
+        tmpdat <- supdat[[i]]
+        tmpdat <- rbindlist(tmpdat,idcol="sample_id",fill=T)
+        keepn <- c("rn","sample_id",grep(names(tmpdat),pattern="multi",value=T))
+        tmpdat <- tmpdat[,..keepn]
+        setnames(tmpdat,"rn","rowname")
+        newsupdat[[length(newsupdat)+1]] <- tmpdat
+        names(newsupdat)[length(newsupdat)] <- paste0("RCTD-",rctd,"_WeberDivecha_",names(supdat)[i])
+    }
+}
+
+saveRDS(newsupdat,"plots/manuscript/SuppData/SupDat-RCTDMultiFull_WebDivLabel_WebDivLabelmerged.RDS")
+```
 
 ```{r}
 sessionInfo()
