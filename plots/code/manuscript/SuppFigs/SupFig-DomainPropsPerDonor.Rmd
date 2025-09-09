@@ -1,0 +1,180 @@
+---
+title: "SF-DomainPropsPerDonor"
+author: "Bernie Mulvey"
+date: "2025-09-09"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(fig.height = 10,fig.width = 7,include = FALSE)
+#### sets tab autocompletion for directories to begin from the directory containing the .Rproj session, instead of the script's directory if different
+knitr::opts_knit$set(root.dir = here::here())
+
+library(data.table)
+library(ggplot2)
+library(ggtext)
+library(gridExtra)
+# library(SpatialFeatureExperiment)
+
+## rstudio GUI tweaks
+require(colorout)
+ColorOut()
+options("styler.addins_style_transformer" = "biocthis::bioc_style()")
+##
+
+## enable forked parallel processing with BiocParallel::multicoreParam, future::, etc. seemed to need this a couple times, but otherwise havent so its here as a preventative measure. part of this is adding the line 
+# OBJC_DISABLE_INITIALIZE_FORK_SAFETY=YES
+# to Renviron.site. see e.g. top response on https://stackoverflow.com/questions/73638290/python-on-mac-is-it-safe-to-set-objc-disable-initialize-fork-safety-yes-globall 
+library(parallelly)
+options(parallelly.supportsMulticore.disableOn="")
+options(parallelly.fork.enable=TRUE)
+library(BiocParallel)
+options(bphost="localhost")
+
+
+## ggplot defaults
+theme_set(theme_bw()+theme(axis.text.x = element_text(size = 8,color = "#000000"), axis.title.x = element_text(size = 9,color = "#000000"), axis.text.y = element_text(size = 8,color = "#000000"), axis.title.y = element_text(size =9,color = "#000000"), plot.title = element_markdown(size = 10,hjust=0.5,color = "#000000"), strip.text = element_text(size=11), legend.text = element_markdown(size=7,color = "#000000"), legend.title = element_text(size=8,hjust=0.5,color = "#000000"),axis.ticks = element_line(linewidth=0.5),panel.grid.major = element_line(linewidth=0.5),panel.grid.minor=element_line(linewidth=0.25),plot.title.position="plot"))
+
+## last of all, unload the base package datasets, whose data keep getting in the way of autocompletions (e.g., Theoph is priortized over TRUE)
+unloadNamespace("datasets")
+```
+
+```{r}
+cd <- fread("processed-data/06-QCed_SPE_splitToTissSect_colData.txt")
+
+louvs <- readRDS("processed-data/07_featureSelection_dimred_harmony_clustering/04-Initial_louvLeid_res0.5-1-2_clusterings.RDS")
+louvs <- louvs$HARMONYlmbna_HDG_SVG_2575[,.(rn,snnHARMONYlmbna_HDG_SVG_2575_louv_res1)]
+setnames(louvs,2,"clusid")
+
+anno <- fread("processed-data/08_validitycheck_25hdg75svg_louv1/10-25hdg75svg_louv1_annots.txt")
+louvs <- merge.data.table(louvs,anno,by="clusid")
+
+stopifnot(nrow(cd)==nrow(louvs))
+
+cd <- merge.data.table(cd,louvs[,.(rn,plot_anno)],by.x="rowname",by.y="rn")
+rm(louvs,anno)
+gc(full=T)
+```
+
+## load cluster 9-color palette
+```{r}
+pal <- readRDS("plots/finalpal_somuchfornorainbows.RDS")
+
+stopifnot(all(names(pal) %in% unique(cd$plot_anno)))
+```
+
+Trying to set y limits to 0,1 without expansion results in dropped bar parts for some donors, whatever just fix it in illustrator after.
+```{r}
+
+pltdat <- cd[,.N,by=c("brnum","plot_anno")]
+
+pltdat[,totN:=sum(N),by="brnum"]
+pltdat[,grouplabprop:=N/totN]
+
+stopifnot(all(names(pal) %in% pltdat$plot_anno))
+
+# fix brnum 6119 for tidiness
+pltdat[brnum=="Br6119(re-dis)",brnum:="Br6119"]
+
+pdf("plots/manuscript/SuppFigs/SF-Domainprops_by_donor.pdf",height=6,width=7,onefile = FALSE)
+ggplot(pltdat,aes(x=brnum,y=grouplabprop,fill=plot_anno))+
+  geom_col()+
+  scale_fill_manual(values = pal)+
+  labs(fill="Domain")+
+  labs(x="Donor ID",y="Proportion of Spots")+
+  theme(
+        axis.text.x=element_markdown(angle=45,hjust=1,vjust=1.1,size=8,colour = "#000000"),
+        axis.text.y=element_text(size=8,colour = "#000000"),
+        axis.title.x=element_text(size=9,colour = "#000000"),
+        axis.title.y=element_text(size=9,colour = "#000000", margin=margin(0,0,0,-0.02,unit="in")),
+        legend.title=element_text(size=8,hjust=0.5,colour = "#000000"),
+        legend.text=element_markdown(size=7,colour = "#000000"),
+        legend.background=element_blank(),
+        legend.margin=margin(0,-0.08,0,-0.1,unit="in"),
+        axis.ticks.x = element_line(linewidth=0.5,colour="#000000"),
+        axis.ticks.y = element_line(linewidth=0.5,colour="#000000"),
+        panel.grid.major.x = element_line(linewidth=0.5),
+        panel.grid.major.y = element_blank(),
+        panel.grid.minor.y = element_blank()
+  )
+dev.off()
+```
+
+```{r}
+sessionInfo()
+sessioninfo::session_info()
+```
+─ Session info ───────────────────────────────────────────────────────────────────────
+ setting  value
+ version  R version 4.4.3 (2025-02-28)
+ os       macOS Sequoia 15.3.2
+ system   aarch64, darwin20
+ ui       RStudio
+ language (EN)
+ collate  en_US.UTF-8
+ ctype    en_US.UTF-8
+ tz       America/Chicago
+ date     2025-09-09
+ rstudio  2024.07.0-daily+219 Cranberry Hibiscus (desktop)
+ pandoc   3.1.11 @ /Applications/RStudio.app/Contents/Resources/app/quarto/bin/tools/aarch64/ (via rmarkdown)
+ quarto   1.4.555 @ /Applications/RStudio.app/Contents/Resources/app/quarto/bin/quarto
+
+─ Packages ───────────────────────────────────────────────────────────────────────────
+ !  package      * version date (UTC) lib source
+    BiocParallel * 1.40.0  2024-11-23 [1] Bioconductor 3.20 (R 4.4.2)
+ VP cli            3.6.4   2025-04-23 [2] CRAN (R 4.4.1) (on disk 3.6.5)
+    codetools      0.2-20  2024-03-31 [1] CRAN (R 4.4.3)
+    colorout     * 1.3-0.2 2024-05-01 [1] Github (jalvesaq/colorout@c6113a2)
+    commonmark     1.9.5   2025-03-17 [1] CRAN (R 4.4.1)
+    data.table   * 1.17.4  2025-05-26 [1] CRAN (R 4.4.3)
+    dichromat      2.0-0.1 2022-05-02 [1] CRAN (R 4.4.0)
+    digest         0.6.37  2024-08-19 [1] CRAN (R 4.4.1)
+    dplyr          1.1.4   2023-11-17 [1] CRAN (R 4.4.0)
+    evaluate       1.0.3   2025-01-10 [1] CRAN (R 4.4.1)
+    farver         2.1.2   2024-05-13 [1] CRAN (R 4.4.0)
+    fastmap        1.2.0   2024-05-15 [1] CRAN (R 4.4.0)
+    generics       0.1.4   2025-05-09 [1] CRAN (R 4.4.1)
+    ggplot2      * 3.5.2   2025-04-09 [1] CRAN (R 4.4.1)
+    ggtext       * 0.1.2   2022-09-16 [1] CRAN (R 4.4.0)
+    glue           1.8.0   2024-09-30 [1] CRAN (R 4.4.1)
+    gridExtra    * 2.3     2017-09-09 [1] CRAN (R 4.4.0)
+    gridtext       0.1.5   2022-09-16 [1] CRAN (R 4.4.0)
+    gtable         0.3.6   2024-10-25 [1] CRAN (R 4.4.1)
+    here           1.0.1   2020-12-13 [1] CRAN (R 4.4.0)
+    htmltools      0.5.8.1 2024-04-04 [1] CRAN (R 4.4.0)
+    knitr          1.50    2025-03-16 [1] CRAN (R 4.4.2)
+    labeling       0.4.3   2023-08-29 [1] CRAN (R 4.4.0)
+    lifecycle      1.0.4   2023-11-07 [1] CRAN (R 4.4.0)
+    litedown       0.6     2025-02-27 [1] CRAN (R 4.4.3)
+    magrittr       2.0.3   2022-03-30 [1] CRAN (R 4.4.0)
+    markdown       2.0     2025-03-23 [1] CRAN (R 4.4.3)
+    parallelly   * 1.43.0  2025-03-24 [1] CRAN (R 4.4.1)
+    pillar         1.10.2  2025-04-05 [1] CRAN (R 4.4.1)
+    pkgconfig      2.0.3   2019-09-22 [1] CRAN (R 4.4.0)
+    R6             2.6.1   2025-02-15 [1] CRAN (R 4.4.1)
+    RColorBrewer   1.1-3   2022-04-03 [1] CRAN (R 4.4.0)
+    Rcpp           1.0.14  2025-01-12 [1] CRAN (R 4.4.1)
+ VP rlang        * 1.1.5   2025-04-11 [2] CRAN (R 4.4.1) (on disk 1.1.6)
+    rmarkdown      2.29    2024-11-04 [1] CRAN (R 4.4.1)
+    rprojroot      2.0.4   2023-11-05 [1] CRAN (R 4.4.0)
+    rstudioapi     0.17.1  2024-10-22 [1] CRAN (R 4.4.1)
+    scales         1.4.0   2025-04-24 [1] CRAN (R 4.4.1)
+    sessioninfo    1.2.3   2025-02-05 [1] CRAN (R 4.4.1)
+    stringi        1.8.7   2025-03-27 [1] CRAN (R 4.4.1)
+    stringr        1.5.1   2023-11-14 [1] CRAN (R 4.4.0)
+    tibble         3.2.1   2023-03-20 [1] CRAN (R 4.4.0)
+    tidyselect     1.2.1   2024-03-11 [1] CRAN (R 4.4.0)
+    vctrs          0.6.5   2023-12-01 [1] CRAN (R 4.4.0)
+    withr          3.0.2   2024-10-28 [1] CRAN (R 4.4.1)
+    xfun           0.52    2025-04-02 [1] CRAN (R 4.4.1)
+    xml2           1.3.8   2025-03-14 [1] CRAN (R 4.4.1)
+    yaml           2.3.10  2024-07-26 [1] CRAN (R 4.4.0)
+
+ [1] /Library/Frameworks/R.framework/Versions/4.4-arm64/Resources/library
+ [2] /Users/bmulvey/Library/R/arm64/4.4/library
+
+ * ── Packages attached to the search path.
+ V ── Loaded and on-disk version mismatch.
+ P ── Loaded and on-disk path mismatch.
+
+──────────────────────────────────────────────────────────────────────────────────────
