@@ -530,6 +530,18 @@ gc(full=T)
 saveRDS(lc3.5,"processed-data/14_Samui_prep/01-Samui_TissSect_SPE_RotsMirrors.RDS")
 ```
 
+## save an h5ad version for samui
+```{r}
+library(reticulate)
+library(zellkonverter)
+
+## drop duplicated rownames
+keepg <- as.data.table(rownames(lc3.5))[,.N,by="V1"][N==1,V1]
+lc3.5 <- lc3.5[keepg,]
+writeH5AD(lc3.5,"processed-data/14_Samui_prep/01-Samui_TissSect_SPE_RotsMirrors_logcounts.h5ad",X_name = "logcounts")
+
+
+```
 
 seshinfo
 ```{r}
