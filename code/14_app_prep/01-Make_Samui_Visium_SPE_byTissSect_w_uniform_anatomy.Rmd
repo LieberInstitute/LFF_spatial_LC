@@ -1,0 +1,779 @@
+---
+title: "01-Make_Samui_Visium_SPE_byTissSect_w_uniform_anatomy"
+author: "Bernie Mulvey"
+date: "2025-07-25"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(fig.height = 10,fig.width = 7,include = FALSE)
+#### sets tab autocompletion for directories to begin from the directory containing the .Rproj session, instead of the script's directory if different
+knitr::opts_knit$set(root.dir = here::here())
+
+library(data.table)
+library(SpatialExperiment)
+# library(SpatialFeatureExperiment)
+
+## rstudio GUI tweaks
+require(colorout)
+ColorOut()
+options("styler.addins_style_transformer" = "biocthis::bioc_style()")
+##
+
+## enable forked parallel processing with BiocParallel::multicoreParam, future::, etc. seemed to need this a couple times, but otherwise havent so its here as a preventative measure. part of this is adding the line 
+# OBJC_DISABLE_INITIALIZE_FORK_SAFETY=YES
+# to Renviron.site. see e.g. top response on https://stackoverflow.com/questions/73638290/python-on-mac-is-it-safe-to-set-objc-disable-initialize-fork-safety-yes-globall 
+library(parallelly)
+options(parallelly.supportsMulticore.disableOn="")
+options(parallelly.fork.enable=TRUE)
+library(BiocParallel)
+options(bphost="localhost")
+
+## last of all, unload the base package datasets, whose data keep getting in the way of autocompletions (e.g., Theoph is priortized over TRUE)
+unloadNamespace("datasets")
+```
+
+
+We already have an SPE with a copy of the image slot for each tissue section so we can start from here.
+```{r}
+lc2 <- readRDS("processed-data/06-QCed_SPE_split_to_tissSections.RDS")
+```
+
+For each tissue section, we want dorsal down, medial left.
+### WARNING : DISTORTS SOME SAMPLES (fiduc. frame and tissue end up misaligned and/or cut off, somehow) WHEN PLOTTING IN SPATIAL LIBD--need to set auto_crop=FALSE; unsure why. looks like maybe if the fiducial frame is not an equal distance from all four image boundaries it doesn't work. as long as we don't make figure panels from slibd doesn't matter. (not very space-efficient to use uncropped spatial images)
+
+all angles clockwise and in spatialLIBD plotting space which is NOT always the orientation in the powerpoint
+
+# V13M06-386_B1s1: 180
+# V13M06-386_B1s2: 180
+# V13B23-286_B1s1 (top in captured orientation): horiz mirror
+# V13B23-286_B1s2: vert mirror
+# V13M06-403_C1s1 (bottom  " " "): vert mirror
+# V13M06-403_C1s2: horiz mirror
+# V13M06-332_C1s1 (top in " "): no change?
+# V13M06-332_C1s2: 180
+# V13M06-403_B1s1 (bottom in native): 180
+# V13M06-403_B1s2: -90
+# V13F27-339_D1s1 (bottom " "): 180
+# V13F27-339_D1s2: no change
+# V13M06-332_A1s1 (top " "): horiz mirror
+# V13M06-332_A1s2: vert mirror
+# V13M06-404_C1s1 (top): 180
+# V13M06-404_C1s2: 180
+# V13M06-331_A1s1: 90, horiz mirror
+# V13M06-331_A1s2: -90, horiz mirror
+# V13M06-331_B1s1 (left): 90
+# V13M06-331_B1s2: 90, vert mirror
+# V13M06-331_C1s1 (bot): vert mirror
+# V13M06-331_C1s2: vert mirror
+# V13M06-331_D1s1 (bot): vert mirror
+# V13M06-331_D1s2: vert mirror
+# V13M06-333_A1s1: vert mirror
+# V13M06-333_A1s2: vert mirror
+# V13M06-333_B1s1: Vert mirror
+# V13M06-333_B1s2: vert mirror
+# V13M06-333_C1s1 (bot): 180
+# V13M06-333_C1s2: no change
+# V13M06-333_D1s1 (bot): vert mirror
+# V13M06-333_D1s2: vert mirror
+# V13M06-332_B1s1 (bot): vert mirror
+# V13M06-332_B1s2: vert mirror
+# V13M06-332_D1s1 (bot): 180
+# V13M06-332_D1s2: horiz mirror
+# V13M06-404_A1s1 (bot): vert mirror
+# V13M06-404_A1s2: vert mirror
+# V13M06-404_B1s1 : 180
+# V13M06-404_B1s2: 180
+# V13M06-404_D1s1: 180
+# V13M06-404_D1s2: 180
+# V13M06-403_A1s1: 180
+# V13M06-403_A1s2: 180
+# V13M06-403_D1s1 (botleft): 180
+# V13M06-403_D1s2: no change
+# V13M06-402_A1s1 (top): 180
+# V13M06-402_A1s2: no change
+# V13M06-402_B1s1 (l): 90, horiz flip
+# V13M06-402_B1s2: 90, vert flip
+# V13M06-402_C1s1 (bot): vert mirror 
+# V13M06-402_C1s2: vert mirror
+# V13M06-402_D1s1 (top): vert mirror
+# V13M06-402_D1s2: vert mirror
+# V13M06-401_A1s1 (bot): 180
+# V13M06-401_A1s2: no change
+# V13M06-401_B1s1 (bot): vert mirror
+# V13M06-401_B1s2: vert mirror
+# V13M06-401_C1s1 (bot): vert mirror
+# V13M06-401_C1s2: horiz mirror
+# V13M06-401_D1s1 (bot): 180
+# V13M06-401_D1s2: no change
+# V13M06-386_A1s1 (l): 90
+# V13M06-386_A1s2: -90
+# V13M06-386_C1s1 (bot): 180
+# V13M06-386_C1s2: no change
+# V13M06-386_D1s1 (bot): no change
+# V13M06-386_D1s2: vert mirror
+# V13B23-366_A1s1 (only): no change
+# V13B23-284_A1s1 (l): 90, horiz flip
+# V13B23-284_A1s2: 90, vert flip
+# V13B23-284_B1s1 (l): no change
+# V13B23-284_B1s2: 180
+# V13B23-284_C1s1 (top): no change
+# V13B23-284_C1s2: 180
+# V13B23-284_D1s1 (r): vert flip
+# V13B23-284_D1s2: horiz flip
+# V13F27-339_A1s1 (bot): 180
+# V13F27-339_A1s2: no change
+# V13F27-339_B1s1 (bot): 180
+# V13F27-339_B1s2: 180
+# V13F27-339_C1s1 (l): 90
+# V13F27-339_C1s2: -90
+# V13B23-286_A1s1 (bot): 180
+# V13B23-286_A1s2: no change
+
+# saved a tabular copy of ^this^ in local_ref/samplexforms.txt
+```{r}
+xforms <- fread("local_ref/samplexforms.txt")
+unique(xforms$xforms)
+xforms[,xforms:=gsub(xforms,pattern="flip",replacement="mirror")]
+xforms[,xforms:=gsub(xforms,pattern="Vert",replacement="vert")]
+
+## make an object with the unchanged samples
+nodelta <- xforms[xforms=="no change",sample]
+lc3 <- lc2[,lc2$sample_id %in% nodelta]
+
+# to prevent mistakes/save memory, remove these from the original
+lc2 <- lc2[,!(lc2$sample_id %in% nodelta)]
+xforms <- xforms[!(sample %in% nodelta)]
+gc(full=T)
+
+rm(nodelta)
+```
+
+now go thru each transformation. make a list to store the individual transformed objects that we'll add to lc3 at the end.
+
+# 180s
+```{r}
+newsamp <- list()
+
+oneeighty <- xforms[xforms=="180",sample]
+
+i<-1
+for (i in c(1:length(oneeighty))){
+  tmp <- rotateObject(lc2,sample_id=oneeighty[i],degrees=180)
+  newsamp[[(length(newsamp)+1)]] <- tmp
+  names(newsamp)[length(newsamp)] <- oneeighty[i]
+  
+  lc2 <- lc2[,lc2$sample_id!=oneeighty[i]]
+  rm(tmp)
+  gc(full=T)
+
+}
+xforms <- xforms[xforms!="180"]
+
+rm(i,oneeighty)
+```
+
+# horiz mirrors
+```{r}
+hm <- xforms[xforms=="horiz mirror",sample]
+
+i<-1
+for (i in c(1:length(hm))){
+  tmp <- mirrorObject(lc2,sample_id=hm[i],axis="v")
+  newsamp[[(length(newsamp)+1)]] <- tmp
+  names(newsamp)[length(newsamp)] <- hm[i]
+  
+  lc2 <- lc2[,lc2$sample_id!=hm[i]]
+  rm(tmp)
+  gc(full=T)
+
+}
+xforms <- xforms[xforms!="horiz mirror"]
+rm(hm,i)
+```
+
+
+# vert mirrors
+```{r}
+vm <- xforms[xforms=="vert mirror",sample]
+
+i<-1
+for (i in c(1:length(vm))){
+  tmp <- mirrorObject(lc2,sample_id=vm[i],axis="h")
+  newsamp[[(length(newsamp)+1)]] <- tmp
+  names(newsamp)[length(newsamp)] <- vm[i]
+  
+  lc2 <- lc2[,lc2$sample_id!=vm[i]]
+  rm(tmp)
+  gc(full=T)
+
+}
+xforms <- xforms[xforms!="vert mirror"]
+rm(vm,i)
+```
+
+# -90
+```{r}
+neg90 <- xforms[xforms=="-90",sample]
+
+i<-1
+for (i in c(1:length(neg90))){
+  tmp <- rotateObject(lc2,sample_id=neg90[i],degrees=270)
+  newsamp[[(length(newsamp)+1)]] <- tmp
+  names(newsamp)[length(newsamp)] <- neg90[i]
+  
+  lc2 <- lc2[,lc2$sample_id!=neg90[i]]
+  rm(tmp)
+  gc(full=T)
+
+}
+xforms <- xforms[xforms!="-90"]
+rm(neg90,i)
+```
+
+
+# +90
+```{r}
+pos90 <- xforms[xforms=="90",sample]
+
+i<-1
+for (i in c(1:length(pos90))){
+  tmp <- rotateObject(lc2,sample_id=pos90[i],degrees=90)
+  newsamp[[(length(newsamp)+1)]] <- tmp
+  names(newsamp)[length(newsamp)] <- pos90[i]
+  
+  lc2 <- lc2[,lc2$sample_id!=pos90[i]]
+  rm(tmp)
+  gc(full=T)
+
+}
+xforms <- xforms[xforms!="90"]
+rm(pos90,i)
+```
+
+
+# +90, horiz mirror
+```{r}
+pos90hm <- xforms[xforms=="90, horiz mirror",sample]
+
+i<-1
+for (i in c(1:length(pos90hm))){
+  tmp <- rotateObject(lc2,sample_id=pos90hm[i],degrees=90)
+  tmp <- mirrorObject(tmp,sample_id=pos90hm[i],axis="v")
+  newsamp[[(length(newsamp)+1)]] <- tmp
+  names(newsamp)[length(newsamp)] <- pos90hm[i]
+  
+  lc2 <- lc2[,lc2$sample_id!=pos90hm[i]]
+  rm(tmp)
+  gc(full=T)
+
+}
+xforms <- xforms[xforms!="90, horiz mirror"]
+rm(pos90hm,i)
+```
+
+# +90, vert mirror
+```{r}
+pos90vm <- xforms[xforms=="90, vert mirror",sample]
+
+i<-1
+for (i in c(1:length(pos90vm))){
+  tmp <- rotateObject(lc2,sample_id=pos90vm[i],degrees=90)
+  tmp <- mirrorObject(tmp,sample_id=pos90vm[i],axis="h")
+  newsamp[[(length(newsamp)+1)]] <- tmp
+  names(newsamp)[length(newsamp)] <- pos90vm[i]
+  
+  lc2 <- lc2[,lc2$sample_id!=pos90vm[i]]
+  rm(tmp)
+  gc(full=T)
+
+}
+xforms <- xforms[xforms!="90, vert mirror"]
+rm(pos90vm,i)
+```
+
+
+# -90, horiz mirror
+```{r}
+neg90hm <- xforms[xforms=="-90, horiz mirror",sample]
+
+i<-1
+for (i in c(1:length(neg90hm))){
+  tmp <- rotateObject(lc2,sample_id=neg90hm[i],degrees=270)
+  tmp <- mirrorObject(tmp,sample_id=neg90hm[i],axis="v")
+  newsamp[[(length(newsamp)+1)]] <- tmp
+  names(newsamp)[length(newsamp)] <- neg90hm[i]
+  
+  lc2 <- lc2[,lc2$sample_id!=neg90hm[i]]
+  rm(tmp)
+  gc(full=T)
+
+}
+xforms <- xforms[xforms!="-90, horiz mirror"]
+rm(neg90hm,i)
+```
+
+# -90, vert mirror
+```{r}
+# none
+# neg90vm <- xforms[xforms=="-90, vert mirror",sample]
+# 
+# i<-1
+# for (i in c(1:length(neg90vm))){
+#   tmp <- rotateObject(lc2,sample_id=neg90vm[i],degrees=270)
+#   tmp <- mirrorObject(tmp,sample_id=neg90vm[i],axis="h")
+#   newsamp[[(length(newsamp)+1)]] <- tmp
+#   names(newsamp)[length(newsamp)] <- neg90vm[i]
+#   
+#   lc2 <- lc2[,lc2$sample_id!=neg90vm[i]]
+#   rm(tmp)
+#   gc(full=T)
+# 
+# }
+# xforms <- xforms[xforms!="-90, vert mirror"]
+# rm(neg90vm,i,xforms)
+
+stopifnot(ncol(lc2)==0)
+rm(lc2)
+gc(full=T)
+```
+
+combine back into one spe
+```{r}
+i <-1
+for (i in c(1:length(newsamp))){
+  lc3 <- cbind(lc3,newsamp[[i]])
+  newsamp[[i]] <- "done" # save memory
+  gc(full=T)
+}
+
+length(unique(lc3$sample_id))
+# 85 -- same as orig
+dim(lc3) 
+# 29877 x 132484 -- same as orig. so we didn't screw anything up toooo badly
+rm(newsamp)
+gc(full=T)
+```
+
+## rearrange to match original for posterity (and check that everything's there)
+```{r}
+tmpcd <- fread("processed-data/06-QCed_SPE_splitToTissSect_colData.txt")
+stopifnot(all(tmpcd$rowname %in% colnames(lc3)))
+# phew
+
+lc3 <- lc3[,tmpcd$rowname]
+```
+
+## append clusters and genomic ancestry estimates; clean up metadata
+```{r}
+louvs <- readRDS("processed-data/07_featureSelection_dimred_harmony_clustering/04-Initial_louvLeid_res0.5-1-2_clusterings.RDS")
+anno <- fread("processed-data/08_validitycheck_25hdg75svg_louv1/10-25hdg75svg_louv1_annots.txt")
+louvs <- louvs$HARMONYlmbna_HDG_SVG_2575[,.(rn,snnHARMONYlmbna_HDG_SVG_2575_louv_res1)]
+setnames(louvs,2,"clusid")
+louvs <- merge.data.table(louvs,anno[,.(clusid,anno)],by="clusid")
+louvs <- DataFrame(louvs,row.names=louvs$rn)[colnames(lc3),]
+lc3$Domain <- louvs$anno
+rm(louvs,anno)
+####
+# nm+- LC:
+####
+nm <- fread("processed-data/10_subclustering/04-LCsubclus-by-NM_otherclusts-by-LCorLCNMadjacency.txt")
+nm[!(NMseg_subclus %in% c("LC_NMpos","LC_NMneg")),NMseg_subclus:="Other"]
+nm[NMseg_subclus=="LC_NMpos",NMseg_subclus:="LC (NM-positive)"]
+nm[NMseg_subclus=="LC_NMneg",NMseg_subclus:="LC (NM-negative)"]
+nm <- DataFrame(nm,row.names=nm$rn)[colnames(lc3),]
+lc3$LC_neuromelanin_or_other <- nm$NMseg_subclus
+rm(nm)
+####
+# FLARE ancestry
+####
+flares <- fread("raw-data/ancestryAndHaplotypes/FLARE/global_ancestry_estimates.txt")
+tmpcd <- as.data.table(colData(lc3),keep.rownames=T)
+tmpcd[brnum=="Br6119(re-dis)",brnum:="Br6119"]
+stopifnot(all(unique(tmpcd$brnum) %in% flares$ID))
+tmpcd <- merge.data.table(tmpcd,flares,by.x="brnum",by.y="ID")
+rm(flares)
+####
+# cleanup coldata
+# names(tmpcd)
+tmpcd <- tmpcd[,.(rn,sample_id,capture_id,array_row,array_col,sum_umi,sum_gene,expr_chrM,expr_chrM_ratio,APOE,Sex,Age,Visium_slide,sizeFactor,Kit,hemisphere,N_NMbodies,Prop_NM,Intensity_NM,CentroidSignalCount_NM,tissueNMscore,Domain,LC_neuromelanin_or_other,CEU,YRI,CHB)]
+tmpcd <- DataFrame(tmpcd,row.names=tmpcd$rn)[colnames(lc3),]
+tmpcd$rn <- NULL
+
+colData(lc3) <- tmpcd
+
+## save the SPE
+saveRDS(lc3,"processed-data/14_Samui_prep/01-Samui_TissSect_SPE_RotsMirrors.RDS")
+```
+
+# plot check orientations
+```{r}
+library(spatialLIBD)
+library(gridExtra)
+library(ggplot2)
+rownames(lc3) <- rowData(lc3)$gene_name
+
+## do this in the same order the anatomy guide ppt is in
+xforms <- fread("local_ref/samplexforms.txt")
+plts <- lapply(xforms$sample,function(s){
+  p <- vis_gene(lc3,sampleid = s,geneid = "DBH",pdf_file = NULL,spatial = T,return_plots = T,auto_crop = T,point_size = 1.3,alpha=0.3)
+  p<-p+guides(color="none",fill="none")+theme(title=element_text(size=11))
+  return(p)})
+
+pdf("~/Desktop/Samuirotscheck.pdf",height=99,width=14)
+do.call("grid.arrange",c(plts,ncol=4))
+dev.off()
+```
+
+## some of these have an issue encountered previously where certain transformations screw up the coordinates of the spots relative to the tissue, in which case we just have to kinda guess and check values to change one or the other of the spatialCoords by until they're back in about the right place.
+```{r}
+scooch <- c(
+  "V13M06-403_B1s2",
+  "V13M06-331_A1s1",
+  "V13M06-331_A1s2",
+  "V13M06-331_B1s1",
+  "V13M06-331_B1s2",
+  "V13M06-402_B1s1",
+  "V13M06-402_B1s2",
+  "V13M06-386_A1s1",
+  "V13M06-386_A1s2",
+  "V13B23-284_A1s1",
+  "V13B23-284_A1s2",
+  "V13F27-339_C1s1",
+  "V13F27-339_C1s2")
+
+fixcrd <- lc3[,lc3$sample_id %in% scooch]
+lc3.5 <- lc3[,!(lc3$sample_id %in% scooch)]
+stopifnot(length(unique(lc3.5$sample_id))+length(unique(fixcrd$sample_id))==85)
+
+testfixes <- list()
+```
+
+## 403_B1s2: slide up
+```{r}
+testfixes[["403B1s2"]] <- fixcrd[,fixcrd$sample_id=="V13M06-403_B1s2"]
+spatialCoords(testfixes[["403B1s2"]])[,2] <- spatialCoords(testfixes[["403B1s2"]])[,2]-1600
+# vis_gene(testfixes[[1]],sampleid="V13M06-403_B1s2",geneid="DBH",alpha=0.5)
+
+testfixes[["331A1s1"]] <- fixcrd[,fixcrd$sample_id=="V13M06-331_A1s1"]
+spatialCoords(testfixes[["331A1s1"]])[,1] <- spatialCoords(testfixes[["331A1s1"]])[,1]-1600
+# vis_gene(testfixes[[2]],sampleid="V13M06-331_A1s1",geneid="DBH",alpha=0.5)
+
+testfixes[["331A1s2"]] <- fixcrd[,fixcrd$sample_id=="V13M06-331_A1s2"]
+spatialCoords(testfixes[["331A1s2"]])[,2] <- spatialCoords(testfixes[["331A1s2"]])[,2]-1600
+# vis_gene(testfixes[[3]],sampleid="V13M06-331_A1s2",geneid="DBH",alpha=0.5)
+
+testfixes[["331B1s1"]] <- fixcrd[,fixcrd$sample_id=="V13M06-331_B1s1"]
+testfixes[["331B1s1"]] <- rotateObject(testfixes[["331B1s1"]],sample_id="V13M06-331_B1s1",degrees=180)
+spatialCoords(testfixes[["331B1s1"]])[,2] <- spatialCoords(testfixes[["331B1s1"]])[,2]+4800
+# vis_gene(testfixes[[4]],sampleid="V13M06-331_B1s1",geneid="DBH",alpha=0.5)
+
+testfixes[["331B1s2"]] <- fixcrd[,fixcrd$sample_id=="V13M06-331_B1s2"]
+spatialCoords(testfixes[["331B1s2"]])[,1] <- spatialCoords(testfixes[["331B1s2"]])[,1]+4800
+# vis_gene(testfixes[[5]],sampleid="V13M06-331_B1s2",geneid="DBH",alpha=0.5)
+
+testfixes[["402B1s1"]] <- fixcrd[,fixcrd$sample_id=="V13M06-402_B1s1"]
+spatialCoords(testfixes[["402B1s1"]])[,1] <- spatialCoords(testfixes[["402B1s1"]])[,1]-1000
+# vis_gene(testfixes[[6]],sampleid="V13M06-402_B1s1",geneid="DBH",alpha=0.5)
+
+testfixes[["402B1s2"]] <- fixcrd[,fixcrd$sample_id=="V13M06-402_B1s2"]
+spatialCoords(testfixes[["402B1s2"]])[,1] <- spatialCoords(testfixes[["402B1s2"]])[,1]+1000
+# vis_gene(testfixes[[7]],sampleid="V13M06-402_B1s2",geneid="DBH",alpha=0.5)
+
+testfixes[["386A1s1"]] <- fixcrd[,fixcrd$sample_id=="V13M06-386_A1s1"]
+spatialCoords(testfixes[["386A1s1"]])[,1] <- spatialCoords(testfixes[["386A1s1"]])[,1]+1800
+# vis_gene(testfixes[[8]],sampleid="V13M06-386_A1s1",geneid="DBH",alpha=0.5)
+
+testfixes[["386A1s2"]] <- fixcrd[,fixcrd$sample_id=="V13M06-386_A1s2"]
+spatialCoords(testfixes[["386A1s2"]])[,2] <- spatialCoords(testfixes[["386A1s2"]])[,2]-1700
+# vis_gene(testfixes[[9]],sampleid="V13M06-386_A1s2",geneid="DBH",alpha=0.5)
+
+testfixes[["284A1s1"]] <- fixcrd[,fixcrd$sample_id=="V13B23-284_A1s1"]
+spatialCoords(testfixes[["284A1s1"]])[,1] <- spatialCoords(testfixes[["284A1s1"]])[,1]-1100
+# vis_gene(testfixes[[10]],sampleid="V13B23-284_A1s1",geneid="DBH",alpha=0.5)
+
+testfixes[["284A1s2"]] <- fixcrd[,fixcrd$sample_id=="V13B23-284_A1s2"]
+spatialCoords(testfixes[["284A1s2"]])[,1] <- spatialCoords(testfixes[["284A1s2"]])[,1]+1100
+spatialCoords(testfixes[["284A1s2"]])[,2] <- spatialCoords(testfixes[["284A1s2"]])[,2]+200
+# vis_gene(testfixes[[11]],sampleid="V13B23-284_A1s2",geneid="DBH",alpha=0.5)
+
+testfixes[["339C1s1"]] <- fixcrd[,fixcrd$sample_id=="V13F27-339_C1s1"]
+spatialCoords(testfixes[["339C1s1"]])[,1] <- spatialCoords(testfixes[["339C1s1"]])[,1]+2600
+# vis_gene(testfixes[[12]],sampleid="V13F27-339_C1s1",geneid="DBH",alpha=0.5)
+
+testfixes[["339C1s2"]] <- fixcrd[,fixcrd$sample_id=="V13F27-339_C1s2"]
+spatialCoords(testfixes[["339C1s2"]])[,2] <- spatialCoords(testfixes[["339C1s2"]])[,2]-2600
+# vis_gene(testfixes[[13]],sampleid="V13F27-339_C1s2",geneid="DBH",alpha=0.5)
+```
+
+## now add these back to the full spe, reorganize to match original for posterity as before, and overwrite
+```{r}
+i <-1
+for (i in c(1:length(testfixes))){
+  lc3.5 <- cbind(lc3.5,testfixes[[i]])
+  testfixes[[i]] <- "returned"
+}
+rm(i)
+
+# make sure we have everything again
+stopifnot(all(rownames(tmpcd) %in% colnames(lc3.5)))
+# dim(lc3.5)
+# length(unique(lc3.5$sample_id))
+
+# reord
+lc3.5 <- lc3.5[,rownames(tmpcd)]
+
+# clean up, save
+rm(lc3,fixcrd,plts,testfixes,tmpcd,xforms,neg90vm,scooch)
+gc(full=T)
+
+saveRDS(lc3.5,"processed-data/14_Samui_prep/01-Samui_TissSect_SPE_RotsMirrors.RDS")
+```
+
+
+seshinfo
+```{r}
+sessionInfo()
+sessioninfo::session_info()
+```
+R version 4.4.3 (2025-02-28)
+Platform: aarch64-apple-darwin20
+Running under: macOS Sequoia 15.3.2
+
+Matrix products: default
+BLAS:   /System/Library/Frameworks/Accelerate.framework/Versions/A/Frameworks/vecLib.framework/Versions/A/libBLAS.dylib 
+LAPACK: /Library/Frameworks/R.framework/Versions/4.4-arm64/Resources/lib/libRlapack.dylib;  LAPACK version 3.12.0
+
+locale:
+[1] en_US.UTF-8/en_US.UTF-8/en_US.UTF-8/C/en_US.UTF-8/en_US.UTF-8
+
+time zone: America/Chicago
+tzcode source: internal
+
+attached base packages:
+[1] stats4    stats     graphics  grDevices utils     methods   base     
+
+other attached packages:
+ [1] ggplot2_3.5.2               gridExtra_2.3               spatialLIBD_1.18.0         
+ [4] BiocParallel_1.40.0         parallelly_1.43.0           colorout_1.3-0.2           
+ [7] SpatialExperiment_1.16.0    SingleCellExperiment_1.28.1 SummarizedExperiment_1.36.0
+[10] Biobase_2.66.0              GenomicRanges_1.58.0        GenomeInfoDb_1.42.3        
+[13] IRanges_2.40.1              S4Vectors_0.44.0            BiocGenerics_0.52.0        
+[16] MatrixGenerics_1.18.1       matrixStats_1.5.0           data.table_1.17.4          
+[19] rlang_1.1.5                
+
+loaded via a namespace (and not attached):
+  [1] RColorBrewer_1.1-3       rstudioapi_0.17.1        jsonlite_2.0.0          
+  [4] magrittr_2.0.3           ggbeeswarm_0.7.2         magick_2.8.6            
+  [7] farver_2.1.2             rmarkdown_2.29           BiocIO_1.16.0           
+ [10] fields_16.3.1            zlibbioc_1.52.0          vctrs_0.6.5             
+ [13] memoise_2.0.1            config_0.3.2             Rsamtools_2.22.0        
+ [16] paletteer_1.6.0          RCurl_1.98-1.17          benchmarkme_1.0.8       
+ [19] htmltools_0.5.8.1        S4Arrays_1.6.0           AnnotationHub_3.14.0    
+ [22] curl_6.2.2               BiocNeighbors_2.0.1      SparseArray_1.6.2       
+ [25] sass_0.4.10              bslib_0.9.0              htmlwidgets_1.6.4       
+ [28] plotly_4.10.4            cachem_1.1.0             GenomicAlignments_1.42.0
+ [31] mime_0.13                lifecycle_1.0.4          iterators_1.0.14        
+ [34] pkgconfig_2.0.3          rsvd_1.0.5               Matrix_1.7-3            
+ [37] R6_2.6.1                 fastmap_1.2.0            GenomeInfoDbData_1.2.13 
+ [40] shiny_1.10.0             digest_0.6.37            rematch2_2.1.2          
+ [43] AnnotationDbi_1.68.0     scater_1.34.1            rprojroot_2.0.4         
+ [46] irlba_2.3.5.1            ExperimentHub_2.14.0     RSQLite_2.3.9           
+ [49] beachmat_2.22.0          labeling_0.4.3           filelock_1.0.3          
+ [52] httr_1.4.7               abind_1.4-8              compiler_4.4.3          
+ [55] here_1.0.1               withr_3.0.2              bit64_4.6.0-1           
+ [58] doParallel_1.0.17        attempt_0.3.1            viridis_0.6.5           
+ [61] DBI_1.2.3                maps_3.4.3               sessioninfo_1.2.3       
+ [64] rappdirs_0.3.3           DelayedArray_0.32.0      rjson_0.2.23            
+ [67] tools_4.4.3              vipor_0.4.7              beeswarm_0.4.0          
+ [70] httpuv_1.6.16            glue_1.8.0               restfulr_0.0.15         
+ [73] promises_1.3.2           grid_4.4.3               generics_0.1.4          
+ [76] gtable_0.3.6             tidyr_1.3.1              ScaledMatrix_1.14.0     
+ [79] BiocSingular_1.22.0      XVector_0.46.0           ggrepel_0.9.6           
+ [82] BiocVersion_3.20.0       foreach_1.5.2            pillar_1.10.2           
+ [85] spam_2.11-1              limma_3.62.2             later_1.4.2             
+ [88] benchmarkmeData_1.0.4    dplyr_1.1.4              BiocFileCache_2.14.0    
+ [91] lattice_0.22-6           rtracklayer_1.66.0       bit_4.6.0               
+ [94] tidyselect_1.2.1         locfit_1.5-9.12          scuttle_1.16.0          
+ [97] Biostrings_2.74.1        knitr_1.50               edgeR_4.4.2             
+[100] xfun_0.52                statmod_1.5.0            DT_0.33                 
+[103] UCSC.utils_1.2.0         lazyeval_0.2.2           yaml_2.3.10             
+[106] shinyWidgets_0.9.0       evaluate_1.0.3           codetools_0.2-20        
+[109] tibble_3.2.1             BiocManager_1.30.25      cli_3.6.4               
+[112] xtable_1.8-4             jquerylib_0.1.4          golem_0.5.1             
+[115] dichromat_2.0-0.1        Rcpp_1.0.14              dbplyr_2.5.0            
+[118] png_0.1-8                XML_3.99-0.18            parallel_4.4.3          
+[121] blob_1.2.4               dotCall64_1.2            bitops_1.0-9            
+[124] viridisLite_0.4.2        scales_1.4.0             purrr_1.0.4             
+[127] crayon_1.5.3             cowplot_1.1.3            KEGGREST_1.46.0         
+> sessioninfo::session_info()
+─ Session info ──────────────────────────────────────────────────────────────────────────────
+ setting  value
+ version  R version 4.4.3 (2025-02-28)
+ os       macOS Sequoia 15.3.2
+ system   aarch64, darwin20
+ ui       RStudio
+ language (EN)
+ collate  en_US.UTF-8
+ ctype    en_US.UTF-8
+ tz       America/Chicago
+ date     2025-07-26
+ rstudio  2024.07.0-daily+219 Cranberry Hibiscus (desktop)
+ pandoc   3.1.11 @ /Applications/RStudio.app/Contents/Resources/app/quarto/bin/tools/aarch64/ (via rmarkdown)
+ quarto   1.4.555 @ /Applications/RStudio.app/Contents/Resources/app/quarto/bin/quarto
+
+─ Packages ──────────────────────────────────────────────────────────────────────────────────
+ !  package              * version   date (UTC) lib source
+    abind                  1.4-8     2024-09-12 [1] CRAN (R 4.4.1)
+    AnnotationDbi          1.68.0    2024-11-08 [1] Bioconductor 3.20 (R 4.4.1)
+    AnnotationHub          3.14.0    2024-11-08 [1] Bioconductor 3.20 (R 4.4.1)
+    attempt                0.3.1     2020-05-03 [1] CRAN (R 4.4.0)
+    beachmat               2.22.0    2024-11-08 [1] Bioconductor 3.20 (R 4.4.1)
+    beeswarm               0.4.0     2021-06-01 [1] CRAN (R 4.4.0)
+    benchmarkme            1.0.8     2022-06-12 [1] CRAN (R 4.4.0)
+    benchmarkmeData        1.0.4     2020-04-23 [1] CRAN (R 4.4.0)
+    Biobase              * 2.66.0    2024-11-08 [1] Bioconductor 3.20 (R 4.4.1)
+    BiocFileCache          2.14.0    2024-11-08 [1] Bioconductor 3.20 (R 4.4.1)
+    BiocGenerics         * 0.52.0    2024-11-08 [1] Bioconductor 3.20 (R 4.4.1)
+    BiocIO                 1.16.0    2024-12-12 [1] Github (Bioconductor/BiocIO@8e80624)
+    BiocManager            1.30.25   2024-08-28 [1] CRAN (R 4.4.1)
+    BiocNeighbors          2.0.1     2024-11-28 [1] Bioconductor 3.20 (R 4.4.2)
+    BiocParallel         * 1.40.0    2024-11-23 [1] Bioconductor 3.20 (R 4.4.2)
+    BiocSingular           1.22.0    2024-11-08 [1] Bioconductor 3.20 (R 4.4.1)
+    BiocVersion            3.20.0    2024-05-04 [1] Bioconductor 3.20 (R 4.4.0)
+    Biostrings             2.74.1    2024-12-16 [1] Bioconductor 3.20 (R 4.4.2)
+    bit                    4.6.0     2025-03-06 [1] CRAN (R 4.4.1)
+    bit64                  4.6.0-1   2025-01-16 [1] CRAN (R 4.4.1)
+    bitops                 1.0-9     2024-10-03 [1] CRAN (R 4.4.1)
+    blob                   1.2.4     2023-03-17 [1] CRAN (R 4.4.0)
+    bslib                  0.9.0     2025-01-30 [1] CRAN (R 4.4.1)
+    cachem                 1.1.0     2024-05-16 [1] CRAN (R 4.4.0)
+ VP cli                    3.6.4     2025-04-23 [2] CRAN (R 4.4.1) (on disk 3.6.5)
+    codetools              0.2-20    2024-03-31 [1] CRAN (R 4.4.3)
+    colorout             * 1.3-0.2   2024-05-01 [1] Github (jalvesaq/colorout@c6113a2)
+    config                 0.3.2     2023-08-30 [1] CRAN (R 4.4.0)
+    cowplot                1.1.3     2024-01-22 [1] CRAN (R 4.4.0)
+    crayon                 1.5.3     2024-06-20 [1] CRAN (R 4.4.0)
+    curl                   6.2.2     2025-03-24 [1] CRAN (R 4.4.1)
+    data.table           * 1.17.4    2025-05-26 [1] CRAN (R 4.4.3)
+    DBI                    1.2.3     2024-06-02 [1] CRAN (R 4.4.0)
+    dbplyr                 2.5.0     2024-03-19 [1] CRAN (R 4.4.0)
+    DelayedArray           0.32.0    2024-11-08 [1] Bioconductor 3.20 (R 4.4.1)
+    dichromat              2.0-0.1   2022-05-02 [1] CRAN (R 4.4.0)
+    digest                 0.6.37    2024-08-19 [1] CRAN (R 4.4.1)
+    doParallel             1.0.17    2022-02-07 [1] CRAN (R 4.4.1)
+    dotCall64              1.2       2024-10-04 [1] CRAN (R 4.4.1)
+    dplyr                  1.1.4     2023-11-17 [1] CRAN (R 4.4.0)
+    DT                     0.33      2024-04-04 [1] CRAN (R 4.4.0)
+    edgeR                  4.4.2     2025-01-27 [1] Bioconductor 3.20 (R 4.4.2)
+    evaluate               1.0.3     2025-01-10 [1] CRAN (R 4.4.1)
+    ExperimentHub          2.14.0    2024-11-08 [1] Bioconductor 3.20 (R 4.4.1)
+    farver                 2.1.2     2024-05-13 [1] CRAN (R 4.4.0)
+    fastmap                1.2.0     2024-05-15 [1] CRAN (R 4.4.0)
+    fields                 16.3.1    2025-03-08 [1] CRAN (R 4.4.1)
+    filelock               1.0.3     2023-12-11 [1] CRAN (R 4.4.0)
+    foreach                1.5.2     2022-02-02 [1] CRAN (R 4.4.0)
+    generics               0.1.4     2025-05-09 [1] CRAN (R 4.4.1)
+    GenomeInfoDb         * 1.42.3    2025-01-27 [1] Bioconductor 3.20 (R 4.4.2)
+    GenomeInfoDbData       1.2.13    2024-12-12 [1] Bioconductor
+    GenomicAlignments      1.42.0    2024-11-08 [1] Bioconductor 3.20 (R 4.4.1)
+    GenomicRanges        * 1.58.0    2024-11-08 [1] Bioconductor 3.20 (R 4.4.1)
+    ggbeeswarm             0.7.2     2023-04-29 [1] CRAN (R 4.4.0)
+    ggplot2              * 3.5.2     2025-04-09 [1] CRAN (R 4.4.1)
+    ggrepel                0.9.6     2024-09-07 [1] CRAN (R 4.4.1)
+    glue                   1.8.0     2024-09-30 [1] CRAN (R 4.4.1)
+    golem                  0.5.1     2024-08-27 [1] CRAN (R 4.4.1)
+    gridExtra            * 2.3       2017-09-09 [1] CRAN (R 4.4.0)
+    gtable                 0.3.6     2024-10-25 [1] CRAN (R 4.4.1)
+    here                   1.0.1     2020-12-13 [1] CRAN (R 4.4.0)
+    htmltools              0.5.8.1   2024-04-04 [1] CRAN (R 4.4.0)
+    htmlwidgets            1.6.4     2023-12-06 [1] CRAN (R 4.4.0)
+    httpuv                 1.6.16    2025-04-16 [1] CRAN (R 4.4.1)
+    httr                   1.4.7     2023-08-15 [1] CRAN (R 4.4.0)
+    IRanges              * 2.40.1    2024-12-05 [1] Bioconductor 3.20 (R 4.4.2)
+    irlba                  2.3.5.1   2022-10-03 [1] CRAN (R 4.4.0)
+    iterators              1.0.14    2022-02-05 [1] CRAN (R 4.4.0)
+    jquerylib              0.1.4     2021-04-26 [1] CRAN (R 4.4.0)
+    jsonlite               2.0.0     2025-03-27 [1] CRAN (R 4.4.1)
+    KEGGREST               1.46.0    2024-11-08 [1] Bioconductor 3.20 (R 4.4.1)
+    knitr                  1.50      2025-03-16 [1] CRAN (R 4.4.2)
+    labeling               0.4.3     2023-08-29 [1] CRAN (R 4.4.0)
+    later                  1.4.2     2025-04-08 [1] CRAN (R 4.4.1)
+    lattice                0.22-6    2024-03-20 [1] CRAN (R 4.4.3)
+    lazyeval               0.2.2     2019-03-15 [1] CRAN (R 4.4.0)
+    lifecycle              1.0.4     2023-11-07 [1] CRAN (R 4.4.0)
+    limma                  3.62.2    2025-01-09 [1] Bioconductor 3.20 (R 4.4.2)
+    locfit                 1.5-9.12  2025-03-05 [1] CRAN (R 4.4.1)
+    magick                 2.8.6     2025-03-23 [1] CRAN (R 4.4.1)
+    magrittr               2.0.3     2022-03-30 [1] CRAN (R 4.4.0)
+    maps                   3.4.3     2025-05-26 [1] CRAN (R 4.4.1)
+    Matrix                 1.7-3     2025-03-11 [1] CRAN (R 4.4.1)
+    MatrixGenerics       * 1.18.1    2025-01-09 [1] Bioconductor 3.20 (R 4.4.2)
+    matrixStats          * 1.5.0     2025-01-07 [1] CRAN (R 4.4.1)
+    memoise                2.0.1     2021-11-26 [1] CRAN (R 4.4.0)
+    mime                   0.13      2025-03-17 [1] CRAN (R 4.4.1)
+    paletteer              1.6.0     2024-01-21 [1] CRAN (R 4.4.0)
+    parallelly           * 1.43.0    2025-03-24 [1] CRAN (R 4.4.1)
+    pillar                 1.10.2    2025-04-05 [1] CRAN (R 4.4.1)
+    pkgconfig              2.0.3     2019-09-22 [1] CRAN (R 4.4.0)
+    plotly                 4.10.4    2024-01-13 [1] CRAN (R 4.4.0)
+    png                    0.1-8     2022-11-29 [1] CRAN (R 4.4.0)
+    promises               1.3.2     2024-11-28 [1] CRAN (R 4.4.1)
+    purrr                  1.0.4     2025-02-05 [1] CRAN (R 4.4.1)
+    R6                     2.6.1     2025-02-15 [1] CRAN (R 4.4.1)
+    rappdirs               0.3.3     2021-01-31 [1] CRAN (R 4.4.0)
+    RColorBrewer           1.1-3     2022-04-03 [1] CRAN (R 4.4.0)
+    Rcpp                   1.0.14    2025-01-12 [1] CRAN (R 4.4.1)
+    RCurl                  1.98-1.17 2025-03-22 [1] CRAN (R 4.4.1)
+    rematch2               2.1.2     2020-05-01 [1] CRAN (R 4.4.0)
+    restfulr               0.0.15    2022-06-16 [1] CRAN (R 4.4.0)
+    rjson                  0.2.23    2024-09-16 [1] CRAN (R 4.4.1)
+ VP rlang                * 1.1.5     2025-04-11 [2] CRAN (R 4.4.1) (on disk 1.1.6)
+    rmarkdown              2.29      2024-11-04 [1] CRAN (R 4.4.1)
+    rprojroot              2.0.4     2023-11-05 [1] CRAN (R 4.4.0)
+    Rsamtools              2.22.0    2024-11-08 [1] Bioconductor 3.20 (R 4.4.1)
+    RSQLite                2.3.9     2024-12-03 [1] CRAN (R 4.4.1)
+    rstudioapi             0.17.1    2024-10-22 [1] CRAN (R 4.4.1)
+    rsvd                   1.0.5     2021-04-16 [1] CRAN (R 4.4.0)
+    rtracklayer            1.66.0    2024-11-08 [1] Bioconductor 3.20 (R 4.4.1)
+    S4Arrays               1.6.0     2024-11-08 [1] Bioconductor 3.20 (R 4.4.1)
+    S4Vectors            * 0.44.0    2024-11-08 [1] Bioconductor 3.20 (R 4.4.1)
+    sass                   0.4.10    2025-04-11 [1] CRAN (R 4.4.1)
+    ScaledMatrix           1.14.0    2024-11-08 [1] Bioconductor 3.20 (R 4.4.1)
+    scales                 1.4.0     2025-04-24 [1] CRAN (R 4.4.1)
+    scater                 1.34.1    2025-03-03 [1] Bioconductor 3.20 (R 4.4.2)
+    scuttle                1.16.0    2024-11-08 [1] Bioconductor 3.20 (R 4.4.1)
+    sessioninfo            1.2.3     2025-02-05 [1] CRAN (R 4.4.1)
+    shiny                  1.10.0    2024-12-14 [1] CRAN (R 4.4.1)
+    shinyWidgets           0.9.0     2025-02-21 [1] CRAN (R 4.4.1)
+    SingleCellExperiment * 1.28.1    2024-11-23 [1] Bioconductor 3.20 (R 4.4.2)
+    spam                   2.11-1    2025-01-20 [1] CRAN (R 4.4.1)
+    SparseArray            1.6.2     2025-02-20 [1] Bioconductor 3.20 (R 4.4.2)
+    SpatialExperiment    * 1.16.0    2024-11-08 [1] Bioconductor 3.20 (R 4.4.1)
+    spatialLIBD          * 1.18.0    2024-11-07 [1] Bioconductor 3.20 (R 4.4.3)
+    statmod                1.5.0     2023-01-06 [1] CRAN (R 4.4.0)
+    SummarizedExperiment * 1.36.0    2024-11-08 [1] Bioconductor 3.20 (R 4.4.1)
+    tibble                 3.2.1     2023-03-20 [1] CRAN (R 4.4.0)
+    tidyr                  1.3.1     2024-01-24 [1] CRAN (R 4.4.0)
+    tidyselect             1.2.1     2024-03-11 [1] CRAN (R 4.4.0)
+    UCSC.utils             1.2.0     2024-11-08 [1] Bioconductor 3.20 (R 4.4.1)
+    vctrs                  0.6.5     2023-12-01 [1] CRAN (R 4.4.0)
+    vipor                  0.4.7     2023-12-18 [1] CRAN (R 4.4.0)
+    viridis                0.6.5     2024-01-29 [1] CRAN (R 4.4.0)
+    viridisLite            0.4.2     2023-05-02 [1] CRAN (R 4.4.0)
+    withr                  3.0.2     2024-10-28 [1] CRAN (R 4.4.1)
+    xfun                   0.52      2025-04-02 [1] CRAN (R 4.4.1)
+    XML                    3.99-0.18 2025-01-01 [1] CRAN (R 4.4.1)
+    xtable                 1.8-4     2019-04-21 [1] CRAN (R 4.4.0)
+    XVector                0.46.0    2024-11-08 [1] Bioconductor 3.20 (R 4.4.1)
+    yaml                   2.3.10    2024-07-26 [1] CRAN (R 4.4.0)
+    zlibbioc               1.52.0    2024-11-08 [1] Bioconductor 3.20 (R 4.4.1)
+
+ [1] /Library/Frameworks/R.framework/Versions/4.4-arm64/Resources/library
+ [2] /Users/bmulvey/Library/R/arm64/4.4/library
+
+ * ── Packages attached to the search path.
+ V ── Loaded and on-disk version mismatch.
+ P ── Loaded and on-disk path mismatch.
+
+─────────────────────────────────────────────────────────────────────────────────────────────

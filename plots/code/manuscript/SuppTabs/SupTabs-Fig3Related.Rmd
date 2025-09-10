@@ -67,14 +67,35 @@ NM DE GSEA
 ```{r}
 nmgsea <- readRDS("processed-data/12_DEanalyses_removedsampsAndFinalNMseg/05-LCNMposVsNeg_msigdb_and_tftarg_GSEAs.RDS")
 
-nmgsea <- rbindlist(nmgsea,idcol="params")
+## extract TF symbols from the TF-Targ set names
+y <- nmgsea[[2]][!(pathway %in% grep(pathway,pattern="Rummagene",value=T))]
+y[,tf:=apply(.SD,MARGIN = 1,FUN=function(h){strsplit(h,"_",1)[[1]][1]}),.SDcols="pathway"]
+### rummagene TFs are named differently:
+z <- nmgsea[[2]][pathway %in% grep(pathway,pattern="Rummagene",value=T)]
+# reverse the output of a strsplit of a strsplit o.0 to get the string immediately preceding "_Rummagene_.."
+z[,tf:=apply(.SD,MARGIN=1,FUN=function(p){
+    rev.default(strsplit(
+        strsplit(p,"_Rummagene_transcription_factors",-1)[[1]][1],
+        "_")[[1]]
+    )[1]
+}),.SDcols="pathway"]
+#z[,tf:=gsub(pathway,pattern=".*-.*_(.*)_Rummagene_transcription_factors)",replacement="\\1")]
+fix <- rbind(z,y)
+# make all upper case
+fix[,tf:=toupper(tf)]
+nmgsea[[2]] <- fix
+
+
+## concat and save
+nmgsea <- rbindlist(nmgsea,idcol="params",fill=T)
+
 nmgsea[,`Geneset Source`:=gsub(params,pattern="^(.*)_.*$",replacement="\\1")]
 nmgsea[,signed:=gsub(params,pattern="^.*_(.*)$",replacement="\\1")]
 nmgsea[,signed:=ifelse(signed=="signed","Yes","No")]
 setnames(nmgsea,"signed","Directed Test")
 nmgsea[,params:=NULL]
 
-reordn <- c("Geneset Source","Directed Test","pathway","dir","pval","padj","NES","ES","leadingEdge","size","log2err")
+reordn <- c("Geneset Source","Directed Test","tf","pathway","dir","pval","padj","NES","ES","leadingEdge","size","log2err")
 nmgsea <- nmgsea[,..reordn]
 fwrite(nmgsea,"plots/manuscript/SuppTabs/TabDelims/LCNMpos_vs_LCNMneg_DE_GSEA.txt",sep='\t',quote=F,row.names=F,col.names=T)
 
@@ -103,4 +124,41 @@ nmfg <- readRDS("processed-data/10_subclustering/09-LCnmfFilt_factorSpecGenes_en
 nmfg <- nmfg[Adjusted.P.value<0.05]
 fwrite(nmfg,"plots/manuscript/SuppTabs/NMF_factorspecificgene_Enrichr_FDR05.txt",sep='\t',quote=F,row.names=F,col.names=T)
 rm(nmfg)
+```
+
+SCORPION GRN edge comparisons
+```{r}
+scorp <- readRDS("processed-data/12_DEanalyses_removedsampsAndFinalNMseg/12e2-Pbulkprefilt_LCNMposNeg_GRNs_NMdomainSpecEdge_or_SpecEdgeandSpecTF_filt.RDS")
+
+specedge <- scorp$pbulkfilt_rnet_specEdgesOnly
+specedgeortf <- scorp$pbulkfilt_rnet_specEdge_or_EdgeWith80pctSpecTF
+
+##
+specedge[,nmp_pn:=NULL]
+specedge[,nmn_pn:=NULL]
+specedge[,Specificity:=ifelse(nmp_spec=="Y",yes="NM+",no=ifelse(nmn_spec=="Y",yes="NM-","Non-specific"))]
+specedge[,nmp_spec:=NULL]
+specedge[,nmn_spec:=NULL]
+
+fwrite(specedge,"plots/manuscript/SuppTabs/TabDelims/LCNM_GRN_1700specificedges.txt",sep='\t',quote=F,row.names=F,col.names=T)
+rm(specedge)
+##
+##
+specedgeortf[,nmp_pn:=NULL]
+specedgeortf[,nmn_pn:=NULL]
+specedgeortf[,Specificity:=ifelse(nmp_spec=="Y",yes="NM+",no=ifelse(nmn_spec=="Y",yes="NM-","Non-specific"))]
+specedgeortf[,nmp_spec:=NULL]
+specedgeortf[,nmn_spec:=NULL]
+
+fwrite(specedgeortf,"plots/manuscript/SuppTabs/TabDelims/LCNM_GRN_specEdge_orEdgeWspecificTF.txt",sep='\t',quote=F,row.names=F,col.names=T)
+##
+
+spectf <- fread("processed-data/12_DEanalyses_removedsampsAndFinalNMseg/12h1-TFs_withOver80Pct_NMpos_spec_edges_inPbulkPrefiltGRN.txt",header=F)
+spectf[,Specificity:="NM+"]
+
+spectf2 <- fread("processed-data/12_DEanalyses_removedsampsAndFinalNMseg/12h2-TFs_withOver80Pct_NMneg_spec_edges_inPbulkPrefiltGRN.txt",header=F)
+spectf2[,Specificity:="NM-"]
+spectfs <- rbind(spectf,spectf2)
+
+fwrite(spectfs,"plots/manuscript/SuppTabs/TabDelims/LCNM_GRN_TFs_with80pct_specificedges.txt",sep='\t',quote=F,row.names=F,col.names=T)
 ```

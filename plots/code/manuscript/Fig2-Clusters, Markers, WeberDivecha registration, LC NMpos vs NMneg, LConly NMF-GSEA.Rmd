@@ -345,8 +345,8 @@ pltdat[,LFF_clus:=as.character(LFF_clus)]
 
 ## subset to our main pure-ish clusters and their corresponding snuc/spatial types
 pltdat <- pltdat[
-    LFF_clus %in% c("LC","ACHE_SERT_LC_WM","ACHE_SERT_Npep","Astro","Oligo") 
-    & 
+    # LFF_clus %in% c("LC","ACHE_SERT_LC_WM","ACHE_SERT_Npep","Astro","Oligo") 
+    # & 
     WebDiv_label %in% c("label_merged_x5HT","label_merged_xastrocytes","label_merged_xinhibitory","label_merged_xexcitatory","label_merged_xoligodendrocytes","supervised_NE_TRUE","annot_spot_TRUE")]
 
 ## prettify
@@ -367,12 +367,16 @@ pltdat[,WebDiv_label:=factor(WebDiv_label,levels=c(paste0("snSeq ",c("Oligo", "A
 pltdat[,LFF_clus:=gsub(LFF_clus,pattern="_",replacement=" ")]
 pltdat[,LFF_clus:=gsub(LFF_clus,pattern="ACHE",replacement="\\*ACHE\\*,")]
 pltdat[,LFF_clus:=gsub(LFF_clus,pattern="SERT",replacement="\\*SERT\\*,")]
+pltdat[LFF_clus=="Oligo Complex",LFF_clus:="Oligo-Others Mixed"]
+pltdat[LFF_clus=="Astro Oligo",LFF_clus:="Astro-Oligo"]
+pltdat[LFF_clus=="Oligo Astro",LFF_clus:="Oligo-Astro"]
 pltdat[LFF_clus=="*ACHE*, *SERT*, LC WM",LFF_clus:="*ACHE*, *SERT*, LC, WM"]
-pltdat[,LFF_clus:=factor(LFF_clus,levels=rev(c("Oligo","Astro","*ACHE*, *SERT*, Npep","*ACHE*, *SERT*, LC, WM","LC")))]
+
+pltdat[,LFF_clus:=factor(LFF_clus,levels=rev(c("Vascular","Oligo-Others Mixed","Oligo-Astro","Oligo","Astro-Oligo","Astro","*ACHE*, *SERT*, Npep","*ACHE*, *SERT*, LC, WM","LC")))]
 
 ## plot and save
 
-pdf("plots/manuscript/Fig2/2D-WeberDivecha_registration.pdf",height=3.5,width=3.5)
+pdf("plots/manuscript/Fig2/2D-WeberDivecha_registration_alldomains.pdf",height=3.5,width=3.5)
 ggplot(pltdat,aes(x=LFF_clus,y=WebDiv_label,fill=value))+
     geom_tile()+
     scale_x_discrete(expand = c(0,0)) +
