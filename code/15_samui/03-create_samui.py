@@ -51,7 +51,10 @@ with open(json_path, 'r') as f:
 
 m_per_px = spot_diameter_m / spaceranger_json['spot_diameter_fullres']
 
-spgP.obs.index = spgP.obs.index.str.replace('_'+unique_sample_id , '')
+# spgP.obs.index = spgP.obs.index.str.replace('_'+unique_sample_id , '')
+spgP.obs.index.name = "barcode"
+
+
 #   Convert the sparse gene-expression matrix to pandas DataFrame, with the
 #   gene symbols as column names
 gene_df = pd.DataFrame(

@@ -83,11 +83,8 @@ rnets <- lapply(rnets,function(x){
 
     x[,nmp_pn:=pnorm(nmp)] #nmp = edge weight NM+
     x[,nmn_pn:=pnorm(nmn)] #nmn = edge weight NM-
-    ## comes out effed up with simplify=T, so manually unlist the column values after making them
-    x[,nmp_spec:=apply(.SD,MARGIN=1,simplify=FALSE,function(x){ifelse(x[1]*pnorm(x[2]-x[3])>0.75,yes="Y",no="N")}),.SDcols=c("nmp_pn","nmp","nmn")]
-    x[,nmn_spec:=apply(.SD,MARGIN=1,simplify=FALSE,function(x){ifelse(x[1]*pnorm(x[2]-x[3])>0.75,yes="Y",no="N")}),.SDcols=c("nmn_pn","nmn","nmp")]
-    x[,nmn_spec:=unlist(nmn_spec)] 
-    x[,nmp_spec:=unlist(nmp_spec)]
+    x[,nmp_spec:=ifelse(nmp_pn*pnorm(nmp-nmn)>0.75,yes="Y",no="N")]
+    x[,nmn_spec:=ifelse(nmn_pn*pnorm(nmn-nmp)>0.75,yes="Y",no="N")]
 
     return(x)
 })
@@ -95,7 +92,7 @@ rnets <- lapply(rnets,function(x){
 # get TF-gene edges that are specific to one of the networks
 rnetspec <- lapply(rnets,function(x){
     y <- x[nmp_spec=="Y"|nmn_spec=="Y"]
-    y <- y[!(nmp_spec=="Y"&nmn_spec=="Y")]# remove edges that score as specific to both networks, because that's obv not specific
+    y <- y[!(nmp_spec=="Y"&nmn_spec=="Y")]# remove edges that score as specific to both networks, because that's obv not specific (and shouldn't happen by the calculations anyhow)
     return(y)
 })
 
@@ -116,7 +113,7 @@ ggplot(rnetspec[[2]],aes(x=nmn,y=nmp)) +
 
 ## get list object to save: union of
 # •TFs with > 80% of edges unique to in nm- and nm+ specific edges?
-# this is agnostic to TF repressive/enhancing effect (i.e., if TF does some of each, it can still be included if vast majority of edges are specific to one network)
+# this is agnostic to TF repressive/enhancing effect because the edge weights are just Z scores of how likely SOME interaction is (not a specific direction of gene regulation) (i.e., if TF does some of each, it can still be included if vast majority of edges are specific to one network)
 ```{r}
 rnetspectfs <- lapply(rnetspec,function(x){
     ## these columns are being added in-place by data.table so will ALSO become part of the rnetspec tables without explicitly returning them, handily.
