@@ -1,0 +1,105 @@
+---
+title: "SupFigs-DE"
+author: "Bernie Mulvey"
+date: "2025-09-10"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(fig.height = 10,fig.width = 7,include = FALSE)
+#### sets tab autocompletion for directories to begin from the directory containing the .Rproj session, instead of the script's directory if different
+knitr::opts_knit$set(root.dir = here::here())
+
+library(data.table)
+library(ggplot2)
+library(ggtext)
+library(gridExtra)
+library(ggrastr)
+library(Cairo)
+library(edgeR)
+library(limma)
+# library(SpatialFeatureExperiment)
+
+## rstudio GUI tweaks
+require(colorout)
+ColorOut()
+options("styler.addins_style_transformer" = "biocthis::bioc_style()")
+##
+
+## enable forked parallel processing with BiocParallel::multicoreParam, future::, etc. seemed to need this a couple times, but otherwise havent so its here as a preventative measure. part of this is adding the line 
+# OBJC_DISABLE_INITIALIZE_FORK_SAFETY=YES
+# to Renviron.site. see e.g. top response on https://stackoverflow.com/questions/73638290/python-on-mac-is-it-safe-to-set-objc-disable-initialize-fork-safety-yes-globall 
+library(parallelly)
+options(parallelly.supportsMulticore.disableOn="")
+options(parallelly.fork.enable=TRUE)
+library(BiocParallel)
+options(bphost="localhost")
+
+
+## ggplot defaults
+theme_set(theme_bw()+theme(axis.text.x = element_text(size = 8,color = "#000000"), axis.title.x = element_text(size = 9,color = "#000000"), axis.text.y = element_text(size = 8,color = "#000000"), axis.title.y = element_text(size =9,color = "#000000"), plot.title = element_markdown(size = 10,hjust=0.5,color = "#000000"), strip.text = element_text(size=11), legend.text = element_markdown(size=7,color = "#000000"), legend.title = element_text(size=8,hjust=0.5,color = "#000000"),axis.ticks = element_line(linewidth=0.5),panel.grid.major = element_line(linewidth=0.5),panel.grid.minor=element_line(linewidth=0.25),plot.title.position="plot"))
+
+## last of all, unload the base package datasets, whose data keep getting in the way of autocompletions (e.g., Theoph is priortized over TRUE)
+unloadNamespace("datasets")
+```
+
+MDS of pseudobulks
+```{r}
+dge <- readRDS("processed-data/12_DEanalyses_removedsampsAndFinalNMseg/01a-DGElist_allClust_10spotmin_NOfilt.RDS")
+
+stopifnot(length(unique(dge$samples$label))==9)
+
+anno <- fread("processed-data/08_validitycheck_25hdg75svg_louv1/10-25hdg75svg_louv1_annots.txt")
+## replace dge samples label with plottable format
+tmpsamp <- as.data.table(dge$samples,keep.rownames=T)
+tmpsamp <- merge.data.table(tmpsamp,anno[,.(anno,plot_anno)],by.x="label",by.y="anno")
+tmpsamp <- as.data.frame(tmpsamp,row.names=tmpsamp$rn)[colnames(dge),]
+dge$samples <- tmpsamp
+
+# filter
+dge <- calcNormFactors(dge)
+des <- model.matrix(~0+label,data = dge$samples)
+keepg <- edgeR::filterByExpr.DGEList(dge,design=des)
+dge2 <- dge[keepg,,keep.lib.sizes=FALSE]
+dge2 <- calcNormFactors(dge2)
+
+res <- plotMDS(dge2, dim.plot = c(1,2),pch=18)
+dev.off()
+resdat <- as.data.table(cbind(res$x,res$y,rownames(dge2$samples),dge2$samples[,c("plot_anno","lib.size","n_spots")]))
+
+setnames(resdat,c(1:4),c("MDS Dim 1","MDS Dim 2","sample_id","Domain"))
+
+## log2 lib size for plotting
+resdat[,log2_lib_size:=log2(lib.size)]
+
+### by domain
+pal <- readRDS("plots/finalpal_somuchfornorainbows.RDS")
+stopifnot(all(names(pal) %in% unique(resdat$Domain)))
+
+plt1 <- ggplot(resdat,aes(x=as.numeric(`MDS Dim 1`),y=as.numeric(`MDS Dim 2`),col=Domain)) +
+      geom_point(size=0.75) + 
+      labs(x=paste0("MDS 1 (",100*round(res[[3]][1],digits=2),"%)"),
+          y=paste0("MDS 2 (",100*round(res[[3]][2],digits=2),"%)"),
+          col="Domain") +
+    scale_color_manual(values=pal)+
+    guides(color=guide_legend(override.aes=list(size=3)))+
+    theme_bw()+
+    theme(legend.text=element_markdown(size=7))
+
+## and by lib size
+plt2 <- ggplot(resdat,aes(x=as.numeric(`MDS Dim 1`),y=as.numeric(`MDS Dim 2`),col=log2_lib_size)) + 
+      geom_point(size=0.75) + 
+      labs(x=paste0("MDS 1 (",100*round(res[[3]][1],digits=2),"%)"),
+          y=paste0("MDS 2 (",100*round(res[[3]][2],digits=2),"%)"),
+          col="log2 (Pseudobulk Counts)") +
+    scale_color_continuous(type="viridis")+
+    theme_bw()
+
+
+pdf("plots/manuscript/SuppFigs/SF-PseudobulkMDS_byDomain_or_Libsize.pdf",height=7,width=7)
+do.call("grid.arrange",c(list(plt1,plt2),ncol=1))
+dev.off()
+
+rm(list=ls())
+```
+

@@ -1,0 +1,285 @@
+---
+title: "SF-AllDomain_Volcanos_SexDE_E4E2DE_APOancestryGroups"
+format: html
+date: "2025-09-13"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(fig.height = 10,fig.width = 7,include = FALSE)
+#### sets tab autocompletion for directories to begin from the directory containing the .Rproj session, instead of the script's directory if different
+knitr::opts_knit$set(root.dir = here::here())
+
+library(data.table)
+library(ggplot2)
+library(ggtext)
+library(gridExtra)
+library(ggrastr)
+library(ggrepel)
+
+## rstudio GUI tweaks
+require(colorout)
+ColorOut()
+options("styler.addins_style_transformer" = "biocthis::bioc_style()")
+##
+
+## enable forked parallel processing with BiocParallel::multicoreParam, future::, etc. seemed to need this a couple times, but otherwise havent so its here as a preventative measure. part of this is adding the line 
+# OBJC_DISABLE_INITIALIZE_FORK_SAFETY=YES
+# to Renviron.site. see e.g. top response on https://stackoverflow.com/questions/73638290/python-on-mac-is-it-safe-to-set-objc-disable-initialize-fork-safety-yes-globall 
+library(parallelly)
+options(parallelly.supportsMulticore.disableOn="")
+options(parallelly.fork.enable=TRUE)
+library(BiocParallel)
+options(bphost="localhost")
+
+
+## ggplot defaults
+theme_set(theme_bw()+theme(axis.text.x = element_text(size = 8,color = "#000000"), axis.title.x = element_text(size = 9,color = "#000000"), axis.text.y = element_text(size = 8,color = "#000000"), axis.title.y = element_text(size =9,color = "#000000"), plot.title = element_markdown(size = 10,hjust=0.5,color = "#000000"), strip.text = element_text(size=11), legend.text = element_text(size=7,color = "#000000"), legend.title = element_text(size=8,hjust=0.5,color = "#000000"),plot.title.position="plot",axis.ticks = element_line(linewidth=0.5),panel.grid.major = element_line(linewidth=0.5),panel.grid.minor=element_line(linewidth=0.25)))
+
+## last of all, unload the base package datasets, whose data keep getting in the way of autocompletions (e.g., Theoph is priortized over TRUE)
+unloadNamespace("datasets")
+```
+
+
+### helper function to extract a legend and pipe back to a diff plot: from https://statisticsglobe.com/add-common-legend-to-combined-ggplot2-plots-in-r/#example-2-add-shared-legend-to-ggplot2-plots-using-gridextra-package 
+```{r}
+extract_legend <- function(my_ggp) {
+    step1 <- ggplot_gtable(ggplot_build(my_ggp))
+    step2 <- which(sapply(step1$grobs, function(x) x$name) == "guide-box")
+    step3 <- step1$grobs[[step2]]
+    return(step3)
+}
+```
+
+
+Setup
+```{r}
+## load cluster palette
+pal <- readRDS("plots/finalpal_somuchfornorainbows.RDS")
+pal <- pal[c("LC","*ACHE*, *SERT*, LC, Oligo Mixed","*ACHE*, *SERT*, Neuropeptide Mixed","Astro","Oligo-Astro Mixed")]
+names(pal)[2] <- "*ACHE*, *SERT*, LC,<br>Oligo Mixed"
+names(pal)[3] <- "*ACHE*, *SERT*,<br>Neuropeptide Mixed"
+names(pal)[5] <- "Oligo-Astro Mixed"
+
+## load DE results
+DEmaster <- readRDS("processed-data/12_DEanalyses_removedsampsAndFinalNMseg/02b-voomLmFit_objs_and_DE_tables_LabSex_LabE2vE4_LabSingleGenos_LabAnces_LabAncesE4E2_noMixClusts_YRIcontAndCat_JUL2025.RDS")
+## get the results using continuous ancestry (sex de, e4e2)
+sexde <- DEmaster$cont_ances$sexlabel$detabs
+apode <- DEmaster$cont_ances$E2E4label$detabs
+apoances <- DEmaster$cat_ances$YRIAPOlabel$detabs
+
+# split apoances into sublists by contrast
+trasts <- grep(names(apoances),pattern="^LC",value=T)
+trasts <- gsub(trasts,pattern="LC_",replacement="")
+apoances2 <- lapply(trasts,function(x){
+  trasttabs <- grep(names(apoances),pattern=x,value=T)
+  apoances[trasttabs]
+})
+names(apoances2) <- trasts
+#
+
+
+names(sexde) <- gsub(names(sexde),pattern="_Sex",replacement="")
+names(sexde) <- gsub(names(sexde),pattern="_",replacement=" ")
+names(sexde)[1] <- "*ACHE*, *SERT*, LC,<br>Oligo Mixed"
+names(sexde)[2] <- "*ACHE*, *SERT*,<br>Neuropeptide Mixed"
+names(sexde)[5] <- "Oligo-Astro Mixed"
+
+names(apode) <- gsub(names(apode),pattern="_E4vE2",replacement="")
+names(apode) <- gsub(names(apode),pattern="_",replacement=" ")
+names(apode)[1] <- "*ACHE*, *SERT*, LC,<br>Oligo Mixed"
+names(apode)[2] <- "*ACHE*, *SERT*,<br>Neuropeptide Mixed"
+names(apode)[5] <- "Oligo-Astro Mixed"
+
+
+apoances2 <- mapply(x=names(apoances2),y=apoances2,SIMPLIFY=FALSE,function(x,y){
+    pat <- paste0("_",x)
+    names(y) <- gsub(names(y),pattern=pat,replacement="")
+    names(y)[1] <- "*ACHE*, *SERT*, LC,<br>Oligo Mixed"
+    names(y)[2] <- "*ACHE*, *SERT*,<br>Neuropeptide Mixed"
+    names(y)[5] <-  "Oligo-Astro Mixed"
+    return(y)
+})
+
+# make a final list of tables to generate 1 plot / list entry
+pltdetabs <- list(Sex=sexde,E4vE2=apode,E4AAvE4EA=apoances2$E4YRI_vs_E4CEU,E2AAvE2EA=apoances2$E2YRI_vs_E2CEU,E4EAvE2EA=apoances2$E4CEU_vs_E2CEU,E4AAvE2AA=apoances2$E4YRI_vs_E2YRI)
+
+## get top up/down genes by LFC and adjP to label in each volcano
+pltdetabs <- lapply(pltdetabs,function(d){
+    t <- lapply(d,function(x){
+        x[,label:=""]
+        sigup <- x[logFC>0][adj.P.Val==min(adj.P.Val),gene_name]
+        sigdown <- x[logFC<0][adj.P.Val==min(adj.P.Val),gene_name]
+        bigfup <- x[logFC>0][logFC==max(logFC),gene_name]
+        bigfdn <- x[logFC<0][logFC==min(logFC),gene_name]
+
+        x[gene_name %in% c(sigup,sigdown,bigfup,bigfdn),label:=gene_name]
+        return(x)
+    })
+})
+
+## collapse to one data table per plot
+pltdetabs <- lapply(pltdetabs,function(x){
+    y <- rbindlist(x,idcol="dom")
+    return(y)
+})
+```
+
+make and save plots
+```{r}
+mapply(d=pltdetabs,n=names(pltdetabs),SIMPLIFY=FALSE,function(d,n){
+    plts <- lapply(unique(d$dom),function(cl){
+        p <-ggplot(d[dom==cl],aes(x=logFC,y=-log10(adj.P.Val),col=dom)) +
+        geom_point(size=0.9,stroke=0,alpha=0.7) +
+        labs(x="log2FC",y="-log10(FDR)",color="Domain") +
+        geom_hline(yintercept = -log10(0.05), linetype="dashed", color="red",linewidth=0.5) +
+        geom_text_repel(seed = 23942,aes(y = -log10(adj.P.Val),
+                x = logFC,
+                label = ifelse(is.na(label), "", label)),
+            min.segment.length = 0,
+            size = 2,
+            show.legend=FALSE,
+            max.iter=100000,
+            max.overlaps=10000,
+            max.time=3,
+            segment.size=0.4,
+            force_pull = 0.65,
+            fontface = "italic")+
+        scale_color_manual(values=pal)+
+        theme(title=element_markdown(size=10))+
+        guides(color="none")+
+        ggtitle(paste0(n,": ",gsub(cl,pattern="v",replacement=" vs")))
+        
+        
+        p<-rasterize(p,layers="points",dpi=450,dev="cairo_png")
+        return(p)
+    })
+    pdf(paste0("plots/manuscript/SuppFigs/",n,"_allDomainVolcanos.pdf"),width=7,height=6,onefile=FALSE)
+    do.call("grid.arrange",c(plts,nrow=2))
+    dev.off()
+})
+```
+
+seshinf
+```{r}
+sessionInfo()
+sessioninfo::session_info()
+```
+
+R version 4.4.3 (2025-02-28)
+Platform: aarch64-apple-darwin20
+Running under: macOS Sequoia 15.3.2
+
+Matrix products: default
+BLAS:   /System/Library/Frameworks/Accelerate.framework/Versions/A/Frameworks/vecLib.framework/Versions/A/libBLAS.dylib 
+LAPACK: /Library/Frameworks/R.framework/Versions/4.4-arm64/Resources/lib/libRlapack.dylib;  LAPACK version 3.12.0
+
+locale:
+[1] en_US.UTF-8/en_US.UTF-8/en_US.UTF-8/C/en_US.UTF-8/en_US.UTF-8
+
+time zone: America/Chicago
+tzcode source: internal
+
+attached base packages:
+[1] stats     graphics  grDevices utils    
+[5] methods   base     
+
+other attached packages:
+[1] BiocParallel_1.40.0 parallelly_1.43.0  
+[3] ggrepel_0.9.6       ggrastr_1.0.2      
+[5] gridExtra_2.3       ggtext_0.1.2       
+[7] ggplot2_3.5.2       data.table_1.17.4  
+[9] rlang_1.1.5        
+
+loaded via a namespace (and not attached):
+ [1] gtable_0.3.6       dplyr_1.1.4       
+ [3] compiler_4.4.3     tidyselect_1.2.1  
+ [5] Rcpp_1.0.14        ggbeeswarm_0.7.2  
+ [7] stringr_1.5.1      xml2_1.3.8        
+ [9] parallel_4.4.3     dichromat_2.0-0.1 
+[11] scales_1.4.0       here_1.0.1        
+[13] R6_2.6.1           commonmark_1.9.5  
+[15] labeling_0.4.3     generics_0.1.4    
+[17] knitr_1.50         tibble_3.2.1      
+[19] rprojroot_2.0.4    pillar_1.10.2     
+[21] RColorBrewer_1.1-3 stringi_1.8.7     
+[23] litedown_0.6       xfun_0.52         
+[25] cli_3.6.4          withr_3.0.2       
+[27] magrittr_2.0.3     grid_4.4.3        
+[29] gridtext_0.1.5     markdown_2.0      
+[31] beeswarm_0.4.0     lifecycle_1.0.4   
+[33] vipor_0.4.7        vctrs_0.6.5       
+[35] evaluate_1.0.3     glue_1.8.0        
+[37] farver_2.1.2       codetools_0.2-20  
+[39] tools_4.4.3        pkgconfig_2.0.3   
+> sessioninfo::session_info()
+─ Session info ──────────────────────────────
+ setting  value
+ version  R version 4.4.3 (2025-02-28)
+ os       macOS Sequoia 15.3.2
+ system   aarch64, darwin20
+ ui       X11
+ language (EN)
+ collate  en_US.UTF-8
+ ctype    en_US.UTF-8
+ tz       America/Chicago
+ date     2025-09-13
+ pandoc   NA
+ quarto   1.7.32 @ /Applications/Positron.app/Contents/Resources/app/quarto/bin/quarto
+
+─ Packages ──────────────────────────────────
+ !  package      * version date (UTC) lib source
+    beeswarm       0.4.0   2021-06-01 [1] CRAN (R 4.4.0)
+    BiocParallel * 1.40.0  2024-11-23 [1] Bioconductor 3.20 (R 4.4.2)
+ VP cli            3.6.4   2025-04-23 [2] CRAN (R 4.4.1) (on disk 3.6.5)
+    codetools      0.2-20  2024-03-31 [1] CRAN (R 4.4.3)
+    commonmark     1.9.5   2025-03-17 [1] CRAN (R 4.4.1)
+    data.table   * 1.17.4  2025-05-26 [1] CRAN (R 4.4.3)
+    dichromat      2.0-0.1 2022-05-02 [1] CRAN (R 4.4.0)
+    dplyr          1.1.4   2023-11-17 [1] CRAN (R 4.4.0)
+    evaluate       1.0.3   2025-01-10 [1] CRAN (R 4.4.1)
+    farver         2.1.2   2024-05-13 [1] CRAN (R 4.4.0)
+    generics       0.1.4   2025-05-09 [1] CRAN (R 4.4.1)
+    ggbeeswarm     0.7.2   2023-04-29 [1] CRAN (R 4.4.0)
+    ggplot2      * 3.5.2   2025-04-09 [1] CRAN (R 4.4.1)
+    ggrastr      * 1.0.2   2023-06-01 [1] CRAN (R 4.4.0)
+    ggrepel      * 0.9.6   2024-09-07 [1] CRAN (R 4.4.1)
+    ggtext       * 0.1.2   2022-09-16 [1] CRAN (R 4.4.0)
+    glue           1.8.0   2024-09-30 [1] CRAN (R 4.4.1)
+    gridExtra    * 2.3     2017-09-09 [1] CRAN (R 4.4.0)
+    gridtext       0.1.5   2022-09-16 [1] CRAN (R 4.4.0)
+    gtable         0.3.6   2024-10-25 [1] CRAN (R 4.4.1)
+    here           1.0.1   2020-12-13 [1] CRAN (R 4.4.0)
+    knitr          1.50    2025-03-16 [1] CRAN (R 4.4.2)
+    labeling       0.4.3   2023-08-29 [1] CRAN (R 4.4.0)
+    lifecycle      1.0.4   2023-11-07 [1] CRAN (R 4.4.0)
+    litedown       0.6     2025-02-27 [1] CRAN (R 4.4.3)
+    magrittr       2.0.3   2022-03-30 [1] CRAN (R 4.4.0)
+    markdown       2.0     2025-03-23 [1] CRAN (R 4.4.3)
+    parallelly   * 1.43.0  2025-03-24 [1] CRAN (R 4.4.1)
+    pillar         1.10.2  2025-04-05 [1] CRAN (R 4.4.1)
+    pkgconfig      2.0.3   2019-09-22 [1] CRAN (R 4.4.0)
+    R6             2.6.1   2025-02-15 [1] CRAN (R 4.4.1)
+    RColorBrewer   1.1-3   2022-04-03 [1] CRAN (R 4.4.0)
+    Rcpp           1.0.14  2025-01-12 [1] CRAN (R 4.4.1)
+ VP rlang        * 1.1.5   2025-04-11 [2] CRAN (R 4.4.1) (on disk 1.1.6)
+    rprojroot      2.0.4   2023-11-05 [1] CRAN (R 4.4.0)
+    scales         1.4.0   2025-04-24 [1] CRAN (R 4.4.1)
+    sessioninfo    1.2.3   2025-02-05 [1] CRAN (R 4.4.1)
+    stringi        1.8.7   2025-03-27 [1] CRAN (R 4.4.1)
+    stringr        1.5.1   2023-11-14 [1] CRAN (R 4.4.0)
+    tibble         3.2.1   2023-03-20 [1] CRAN (R 4.4.0)
+    tidyselect     1.2.1   2024-03-11 [1] CRAN (R 4.4.0)
+    vctrs          0.6.5   2023-12-01 [1] CRAN (R 4.4.0)
+    vipor          0.4.7   2023-12-18 [1] CRAN (R 4.4.0)
+    withr          3.0.2   2024-10-28 [1] CRAN (R 4.4.1)
+    xfun           0.52    2025-04-02 [1] CRAN (R 4.4.1)
+    xml2           1.3.8   2025-03-14 [1] CRAN (R 4.4.1)
+
+ [1] /Library/Frameworks/R.framework/Versions/4.4-arm64/Resources/library
+ [2] /Users/bmulvey/Library/R/arm64/4.4/library
+
+ * ── Packages attached to the search path.
+ V ── Loaded and on-disk version mismatch.
+ P ── Loaded and on-disk path mismatch.
+
+─────────────────────────────────────────────
