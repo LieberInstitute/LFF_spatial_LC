@@ -370,6 +370,22 @@ fwrite(rctdsc,"plots/manuscript/SuppTabs/TabDelims/ST-RCTD_full_and_multi_WebDiv
 rm(rctdsa,rctdsb,rctdsc,rctdlab,aname,bname)
 ```
 
+registration to Luskin mouse snRNAseq main clusters
+```{r}
+lusk <- readRDS("processed-data/08_validitycheck_25hdg75svg_louv1/05-Registrations_to_LuskinMs2024.RDS")
+lusk <- lusk$allRetainedClusts
+
+anno <- fread("processed-data/08_validitycheck_25hdg75svg_louv1/10-25hdg75svg_louv1_annots.txt")
+anno[anno_prelim_alt=="xLC.1",anno_prelim_alt:="LC.1"]
+anno[,anno_prelim_alt:=gsub(anno_prelim_alt,pattern="xX",replacement="X")]
+
+lusk <- merge.data.table(lusk,anno[,.(anno_prelim_alt,plot_anno)],by.x="LFFclus",by.y="anno_prelim_alt")
+
+lusk[,plot_anno:=gsub(plot_anno,pattern="^.ACHE., .SERT., (.*)$",replacement=paste0("ACHE, SERT, ","\\1"))]
+lusk[,LFFclus:=NULL]
+
+fwrite(lusk,"plots/manuscript/SuppTabs/TabDelims/LuskinMsRegist.txt",sep='\t',quote=F,row.names=F,col.names=T)
+```
 seshinf
 ```{r}
 sessionInfo()
