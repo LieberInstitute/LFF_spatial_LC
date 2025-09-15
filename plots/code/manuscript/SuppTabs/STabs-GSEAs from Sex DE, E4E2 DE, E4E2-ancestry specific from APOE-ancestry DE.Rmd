@@ -1,0 +1,139 @@
+---
+title: "STabs-GSEAs from Sex DE, E4E2 DE, E4E2-ancestry specific from APOE-ancestry
+  DE"
+author: "Bernie Mulvey"
+date: "2025-09-14"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(fig.height = 10,fig.width = 7,include = FALSE)
+#### sets tab autocompletion for directories to begin from the directory containing the .Rproj session, instead of the script's directory if different
+knitr::opts_knit$set(root.dir = here::here())
+
+library(data.table)
+# library(SpatialFeatureExperiment)
+
+## rstudio GUI tweaks
+require(colorout)
+ColorOut()
+options("styler.addins_style_transformer" = "biocthis::bioc_style()")
+##
+
+## enable forked parallel processing with BiocParallel::multicoreParam, future::, etc. seemed to need this a couple times, but otherwise havent so its here as a preventative measure. part of this is adding the line 
+# OBJC_DISABLE_INITIALIZE_FORK_SAFETY=YES
+# to Renviron.site. see e.g. top response on https://stackoverflow.com/questions/73638290/python-on-mac-is-it-safe-to-set-objc-disable-initialize-fork-safety-yes-globall 
+library(parallelly)
+options(parallelly.supportsMulticore.disableOn="")
+options(parallelly.fork.enable=TRUE)
+library(BiocParallel)
+options(bphost="localhost")
+
+
+## last of all, unload the base package datasets, whose data keep getting in the way of autocompletions (e.g., Theoph is priortized over TRUE)
+unloadNamespace("datasets")
+```
+keepn <- names(nmi)[c(12,13,11,3,6,5,2,85,4,6,7,8,11,12,13)]
+nmi <- nmi[,..keepn]
+nmp <- nmp[,..keepn]
+
+nmi[Adjusted.P.value<0.1,N_Shared_Genes:=apply(.SD,1,function(x){length(unlist(strsplit(x,";")))}),.SDcols="Genes"]
+nmp[Adjusted.P.value<0.1,N_Shared_Genes:=apply(.SD,1,function(x){length(unlist(strsplit(x,";")))}),.SDcols="Genes"]
+
+sex DE and E4E2 DE msigdb
+```{r}
+gsea.ms <- readRDS("processed-data/12_DEanalyses_removedsampsAndFinalNMseg/03bi-MulticlusterDE_OneInterxnPerModel_dropMixClusts_GSEAmsigdb.RDS")
+gsea.ms <- gsea.ms[grep(names(gsea.ms),pattern="Sex|E4vE2",value=T)]
+
+gsea.ms.sex <- rbindlist(gsea.ms[grep(names(gsea.ms),pattern="Sex",value=T)],idcol="params")
+gsea.ms.sex[,Signed:="Yes"]
+
+gsea.ms.apo <- rbindlist(gsea.ms[grep(names(gsea.ms),pattern="E4vE2",value=T)],idcol="params")
+gsea.ms.apo[,Signed:="Yes"]
+
+
+gsea.ms.us <- readRDS("processed-data/12_DEanalyses_removedsampsAndFinalNMseg/03bi-MulticlusterDE_OneInterxnPerModel_dropMixClusts_GSEAmsigdb_UNsigned.RDS")
+gsea.ms.us <- gsea.ms.us[grep(names(gsea.ms),pattern="Sex|E4vE2",value=T)]
+
+gsea.ms.us.sex <- rbindlist(gsea.ms.us[grep(names(gsea.ms.us),pattern="Sex",value=T)],idcol="params")
+gsea.ms.us.sex[,Signed:="No"]
+
+gsea.ms.us.apo <- rbindlist(gsea.ms.us[grep(names(gsea.ms.us),pattern="E4vE2",value=T)],idcol="params")
+gsea.ms.us.apo[,Signed:="No"]
+
+gsea.sex <- rbind(gsea.ms.sex,gsea.ms.us.sex)
+gsea.apo <- rbind(gsea.ms.apo,gsea.ms.us.apo)
+
+gsea.sex[,Domain:=gsub(params,pattern="(.*)_Sex",replacement="\\1")]
+gsea.sex[,Comparison:="Male vs Female"]
+gsea.sex[,params:=NULL]
+gsea.sex[,`Geneset Source`:="msigdb"]
+
+
+gsea.apo[,Domain:=gsub(params,pattern="(.*)_E4vE2",replacement="\\1")]
+gsea.apo[,Comparison:="E4 vs E2"]
+gsea.apo[,params:=NULL]
+gsea.apo[,`Geneset Source`:="msigdb"]
+
+keepn <- names(gsea.sex)[c(14,12,13,11,1,10,2,3,6,5,8,7,4)]
+gsea.sex <- gsea.sex[,..keepn]
+
+keepn <- names(gsea.apo)[c(14,12,13,11,1,10,2,3,6,5,8,7,4)]
+gsea.apo <- gsea.apo[,..keepn]
+
+fwrite(gsea.sex,"plots/manuscript/SuppTabs/TabDelims/ST-Msigdb_GSEA_Sex.txt",sep='\t',quote=F,row.names=F,col.names=T)
+fwrite(gsea.apo,"plots/manuscript/SuppTabs/TabDelims/ST-Msigdb_GSEA_E4vE2.txt",sep='\t',quote=F,row.names=F,col.names=T)
+
+rm(gsea.sex,gsea.apo,gsea.ms.us.apo,gsea.ms.us.sex,keepn,gsea.ms.sex,gsea.ms.apo,gsea.ms,gsea.ms.us)
+```
+
+APOE-ancestry msigdb
+```{r}
+gsea.ms.apoanc <- readRDS("processed-data/12_DEanalyses_removedsampsAndFinalNMseg/03biii-MulticlusterDE_AncAPOgroups_dropMixClusts_GSEAmsigdb.RDS")
+gsea.ms.us.apoanc <- readRDS("processed-data/12_DEanalyses_removedsampsAndFinalNMseg/03biii-MulticlusterDE_AncAPOgroups_dropMixClusts_GSEAmsigdb_UNsigned.RDS")
+```
+
+# the TF ones will need additional cleanup to extract TF symbols and subset to those TFs expressed in the tested domain
+```{r}
+
+gsea.tf <- readRDS("processed-data/12_DEanalyses_removedsampsAndFinalNMseg/03bii-MulticlusterDE_OneInterxnPerModel_dropMixClusts_GSEA_TFtargs.RDS")
+gsea.tf.us <- readRDS("processed-data/12_DEanalyses_removedsampsAndFinalNMseg/03bii-MulticlusterDE_OneInterxnPerModel_dropMixClusts_GSEA_TFtargs_UNsigned.RDS")
+gsea.tf.apoanc <- readRDS("processed-data/12_DEanalyses_removedsampsAndFinalNMseg/03biv-MulticlusterDE_AncAPOgroups_dropMixClusts_TFtargs.RDS")
+gsea.tf.us.apoanc <- readRDS("processed-data/12_DEanalyses_removedsampsAndFinalNMseg/03biv-MulticlusterDE_AncAPOgroups_dropMixClusts_TFtargs_UNsigned.RDS")
+
+
+```
+
+## extract TF symbols from the TF-Targ set names
+y <- nmgsea[[2]][!(pathway %in% grep(pathway,pattern="Rummagene",value=T))]
+y[,tf:=apply(.SD,MARGIN = 1,FUN=function(h){strsplit(h,"_",1)[[1]][1]}),.SDcols="pathway"]
+### rummagene TFs are named differently:
+z <- nmgsea[[2]][pathway %in% grep(pathway,pattern="Rummagene",value=T)]
+# reverse the output of a strsplit of a strsplit o.0 to get the string immediately preceding "_Rummagene_.."
+z[,tf:=apply(.SD,MARGIN=1,FUN=function(p){
+    rev.default(strsplit(
+        strsplit(p,"_Rummagene_transcription_factors",-1)[[1]][1],
+        "_")[[1]]
+    )[1]
+}),.SDcols="pathway"]
+#z[,tf:=gsub(pathway,pattern=".*-.*_(.*)_Rummagene_transcription_factors)",replacement="\\1")]
+fix <- rbind(z,y)
+# make all upper case
+fix[,tf:=toupper(tf)]
+nmgsea[[2]] <- fix
+
+
+## concat and save
+nmgsea <- rbindlist(nmgsea,idcol="params",fill=T)
+
+nmgsea[,`Geneset Source`:=gsub(params,pattern="^(.*)_.*$",replacement="\\1")]
+nmgsea[,signed:=gsub(params,pattern="^.*_(.*)$",replacement="\\1")]
+nmgsea[,signed:=ifelse(signed=="signed","Yes","No")]
+setnames(nmgsea,"signed","Directed Test")
+nmgsea[,params:=NULL]
+
+reordn <- c("Geneset Source","Directed Test","tf","pathway","dir","pval","padj","NES","ES","leadingEdge","size","log2err")
+nmgsea <- nmgsea[,..reordn]
+fwrite(nmgsea,"plots/manuscript/SuppTabs/TabDelims/LCNMpos_vs_LCNMneg_DE_GSEA.txt",sep='\t',quote=F,row.names=F,col.names=T)
+
+rm(nmgsea,reordn)
