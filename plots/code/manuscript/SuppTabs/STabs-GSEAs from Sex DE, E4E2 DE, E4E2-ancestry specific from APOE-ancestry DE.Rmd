@@ -12,6 +12,8 @@ knitr::opts_chunk$set(fig.height = 10,fig.width = 7,include = FALSE)
 knitr::opts_knit$set(root.dir = here::here())
 
 library(data.table)
+library(SpatialExperiment)
+library(scater)
 # library(SpatialFeatureExperiment)
 
 ## rstudio GUI tweaks
@@ -26,6 +28,7 @@ options("styler.addins_style_transformer" = "biocthis::bioc_style()")
 library(parallelly)
 options(parallelly.supportsMulticore.disableOn="")
 options(parallelly.fork.enable=TRUE)
+library(parallel)
 library(BiocParallel)
 options(bphost="localhost")
 
@@ -33,12 +36,6 @@ options(bphost="localhost")
 ## last of all, unload the base package datasets, whose data keep getting in the way of autocompletions (e.g., Theoph is priortized over TRUE)
 unloadNamespace("datasets")
 ```
-keepn <- names(nmi)[c(12,13,11,3,6,5,2,85,4,6,7,8,11,12,13)]
-nmi <- nmi[,..keepn]
-nmp <- nmp[,..keepn]
-
-nmi[Adjusted.P.value<0.1,N_Shared_Genes:=apply(.SD,1,function(x){length(unlist(strsplit(x,";")))}),.SDcols="Genes"]
-nmp[Adjusted.P.value<0.1,N_Shared_Genes:=apply(.SD,1,function(x){length(unlist(strsplit(x,";")))}),.SDcols="Genes"]
 
 sex DE and E4E2 DE msigdb
 ```{r}
@@ -75,65 +72,270 @@ gsea.apo[,Comparison:="E4 vs E2"]
 gsea.apo[,params:=NULL]
 gsea.apo[,`Geneset Source`:="msigdb"]
 
+
+# desired order:  "Geneset Source" "Domain"         "Comparison"     "Signed"     
+# "pathway"        "dir"            "pval"           "padj"          
+# "NES"            "ES"             "leadingEdge"    "size"       "log2err"   
 keepn <- names(gsea.sex)[c(14,12,13,11,1,10,2,3,6,5,8,7,4)]
 gsea.sex <- gsea.sex[,..keepn]
 
 keepn <- names(gsea.apo)[c(14,12,13,11,1,10,2,3,6,5,8,7,4)]
 gsea.apo <- gsea.apo[,..keepn]
 
-fwrite(gsea.sex,"plots/manuscript/SuppTabs/TabDelims/ST-Msigdb_GSEA_Sex.txt",sep='\t',quote=F,row.names=F,col.names=T)
-fwrite(gsea.apo,"plots/manuscript/SuppTabs/TabDelims/ST-Msigdb_GSEA_E4vE2.txt",sep='\t',quote=F,row.names=F,col.names=T)
+fwrite(gsea.sex[padj<0.05],"plots/manuscript/SuppTabs/TabDelims/ST-Msigdb_GSEA_Sex_signif.txt",sep='\t',quote=F,row.names=F,col.names=T)
+fwrite(gsea.apo[padj<0.05],"plots/manuscript/SuppTabs/TabDelims/ST-Msigdb_GSEA_E4vE2_signif.txt",sep='\t',quote=F,row.names=F,col.names=T)
 
-rm(gsea.sex,gsea.apo,gsea.ms.us.apo,gsea.ms.us.sex,keepn,gsea.ms.sex,gsea.ms.apo,gsea.ms,gsea.ms.us)
+rm(gsea.sex,gsea.apo,gsea.ms.us.apo,gsea.ms.us.sex,gsea.ms.sex,gsea.ms.apo,gsea.ms,gsea.ms.us)
 ```
 
 APOE-ancestry msigdb
 ```{r}
 gsea.ms.apoanc <- readRDS("processed-data/12_DEanalyses_removedsampsAndFinalNMseg/03biii-MulticlusterDE_AncAPOgroups_dropMixClusts_GSEAmsigdb.RDS")
 gsea.ms.us.apoanc <- readRDS("processed-data/12_DEanalyses_removedsampsAndFinalNMseg/03biii-MulticlusterDE_AncAPOgroups_dropMixClusts_GSEAmsigdb_UNsigned.RDS")
+
+## get each test to be pulled out
+conts <- unique(gsub(grep(names(gsea.ms.apoanc),pattern="^LC_",value=T),pattern="^LC_(.*)",replacement="\\1"))
+
+
+bytrast <- lapply(conts,function(x){
+  gsea.ms.apoanc[grep(names(gsea.ms.apoanc),pattern=x,value=T)]
+})
+names(bytrast) <- conts
+
+bytrast.us <- lapply(conts,function(x){
+  gsea.ms.us.apoanc[grep(names(gsea.ms.us.apoanc),pattern=x,value=T)]
+})
+names(bytrast.us) <- conts
+# cleanup
+rm(gsea.ms.us.apoanc,gsea.ms.apoanc)
+# 
+bytrast <- mapply(t=bytrast,n=names(bytrast),SIMPLIFY=FALSE,function(t,n){
+  z <- rbindlist(t,idcol="params")
+  pat <- paste0("_",n)
+  z[,Domain:=gsub(params,pattern=pat,replacement="")]
+  z[,Signed:="Yes"]
+  z[,Comparison:=n]
+  z[,params:=NULL]
+  z[,`Geneset Source`:="msigdb"]
+  return(z)
+})
+
+bytrast.us <- mapply(t=bytrast.us,n=names(bytrast.us),SIMPLIFY=FALSE,function(t,n){
+  z <- rbindlist(t,idcol="params")
+  pat <- paste0("_",n)
+  z[,Domain:=gsub(params,pattern=pat,replacement="")]
+  z[,Signed:="No"]
+  z[,Comparison:=n]
+  z[,params:=NULL]
+  z[,`Geneset Source`:="msigdb"]
+  return(z)
+})
+
+bytrast2 <- list()
+i <- 1
+for (i in c(1:length(bytrast))){
+  curcomp <- names(bytrast)[i]
+  bytrast2[[i]] <- rbind(bytrast.us[[curcomp]],bytrast[[curcomp]])
+  ## recycling the desired end order of colnames from previous
+  bytrast2[[i]] <- bytrast2[[i]][,..keepn]
+  bytrast2[[i]][,dir:=gsub(dir,pattern="^.*_(.*_down)_vs.*$",replacement="\\1")]
+  bytrast2[[i]][,dir:=gsub(dir,pattern="^.*_(.*_up)_vs.*$",replacement="\\1")]
+  names(bytrast2)[i] <- curcomp
+  fwrite(bytrast2[[i]][padj<0.05],paste0("plots/manuscript/SuppTabs/TabDelims/ST-Msigdb_GSEA_",curcomp,"_signif.txt"),sep='\t',quote=F,row.names=F,col.names=T)
+}
+
+## remove some intermediates
+rm(conts,curcomp,i,sig,unsig,bytrast,bytrast.us)
+
+### then, we need to get the ancestry-comparison-specific E4-E2 enrichments
+e4e2s <- rbind(bytrast2$E4CEU_vs_E2CEU[Signed=="Yes"],bytrast2$E4YRI_vs_E2YRI[Signed=="Yes"])
+
+e4e2s <- e4e2s[padj<0.05] # significant results
+e4e2s <- e4e2s[,.(NES,pathway,Domain,Comparison,dir)] # subset to important columns
+# make direction of test uniformly coded as E4_up / E4_down so we can count the # occurrences (2 in a direction means it was significant in that dir for both the YRI and CEU tests)
+
+# make a temp copy of e4e2s
+e4e2s.tmp <- copy(e4e2s)
+e4e2s.tmp[,dir:=gsub(dir,pattern="CEU|YRI",replacement="\\1")]
+uniq <- e4e2s.tmp[,.(.N,NES),by=c("pathway","Domain","dir")][N==1] # unique occurrences
+
+# merge the one with the fully annotated direction column back in
+e4e2_oneanc <- merge.data.table(e4e2s,uniq[,.(pathway,Domain,NES)],by=c("pathway","Domain","NES"))
+stopifnot(nrow(e4e2_oneanc)==nrow(uniq)) # make sure nothing with coincidentally equal NES snuck thru
+
+fwrite(e4e2_oneanc,"plots/manuscript/SuppTabs/TabDelims/ST-AncestrySpecific_E4E2_MsigDB_signedGSEA_hits.txt",sep='\t',quote=F,row.names=F,col.names=T)
+
+rm(e4e2s,e4e2s.tmp,uniq,e4e2_oneanc,bytrast2)
+gc(full=T)
 ```
 
 # the TF ones will need additional cleanup to extract TF symbols and subset to those TFs expressed in the tested domain
+# sex/E4E2:
 ```{r}
-
 gsea.tf <- readRDS("processed-data/12_DEanalyses_removedsampsAndFinalNMseg/03bii-MulticlusterDE_OneInterxnPerModel_dropMixClusts_GSEA_TFtargs.RDS")
+gsea.tf <- gsea.tf[grep(names(gsea.tf),pattern="Sex|E4vE2",value=T)]
+
+gsea.tf.sex <- rbindlist(gsea.tf[grep(names(gsea.tf),pattern="Sex",value=T)],idcol="params")
+gsea.tf.sex[,Signed:="Yes"]
+
+gsea.tf.apo <- rbindlist(gsea.tf[grep(names(gsea.tf),pattern="E4vE2",value=T)],idcol="params")
+gsea.tf.apo[,Signed:="Yes"]
+
 gsea.tf.us <- readRDS("processed-data/12_DEanalyses_removedsampsAndFinalNMseg/03bii-MulticlusterDE_OneInterxnPerModel_dropMixClusts_GSEA_TFtargs_UNsigned.RDS")
-gsea.tf.apoanc <- readRDS("processed-data/12_DEanalyses_removedsampsAndFinalNMseg/03biv-MulticlusterDE_AncAPOgroups_dropMixClusts_TFtargs.RDS")
-gsea.tf.us.apoanc <- readRDS("processed-data/12_DEanalyses_removedsampsAndFinalNMseg/03biv-MulticlusterDE_AncAPOgroups_dropMixClusts_TFtargs_UNsigned.RDS")
+gsea.tf.us <- gsea.tf.us[grep(names(gsea.tf),pattern="Sex|E4vE2",value=T)]
+
+gsea.tf.us.sex <- rbindlist(gsea.tf.us[grep(names(gsea.tf.us),pattern="Sex",value=T)],idcol="params")
+gsea.tf.us.sex[,Signed:="No"]
+
+gsea.tf.us.apo <- rbindlist(gsea.tf.us[grep(names(gsea.tf.us),pattern="E4vE2",value=T)],idcol="params")
+gsea.tf.us.apo[,Signed:="No"]
+
+gsea.sex <- rbind(gsea.tf.sex,gsea.tf.us.sex)
+gsea.apo <- rbind(gsea.tf.apo,gsea.tf.us.apo)
+
+gsea.sex[,Domain:=gsub(params,pattern="(.*)_Sex",replacement="\\1")]
+gsea.sex[,Comparison:="Male vs Female"]
+gsea.sex[,params:=NULL]
+gsea.sex[,`Geneset Source`:="Enrichr (as used in Mulvey 2024)"]
+
+gsea.apo[,Domain:=gsub(params,pattern="(.*)_E4vE2",replacement="\\1")]
+gsea.apo[,Comparison:="E4 vs E2"]
+gsea.apo[,params:=NULL]
+gsea.apo[,`Geneset Source`:="Enrichr (as used in Mulvey 2024)"]
 
 
+### extract TF symbol from the original enrichr term
+gseas <- list(gsea.apo,gsea.sex)
+names(gseas) <- c("E4vE2","Sex")
+
+gseas <- lapply(gseas,function(x){
+  y <- x[!(pathway %in% grep(pathway,pattern="Rummagene",value=T))]
+  y[,TF:=apply(.SD,MARGIN = 1,FUN=function(h){strsplit(h,"_",1)[[1]][1]}),.SDcols="pathway"]
+  ### rummagene TFs are named differently:
+  z <- x[pathway %in% grep(pathway,pattern="Rummagene",value=T)]
+  # reverse the output of a strsplit of a strsplit o.0 to get the string immediately preceding "_Rummagene_.."
+  z[,TF:=apply(.SD,MARGIN=1,FUN=function(p){
+      rev.default(strsplit(
+          strsplit(p,"_Rummagene_transcription_factors",-1)[[1]][1],
+          "_")[[1]]
+      )[1]
+    }),.SDcols="pathway"]
+  fix <- rbind(z,y)
+  
+  # make all upper case
+  fix[,TF:=toupper(TF)]
+  
+  return(fix)
+})
+
+
+# desired order:  "Geneset Source" "Domain"         "Comparison"     "Signed"     
+# "TF"        "dir"            "pval"           "padj"          
+# "NES"            "ES"             "leadingEdge"    "size"       "log2err"
+# "pathway" (full enrichr term)
+
+keepn <- names(gseas[[1]])[c(14,12,13,11,15,10,2,3,6,5,8,7,4,1)]
+gseas[[1]] <- gseas[[1]][,..keepn]
+gseas[[2]] <- gseas[[2]][,..keepn]
+
+## cleanup
+rm(gsea.apo,gsea.sex,gsea.tf,gsea.tf.us,gsea.tf.sex,gsea.tf.apo,gsea.tf.us.apo,gsea.tf.us.sex)
 ```
 
-## extract TF symbols from the TF-Targ set names
-y <- nmgsea[[2]][!(pathway %in% grep(pathway,pattern="Rummagene",value=T))]
-y[,tf:=apply(.SD,MARGIN = 1,FUN=function(h){strsplit(h,"_",1)[[1]][1]}),.SDcols="pathway"]
-### rummagene TFs are named differently:
-z <- nmgsea[[2]][pathway %in% grep(pathway,pattern="Rummagene",value=T)]
-# reverse the output of a strsplit of a strsplit o.0 to get the string immediately preceding "_Rummagene_.."
-z[,tf:=apply(.SD,MARGIN=1,FUN=function(p){
-    rev.default(strsplit(
-        strsplit(p,"_Rummagene_transcription_factors",-1)[[1]][1],
-        "_")[[1]]
-    )[1]
-}),.SDcols="pathway"]
-#z[,tf:=gsub(pathway,pattern=".*-.*_(.*)_Rummagene_transcription_factors)",replacement="\\1")]
-fix <- rbind(z,y)
-# make all upper case
-fix[,tf:=toupper(tf)]
-nmgsea[[2]] <- fix
+## now find expressed TFs in our spatial domains: at least 4% of spots in at least N tissue sections, where N is half the size of the smallest E4orE2, Sex, or Ancestry group; OR, TFs expressed on >4% of spots on average across all samples. (that way, if something wacky like a sex-and-ancestry-specific TF expression phenomenon is happening but robustly enough, we'll still catch it. a test pass for ACHE_SERT_Npep suggests this is very few genes--5 of 12k passing).
+```{r}
+lc <- readRDS("processed-data/06-countsOnly_noImgData_QCed_SPE_split_to_tissSections.RDS")
 
+## add logcounts
+lc <- scater::computeLibraryFactors(lc)
+lc <- scater::logNormCounts(lc)
 
-## concat and save
-nmgsea <- rbindlist(nmgsea,idcol="params",fill=T)
+## add domain labels
+louvs <- readRDS("processed-data/07_featureSelection_dimred_harmony_clustering/04-Initial_louvLeid_res0.5-1-2_clusterings.RDS")
+anno <- fread("processed-data/08_validitycheck_25hdg75svg_louv1/10-25hdg75svg_louv1_annots.txt")
+louvs <- louvs$HARMONYlmbna_HDG_SVG_2575[,.(rn,snnHARMONYlmbna_HDG_SVG_2575_louv_res1)]
+setnames(louvs,2,"clusid")
+louvs <- merge.data.table(louvs,anno,by="clusid")
+louvs <- DataFrame(louvs,row.names=louvs$rn)[colnames(lc),]
+## we want the anno column, which matches the domains as listed in the gsea tables
+lc$domain <- louvs$anno
 
-nmgsea[,`Geneset Source`:=gsub(params,pattern="^(.*)_.*$",replacement="\\1")]
-nmgsea[,signed:=gsub(params,pattern="^.*_(.*)$",replacement="\\1")]
-nmgsea[,signed:=ifelse(signed=="signed","Yes","No")]
-setnames(nmgsea,"signed","Directed Test")
-nmgsea[,params:=NULL]
+## subset to those five domains
+lc <- lc[,lc$domain %in% c("ACHE_SERT_LC_WM","ACHE_SERT_Npep","Astro","LC","Oligo_Astro")]
 
-reordn <- c("Geneset Source","Directed Test","tf","pathway","dir","pval","padj","NES","ES","leadingEdge","size","log2err")
-nmgsea <- nmgsea[,..reordn]
-fwrite(nmgsea,"plots/manuscript/SuppTabs/TabDelims/LCNMpos_vs_LCNMneg_DE_GSEA.txt",sep='\t',quote=F,row.names=F,col.names=T)
+## find the smallest domain-group for our expressed threshold
+domgrp <- as.data.table(colData(lc))[,.(sample_id,Sex,APOE,Ancestry,domain)]
+domgrp[,E4E2:=ifelse(APOE %in% grep(APOE,pattern="E4",value=T),"E4","E2")]
+domgrp <- unique(domgrp)
+domgrp[,.N,by=c("domain","Sex")][N==min(N),N] # 31
+domgrp[,.N,by=c("domain","E4E2")][N==min(N),N] # 26
+domgrp[,.N,by=c("domain","Ancestry")][N==min(N),N] # 24
+# so, half of the lowest domain-condition group (24) --> require at least 12 tissue sections passing our expression threshold, which will be at least 4% of spots with nonzero counts
 
-rm(nmgsea,reordn)
+# make sure rownames are gene symbols before continuing
+rownames(lc) <- rowData(lc)$gene_name
+
+# drop any genes that have fewer than 12 counts for efficiency (impossible to have 12 samples with a domain and nonzero expression if total raw counts is under 12)
+keepg <- rowSums(counts(lc))>11 # only drops 6886 genes but we'll do it
+lc <- lc[keepg,]
+
+## cleanup for parallel run by domain:
+rm(keepg,anno,louvs)
+gc(full=T)
+
+### determine genes expressed on a per-domain basis (remember, at least 12 samples with >4% of spots in a domain expressing, OR 4% of spots in domain expressing on average)
+doms <- unique(lc$domain)
+domxprgs <- mclapply(doms,mc.cores=2,FUN=function(D){
+
+    lct <- as.data.table(as.data.frame(as.matrix(logcounts(lc[,lc$domain==D]))),keep.rownames=T)
+    setnames(lct,"rn","symb")
+    lct <- melt(lct,id.vars="symb",value.name="logcounts")
+    ## the key thing happening above is that a row is created for EVERY gene for every spot, so the number of genes we end up with here is a constant we can divide by to get the number of spots in each sample
+    
+    ### get sample ID from the unique spot identifiers
+    lct[,samp:=gsub(variable,pattern="^.*_(.*_.*)$",replacement="\\1")]
+    lct[,Nspot:=.N/length(unique(symb)),by="samp"]
+            
+    # this is a clunky approach, but the TOTAL %age of spots expressing the TF in question (ie logcounts>0) for that sample will fill in for ALL of the rows where logcounts are >0 in this next step. we can then get a table of unique combinations of sample X TF x %age of spots
+    lct[logcounts>0,pctxpr:=.N/Nspot,by=c("symb","samp")]
+    # set NAs in pctxpr to 0
+    lct[is.na(pctxpr),pctxpr:=0]
+    # get each unique pair of tf-sample-pctxpr, where we fetch the max row value of pctxpr for a tf-sample pair (which will be >0 and = the % of spots expressing in any row where the gene was detected for that sample)
+    lctfilt <- lct[,max(pctxpr),by=c("symb","samp")]
+    # calculate mean % spots expressing dataset wide and number of samples with expression over 2%. each tf occurs once per sample, so take the mean across rows with a given TF value for samplewise means, or tabulate the number of TF occurrences with the pctxpr filter to get the number of passing rows
+    setnames(lctfilt,"V1","pctxpr")
+    lctfilt[,meanxpr:=mean(pctxpr),by="symb"]
+    lctfilt[pctxpr>0.04,Nxpr:=.N,by="symb"]
+    # na rows returned in Nxpr will be meaningless in this result, since we just will subset to max Nxpr analogous to what we did above, resulting in a table of X tfs with their mean + spot %age and number of samples over threshold. set na values to 0 to avoid errors relating to NAs here.
+    lctfilt[is.na(Nxpr),Nxpr:=0]
+    lctfilt2 <- lctfilt[,max(Nxpr),by="symb"]
+    setnames(lctfilt2,"V1","Nxpr")
+    ## add baack the mean expression to the number of threshold-passing samples by merging parts of the old data ttable to the above result
+    lctfilt2 <- merge.data.table(lctfilt2,unique(lctfilt[,.(symb,meanxpr)],by="symb"))
+
+    # FINALLY  get the genes meeting criteria (expressed in at least 5% of spots of domain for at least 12 samples, or >5% of spots on average across ALL samples with the domain) back and filter the result table to them
+    
+    xprg <- lctfilt2[Nxpr>11|meanxpr>0.02,symb]
+    # return qualifying gene symbols
+    return(xprg)
+})
+names(domxprgs) <- doms
+rm(lc)
+gc(full=T)
+```
+
+## now filter our gsea tables to TF-domain pairs that passed the expression threshold above.
+```{r}
+gseas2 <- lapply(gseas,function(x){
+  z <- mapply(d=domxprgs,n=names(domxprgs),SIMPLIFY=FALSE,function(d,n){
+    y <- x[Domain==n & TF %in% d]
+    return(y)
+  })
+  ret <- rbindlist(z)
+  return(ret)
+})
+
+mapply(g=gseas2,n=names(gseas2),SIMPLIFY=FALSE,function(g,n){
+  fwrite(g,paste0("plots/manuscript/SuppTabs/TabDelims/ST-TFtargGSEA_TFin4pctOfDomSpotsOnAvgOrIn12Samps_",n,".txt"),sep='\t',quote=F,row.names=F,col.names=T)
+})
+```
