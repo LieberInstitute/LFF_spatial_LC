@@ -1,0 +1,39 @@
+---
+title: "STs-SCORPION"
+author: "Bernie Mulvey"
+date: "2025-09-16"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(fig.height = 10,fig.width = 7,include = FALSE)
+#### sets tab autocompletion for directories to begin from the directory containing the .Rproj session, instead of the script's directory if different
+knitr::opts_knit$set(root.dir = here::here())
+
+library(data.table)
+# library(SpatialFeatureExperiment)
+
+## rstudio GUI tweaks
+require(colorout)
+ColorOut()
+options("styler.addins_style_transformer" = "biocthis::bioc_style()")
+##
+
+## last of all, unload the base package datasets, whose data keep getting in the way of autocompletions (e.g., Theoph is priortized over TRUE)
+unloadNamespace("datasets")
+```
+
+
+for supp tabs, in addition to the files in 12h1, h2, h3, we want the table with specific edges and with specific edges + all edges involving a specific TF (TFs with >80% of specific edges being of one type (i.e. NMposSpec / (NMposSpec+NMnegSpec) > 0.8))
+```{r}
+scor <- readRDS("/Users/bmulvey/Desktop/KM Lab/local_lffLC/LFF_spatial_LC/processed-data/12_DEanalyses_removedsampsAndFinalNMseg/12e2-Pbulkprefilt_LCNMposNeg_GRNs_NMdomainSpecEdge_or_SpecEdgeandSpecTF_filt.RDS")
+nmptf <- fread("processed-data/12_DEanalyses_removedsampsAndFinalNMseg/12h1-TFs_withOver80Pct_NMpos_spec_edges_inPbulkPrefiltGRN.txt",header=F)
+nmntf <- fread("processed-data/12_DEanalyses_removedsampsAndFinalNMseg/12h2-TFs_withOver80Pct_NMneg_spec_edges_inPbulkPrefiltGRN.txt")
+
+scortab <- scor$pbulkfilt_rnet_specEdge_or_EdgeWith80pctSpecTF
+scortab[nmn_spec=="N"&nmp_spec=="N"&TF %in% nmptf$V1,edgeType:="NM+ Specific TF"]
+scortab[nmn_spec=="N"&nmp_spec=="N"&TF %in% nmntf$V1,edgeType:="NM- Specific TF"]
+scortab[,nmp_pn:=NULL]
+scortab[,nmn_pn:=NULL]
+fwrite(scortab,"plots/manuscript/SuppTabs/TabDelims/STs-SCORPION_NMspecificEdges_andEdgesWSpecificTFs.txt",sep='\t',quote=F,row.names=F,col.names=T)
+```

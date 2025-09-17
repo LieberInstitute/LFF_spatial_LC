@@ -176,7 +176,7 @@ rm(rnetsout)
 ```
 
 ## using the specific edges only (1669 edges), get a network of the largest-difference (effect) edges:
-get edges that come out as being specific to a TF interaction from one network or the other, AND with differences larger than one of their directions edge weights or difference in edge weight >5, AND where NM+ or NM- edge weight is >2 --> 47 edges. put a sign on the edge weight difference to indicate more active network, and a column specifying whether the TF is acting as a repressor or enhancer in its most involved context.
+get edges that come out as being specific to a TF interaction from one network or the other, AND with differences larger than one of their directions edge weights or difference in edge weight >5, AND where NM+ or NM- edge weight is >2 --> 47 edges. put a sign on the edge weight difference to indicate more active network
 ```{r}
 topdifnet <- rnetspec[diff>abs(nmp)|diff>abs(nmn)|diff>5][abs(nmp)>2|abs(nmn)>2]
 topdifnet[,diff:=ifelse(nmp>nmn,yes=diff,no=-1*diff)]

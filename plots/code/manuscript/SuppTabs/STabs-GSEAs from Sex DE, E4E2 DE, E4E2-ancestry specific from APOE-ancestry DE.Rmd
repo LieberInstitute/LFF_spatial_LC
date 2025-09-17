@@ -151,11 +151,14 @@ rm(conts,curcomp,i,sig,unsig,bytrast,bytrast.us)
 e4e2s <- rbind(bytrast2$E4CEU_vs_E2CEU[Signed=="Yes"],bytrast2$E4YRI_vs_E2YRI[Signed=="Yes"])
 
 e4e2s <- e4e2s[padj<0.05] # significant results
-e4e2s <- e4e2s[,.(NES,pathway,Domain,Comparison,dir)] # subset to important columns
-# make direction of test uniformly coded as E4_up / E4_down so we can count the # occurrences (2 in a direction means it was significant in that dir for both the YRI and CEU tests)
+
 
 # make a temp copy of e4e2s
 e4e2s.tmp <- copy(e4e2s)
+
+e4e2s.tmp <- e4e2s.tmp[,.(NES,pathway,Domain,Comparison,dir)] # subset to important columns
+# make direction of test uniformly coded as E4_up / E4_down so we can count the # occurrences (2 in a direction means it was significant in that dir for both the YRI and CEU tests)
+
 e4e2s.tmp[,dir:=gsub(dir,pattern="CEU|YRI",replacement="\\1")]
 uniq <- e4e2s.tmp[,.(.N,NES),by=c("pathway","Domain","dir")][N==1] # unique occurrences
 
@@ -242,7 +245,7 @@ gseas[[2]] <- gseas[[2]][,..keepn]
 rm(gsea.apo,gsea.sex,gsea.tf,gsea.tf.us,gsea.tf.sex,gsea.tf.apo,gsea.tf.us.apo,gsea.tf.us.sex)
 ```
 
-## now find expressed TFs in our spatial domains: at least 4% of spots in at least N tissue sections, where N is half the size of the smallest E4orE2, Sex, or Ancestry group; OR, TFs expressed on >4% of spots on average across all samples. (that way, if something wacky like a sex-and-ancestry-specific TF expression phenomenon is happening but robustly enough, we'll still catch it. a test pass for ACHE_SERT_Npep suggests this is very few genes--5 of 12k passing).
+## now find expressed TFs in our spatial domains: at least 4% of spots in at least N tissue sections, where N is half the size of the smallest E4orE2, Sex, or Ancestry group; OR, TFs expressed on >2% of spots on average across all samples. (that way, if something wacky like a sex-and-ancestry-specific TF expression phenomenon is happening but robustly enough, we'll still catch it. a test pass for ACHE_SERT_Npep suggests this is very few genes--5 of 12k passing).
 ```{r}
 lc <- readRDS("processed-data/06-countsOnly_noImgData_QCed_SPE_split_to_tissSections.RDS")
 
@@ -283,7 +286,7 @@ lc <- lc[keepg,]
 rm(keepg,anno,louvs)
 gc(full=T)
 
-### determine genes expressed on a per-domain basis (remember, at least 12 samples with >4% of spots in a domain expressing, OR 4% of spots in domain expressing on average)
+### determine genes expressed on a per-domain basis (remember, at least 12 samples with >4% of spots in a domain expressing, OR 2% of spots in domain expressing on average)
 doms <- unique(lc$domain)
 domxprgs <- mclapply(doms,mc.cores=2,FUN=function(D){
 
@@ -302,7 +305,7 @@ domxprgs <- mclapply(doms,mc.cores=2,FUN=function(D){
     lct[is.na(pctxpr),pctxpr:=0]
     # get each unique pair of tf-sample-pctxpr, where we fetch the max row value of pctxpr for a tf-sample pair (which will be >0 and = the % of spots expressing in any row where the gene was detected for that sample)
     lctfilt <- lct[,max(pctxpr),by=c("symb","samp")]
-    # calculate mean % spots expressing dataset wide and number of samples with expression over 2%. each tf occurs once per sample, so take the mean across rows with a given TF value for samplewise means, or tabulate the number of TF occurrences with the pctxpr filter to get the number of passing rows
+    # calculate mean % spots expressing dataset wide and number of samples with expression over 4%. each tf occurs once per sample, so take the mean across rows with a given TF value for samplewise means, or tabulate the number of TF occurrences with the pctxpr filter to get the number of passing rows
     setnames(lctfilt,"V1","pctxpr")
     lctfilt[,meanxpr:=mean(pctxpr),by="symb"]
     lctfilt[pctxpr>0.04,Nxpr:=.N,by="symb"]
@@ -313,7 +316,7 @@ domxprgs <- mclapply(doms,mc.cores=2,FUN=function(D){
     ## add baack the mean expression to the number of threshold-passing samples by merging parts of the old data ttable to the above result
     lctfilt2 <- merge.data.table(lctfilt2,unique(lctfilt[,.(symb,meanxpr)],by="symb"))
 
-    # FINALLY  get the genes meeting criteria (expressed in at least 5% of spots of domain for at least 12 samples, or >5% of spots on average across ALL samples with the domain) back and filter the result table to them
+    # FINALLY  get the genes meeting criteria (expressed in at least 5% of spots of domain for at least 12 samples, or >2% of spots on average across ALL samples with the domain) back and filter the result table to them
     
     xprg <- lctfilt2[Nxpr>11|meanxpr>0.02,symb]
     # return qualifying gene symbols
@@ -336,6 +339,6 @@ gseas2 <- lapply(gseas,function(x){
 })
 
 mapply(g=gseas2,n=names(gseas2),SIMPLIFY=FALSE,function(g,n){
-  fwrite(g,paste0("plots/manuscript/SuppTabs/TabDelims/ST-TFtargGSEA_TFin4pctOfDomSpotsOnAvgOrIn12Samps_",n,".txt"),sep='\t',quote=F,row.names=F,col.names=T)
+  fwrite(g,paste0("plots/manuscript/SuppTabs/TabDelims/ST-TFtargGSEA_TFin2pctOfDomSpotsOnAvgOrIn12Samps_",n,".txt"),sep='\t',quote=F,row.names=F,col.names=T)
 })
 ```

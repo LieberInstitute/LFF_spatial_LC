@@ -113,7 +113,7 @@ scorpiia <- lapply(xprmats,FUN=function(x){
                    outNet = c("regulatory","coregulatory","cooperative"), # all networks
                    showProgress = TRUE,
                    randomizationMethod = "None", # default is "None"
-                   filterExpr = TRUE,
+                   filterExpr = TRUE, # only filters 0-total-count genes
                    scaleByPresent = FALSE, # default
                    zScaling=TRUE) #default
   return(scorpi)
