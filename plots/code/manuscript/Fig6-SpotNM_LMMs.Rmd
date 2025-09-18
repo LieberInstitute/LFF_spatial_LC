@@ -43,12 +43,9 @@ unloadNamespace('datasets')
 nmlm <- readRDS("processed-data/12_DEanalyses_removedsampsAndFinalNMseg/11-LCNMspots_NMmetric_LMMed_by_geneLogcounts_3apoeFactorizations.RDS")
 
 nmi <- nmlm$E4carrierYN$Intensity_NM
-nmp <- nmlm$E4carrierYN$Prop_NM
 
-nmi[,bonfP:=p*(length(unique(nmlm$gene_name)))]
-nmp[,bonfP:=p*(length(unique(nmlm$gene_name)))]
+nmi[variable==gene_name|variable=="APOE.x",bonfP:=p*(length(unique(nmi$gene_name)))]
 nmi[bonfP>1,bonfP:=1]
-nmp[bonfP>1,bonfP:=1]
 
 ## check if any non-gene features were significantly associated
 nmi[gene_name!=variable &variable!="LRTvs_no_gene_coef"& p<0.05]
@@ -133,18 +130,7 @@ lcnmcd[,mn_NMI:=mean(Intensity_NM,na.rm=T),by="sample_id"]
 
 # rownames to gene symbs
 rownames(lc3) <- rowData(lc3)$gene_name
-
-## append FLARE genomic ancestry estimates so we can make the modeled points fitting all fixed effects
-flares <- fread("raw-data/ancestryAndHaplotypes/FLARE/global_ancestry_estimates.txt")
-flares[ID=="Br6119",ID:="Br6119(re-dis)"]
-
-lcnmcd <- merge.data.table(lcnmcd,flares,by.x="brnum",by.y="ID",all.x=T)
-stopifnot(all(!is.na(lcnmcd$YRI)))
-# clean up
-rm(finalann,lcnm,louvs)
 ```
-
-
 
 ## we can wrap this all in a function and make these plots for multiple genes of interest (GPX3, APOE)
 ```{r}
@@ -153,28 +139,29 @@ saveplt <- function(g){
     pltdat <- as.data.table(pltdat,keep.rownames=T)
     setnames(pltdat,g,"g_xpr") # since the value of g will be a variable in coldata
     pltdat <- merge.data.table(lcnmcd,pltdat,by.x="rowname",by.y="rn")
-    pltdat[,nspot:=.N,by="sample_id"]
-    ## calc mean and med spot GPX3 expr per sample
-    pltdat[,medgene:=median(g_xpr,na.rm=T),by="sample_id"]
-    pltdat[,meangene:=mean(g_xpr,na.rm=T),by="sample_id"]
+    pltdat[,nspot:=.N,by="sample_id"] # determine the number of spots from each sample INCLUDING those with logcounts=0 (though we won't plot those)
+    
+    pltdat <- pltdat[g_xpr!=0]
+    quartile_breaks <- quantile(pltdat$g_xpr, probs = seq(0, 1, by = 0.25), na.rm = TRUE)
+    
+    pltdat[, x_quartile := cut(g_xpr, 
+                     breaks = quartile_breaks, 
+                     labels = 1:4,         # Label bins accoring to nth decile
+                     include.lowest = TRUE)]
+    
+    pltdat[,calcfill:=mean(Intensity_NM),by="x_quartile"]
 
-    cortest <- cor.test(pltdat$g_xpr,pltdat$Intensity_NM,method="pearson")
-    if(round(cortest$p.value,3)==0){
-        cortext <- paste0("Pearson r=",round(cortest$estimate,2),"\n(p<0.001)")
-    } else{
-        cortext <- paste0("Pearson r=",round(cortest$estimate,2),"\n(p<",round(cortest$p.value,3),")")
-    }
+    p <- ggplot(unique(pltdat[nspot>19,.(x_quartile,Intensity_NM,calcfill)]),aes(x=x_quartile,group=x_quartile,y=Intensity_NM,fill=calcfill))+
+        scale_fill_gradient(low="brown",high="beige")+
+        guides(fill="none")+
+        geom_boxplot()+
+        labs(y="Tissue NM Intensity Score",x=paste0("Quartile logcounts *",g,"*"))+
+        theme(axis.title.x=element_markdown(size=9),
+              axis.title.y=element_markdown(size=9),
+              axis.text.x=element_text(size=8),
+              axis.text.y=element_text(size=8))
 
-    p <- ggplot(unique(pltdat[nspot>19,.(sample_id,tissueNMscore,meangene,nspot)]),aes(x=meangene,y=tissueNMscore,col=tissueNMscore))+
-        scale_color_gradient(low="brown",high="beige")+
-        guides(color="none")+
-        geom_point(size=0.75)+
-        annotate("text", x = Inf, y = Inf, label = cortext, hjust = 1.05, vjust = 1.05,size=2)+
-        labs(y="Tissue NM Intensity Score",x=paste0("Mean *",g,"* Expression<br>in NM+ LC Spots"))+
-        theme(axis.title.x=element_markdown(size=9),axis.title.y=element_markdown(size=9),
-            axis.text.x=element_text(size=8),axis.text.y=element_text(size=8))
-
-    pdf(paste0("plots/manuscript/Fig6/6x-Meanlogcounts_",g,"_sectionNMscore.pdf"),height=2.5,width=2.5)
+    pdf(paste0("plots/manuscript/Fig6/6x-Spotlogcountquartiles_",g,"_spotNMintensity_nozeros.pdf"),height=2.5,width=2.5)
     print(p)
     dev.off()
 }
