@@ -1,1 +1,0 @@
-gprofiler web service as queried thru orthogene was down over a period of several days: error 301 on queries both from my machine and using JHPCE. manually queried via https://biit.cs.ut.ee/gprofiler_beta/orth on 1/28/25. 
