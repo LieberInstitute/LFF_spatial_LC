@@ -14,7 +14,7 @@ Sequencing data has been submitted to GEO with the accession [GSE307866](https:/
 
 ### Processed-Data  
 
-R data objects too large for JHPCE can be found at the public globus endpoint under [jhpce#LFF_LC](https://research.libd.org/globus/).
+R data objects too large for Github can be found at the public globus endpoint under [jhpce#LFF_LC](https://research.libd.org/globus/).
 
 ### Zenodo Archive  
 
