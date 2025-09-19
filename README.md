@@ -26,7 +26,7 @@ Interactive web portals have been made available using [SpatialLIBD](https://res
 - iSEE browser: pending
 
 ##### Supplemental Data Files
-Supplemental data mentioned in the manuscript are available through are available through http://research.libd.org/globus/](http://research.libd.org/globus/) via the Globus endpoint [jhpce#LFF_LC](https://research.libd.org/globus/).
+Supplemental data mentioned in the manuscript are available through are available through the Globus endpoint [jhpce#LFF_LC](https://research.libd.org/globus/).
 
 ##### Further data availability
 FASTQ files from Visium are available through GEO [GSE307866](https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE307866). Addditional processed data may be added to GEO and/or the Globus endpoint in the process of review and publication. 
