@@ -551,6 +551,38 @@ writeH5AD(lc3.5,"processed-data/14_apps_prep/01-Samui_TissSect_SPE_RotsMirrors_l
 
 ```
 
+
+## save a lite version that only has logcounts and only the lowres images
+```{r}
+lowresslots <- cbind(seq(1,length(lc3.5@int_metadata[["imgData"]]$sample_id),1),lc3.5@int_metadata[["imgData"]]$sample_id,lc3.5@int_metadata[["imgData"]]$image_id)
+lowresslots <- as.data.table(lowresslots)
+
+setnames(lowresslots,c("ind","samp","imgid"))
+
+lowresslots[,ind:=as.numeric(ind)]
+lowresslots <- lowresslots[imgid=="lowres"]
+stopifnot(all(unique(lc3.5$sample_id) %in% lowresslots$samp))
+
+newimgdat <- list()
+newimgdat[["sample_id"]] <- lc3.5@int_metadata$imgData$sample_id[lowresslots$ind]
+newimgdat[["image_id"]] <- lc3.5@int_metadata$imgData$image_id[lowresslots$ind]
+newimgdat[["data"]] <- lc3.5@int_metadata$imgData$data[lowresslots$ind]
+newimgdat[["scaleFactor"]] <- lc3.5@int_metadata$imgData$scaleFactor[lowresslots$ind]
+
+lc3.5@int_metadata$imgData@listData <- newimgdat 
+lc3.5@int_metadata$imgData@nrows <- length(newimgdat[["sample_id"]])
+
+
+# drop counts
+counts(lc3.5) <- NULL
+
+## for spatiallibd compatability
+colData(lc3.5)$key <- rownames(colData(lc3.5))
+colData(lc3.5)$ManualAnnotation <- "NA"
+saveRDS(lc3.5,"processed-data/14_apps_prep/01-Samui_TissSect_SPE_RotsMirrors_logcounts_lowres.RDS")
+```
+
+
 seshinfo
 ```{r}
 sessionInfo()

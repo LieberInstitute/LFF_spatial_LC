@@ -339,6 +339,6 @@ gseas2 <- lapply(gseas,function(x){
 })
 
 mapply(g=gseas2,n=names(gseas2),SIMPLIFY=FALSE,function(g,n){
-  fwrite(g,paste0("plots/manuscript/SuppTabs/TabDelims/ST-TFtargGSEA_TFin2pctOfDomSpotsOnAvgOrIn12Samps_",n,".txt"),sep='\t',quote=F,row.names=F,col.names=T)
+  write.table(g,paste0("plots/manuscript/SuppTabs/TabDelims/ST-TFtargGSEA_TFin2pctOfDomSpotsOnAvgOrIn12Samps_",n,".txt"),sep='\t',quote=F,row.names=F,col.names=T)
 })
 ```

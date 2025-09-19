@@ -1,0 +1,209 @@
+---
+title: "02-iSEE_pseudobulk_obj"
+author: "Bernie Mulvey"
+date: "2025-09-19"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(fig.height = 10,fig.width = 7,include = FALSE)
+#### sets tab autocompletion for directories to begin from the directory containing the .Rproj session, instead of the script's directory if different
+knitr::opts_knit$set(root.dir = here::here())
+
+library(data.table)
+library(edgeR)
+library(limma)
+library(SpatialExperiment)
+library(spatialLIBD)
+# library(SpatialFeatureExperiment)
+
+## rstudio GUI tweaks
+require(colorout)
+ColorOut()
+options("styler.addins_style_transformer" = "biocthis::bioc_style()")
+##
+```
+
+## load unfiltered pseudobulk data and perform the minimal/generic filtering used elsewhere with the all-clusters object (we didn't actually use the 9 domain object because some were excluded from DE analyses. but for completeness..); get all genes that passed model-specific expression filtering in any DE analysis
+```{r}
+deres <- readRDS("processed-data/12_DEanalyses_removedsampsAndFinalNMseg/02b-voomLmFit_objs_and_DE_tables_LabSex_LabE2vE4_LabSingleGenos_LabAnces_LabAncesE4E2_noMixClusts_YRIcontAndCat_JUL2025.RDS")
+
+## for categorical ancestry, we only analyzed genotype-ancestry and across-ancestry:
+deres$cat_ances <- deres$cat_ances[c("AncesByLabel","YRIAPOlabel")]
+
+allens <- unique(unlist(lapply(deres,function(a){
+    g <- unlist(lapply(a,(function(b){
+        g2 <- unlist(lapply(b$detabs,function(t){
+            return(t$gene_id)
+        }))
+        return(g2)
+    })))
+    return(unlist(g))
+})))
+
+rm(deres)
+
+## also get all genes from marker analyses and NM DE
+mks <- readRDS("processed-data/13_markers_and_registration_final/01-HDGSVG2575louv1_regWrapOut.RDS")
+mks <- unique(mks$enrichment$ensembl)
+allens <- unique(c(allens,mks))
+rm(mks)
+
+pairmks <- fread("processed-data/13_markers_and_registration_final/03-HDGSVG2575louv1_regWrapOut_Oligo_1vOthers_markers.txt")
+allens <- unique(c(pairmks$ensembl,allens))
+rm(pairmks)
+
+nmde <- fread("processed-data/12_DEanalyses_removedsampsAndFinalNMseg/04-LCNMpos_vs_LCNMneg_DE.txt")
+allens <- unique(c(nmde$gene_id,allens))
+rm(nmde)
+
+## the filtering was a little more lenient in the (while unreported) preliminary runs of identifying markers between glial/achesert clusters--which only analyzed the domains in question, and with N=33--so grab those too
+mks <- readRDS("processed-data/08_validitycheck_25hdg75svg_louv1/10-1vsOthers_markers_Oligos_Astros_ACHESERTS.RDS")
+allens <- unique(c(allens,mks$oligos$ensembl,mks$astros$ensembl,mks$ache_serts$ensembl))
+rm(mks)
+
+## get all genes that were in the inhibitory_4 marker analysis since such genes are potentially of interest in here
+inh4 <- fread("processed-data/10_subclustering/12-WebDiv_inhibitory_4_mks_vs_other_inhibitorys.txt")
+allens <- unique(c(allens,inh4$ensembl))
+# that adds 6k genes to the 8.6k we had up to here
+rm(inh4)
+
+# get all genes nominally associated with NM intensity
+nmin <- readRDS("processed-data/12_DEanalyses_removedsampsAndFinalNMseg/11-LCNMspots_NMmetric_LMMed_by_geneLogcounts_3apoeFactorizations.RDS")
+# ugh only symbols in this one..
+nmin <- nmin$E4carrierYN$Intensity_NM[p<0.05,gene_name]
+allens <- unique(c(allens,as.data.table(unfilt$genes)[gene_name %in% nmin,gene_id]))
+rm(nmin)
+
+# get TFs treated as expressed in relevant GSEAs--also symbols only
+tfxpra <- fread("plots/manuscript/SuppTabs/TabDelims/ST-TFtargGSEA_TFin2pctOfDomSpotsOnAvgOrIn12Samps_E4vE2.txt")
+tfxprb <- fread("plots/manuscript/SuppTabs/TabDelims/ST-TFtargGSEA_TFin2pctOfDomSpotsOnAvgOrIn12Samps_Sex.txt")
+
+tfxpr <- unique(c(tfxpra$TF,tfxprb$TF))
+allens <- unique(c(allens,as.data.table(unfilt$genes)[gene_name %in% tfxpr,gene_id]))
+rm(tfxpr,tfxpra,tfxprb)
+```
+
+load unfiltered 9-domain pseudobulk and subset to genes from above, then calc normalized lib sizes and make a summarizedExperiment obj
+```{r}
+## subset
+unfilt <- readRDS("processed-data/12_DEanalyses_removedsampsAndFinalNMseg/01a-DGElist_allClust_10spotmin_NOfilt.RDS")
+allens <- allens[allens %in% rownames(unfilt)]
+filt <- unfilt[allens,]
+
+filt <- edgeR::calcNormFactors(filt,method = "TMM")
+
+subcoldat <- as.data.table(filt$samples,keep.rownames=T)
+subcoldat <- subcoldat[,.(rn,sample_id,brnum,APOE,Ancestry,Sex,Age,hemisphere,tissueNMscore,YRI,label)]
+subcoldat <- as.data.frame(subcoldat,row.names=subcoldat$rn)[colnames(filt$counts),]
+subcoldat$rn <- NULL
+
+
+## switch to symbols as rownames; need to drop dupe symbs
+keepg <- as.data.table(filt$genes)[,.(gene_id,.N),by="gene_name"][N==1,gene_id]
+filt <- filt[keepg,]
+rownames(filt) <- filt$genes$gene_name
+
+subrowdat <- as.data.table(filt$genes,keep.rownames=F)
+subrowdat <- subrowdat[,.(gene_name,gene_id,chr)]
+subrowdat <- as.data.frame(subrowdat,row.names=subrowdat$gene_name)[rownames(filt$counts),]
+subrowdat$rn <- NULL
+
+logcpmmat <- edgeR::cpm(filt,log=T,prior.count=0)
+
+se2 <- SummarizedExperiment(assays=list(counts=filt$counts,logcpm=logcpmmat),rowData = subrowdat,colData = subcoldat)
+```
+
+test
+```{r}
+library(iSEE)
+shiny::runApp(iSEE(se2))
+```
+
+save
+```{r}
+saveRDS(se2,"processed-data/14_apps_prep/02-iSEE_pbulkobj.RDS")
+```
+seshinf
+```{r}
+sessionInfo()
+```
+R version 4.4.3 (2025-02-28)
+Platform: aarch64-apple-darwin20
+Running under: macOS Sequoia 15.3.2
+
+Matrix products: default
+BLAS:   /System/Library/Frameworks/Accelerate.framework/Versions/A/Frameworks/vecLib.framework/Versions/A/libBLAS.dylib 
+LAPACK: /Library/Frameworks/R.framework/Versions/4.4-arm64/Resources/lib/libRlapack.dylib;  LAPACK version 3.12.0
+
+locale:
+[1] en_US.UTF-8/en_US.UTF-8/en_US.UTF-8/C/en_US.UTF-8/en_US.UTF-8
+
+time zone: America/Chicago
+tzcode source: internal
+
+attached base packages:
+[1] stats4    stats     graphics  grDevices utils     datasets  methods   base     
+
+other attached packages:
+ [1] shiny_1.10.0                iSEE_2.18.0                 spatialLIBD_1.18.0         
+ [4] colorout_1.3-0.2            SpatialExperiment_1.16.0    SingleCellExperiment_1.28.1
+ [7] SummarizedExperiment_1.36.0 Biobase_2.66.0              GenomicRanges_1.58.0       
+[10] GenomeInfoDb_1.42.3         IRanges_2.40.1              S4Vectors_0.44.0           
+[13] BiocGenerics_0.52.0         MatrixGenerics_1.18.1       matrixStats_1.5.0          
+[16] edgeR_4.4.2                 limma_3.62.2                data.table_1.17.4          
+[19] rlang_1.1.5                
+
+loaded via a namespace (and not attached):
+  [1] splines_4.4.3            later_1.4.2              BiocIO_1.16.0           
+  [4] bitops_1.0-9             filelock_1.0.3           fields_16.3.1           
+  [7] tibble_3.2.1             XML_3.99-0.18            lifecycle_1.0.4         
+ [10] doParallel_1.0.17        rprojroot_2.0.4          lattice_0.22-6          
+ [13] crosstalk_1.2.1          magrittr_2.0.3           plotly_4.10.4           
+ [16] sass_0.4.10              rmarkdown_2.29           jquerylib_0.1.4         
+ [19] yaml_2.3.10              httpuv_1.6.16            spam_2.11-1             
+ [22] sessioninfo_1.2.3        cowplot_1.1.3            DBI_1.2.3               
+ [25] RColorBrewer_1.1-3       golem_0.5.1              maps_3.4.3              
+ [28] abind_1.4-8              zlibbioc_1.52.0          purrr_1.0.4             
+ [31] RCurl_1.98-1.17          rappdirs_0.3.3           circlize_0.4.16         
+ [34] GenomeInfoDbData_1.2.13  ggrepel_0.9.6            irlba_2.3.5.1           
+ [37] codetools_0.2-20         DelayedArray_0.32.0      DT_0.33                 
+ [40] scuttle_1.16.0           tidyselect_1.2.1         shape_1.4.6.1           
+ [43] UCSC.utils_1.2.0         farver_2.1.2             ScaledMatrix_1.14.0     
+ [46] viridis_0.6.5            shinyWidgets_0.9.0       BiocFileCache_2.14.0    
+ [49] GenomicAlignments_1.42.0 jsonlite_2.0.0           GetoptLong_1.0.5        
+ [52] BiocNeighbors_2.0.1      scater_1.34.1            iterators_1.0.14        
+ [55] systemfonts_1.2.3        foreach_1.5.2            tools_4.4.3             
+ [58] ragg_1.3.3               Rcpp_1.0.14              glue_1.8.0              
+ [61] gridExtra_2.3            SparseArray_1.6.2        mgcv_1.9-1              
+ [64] xfun_0.52                here_1.0.1               dplyr_1.1.4             
+ [67] withr_3.0.2              shinydashboard_0.7.2     BiocManager_1.30.25     
+ [70] fastmap_1.2.0            shinyjs_2.1.0            digest_0.6.37           
+ [73] rsvd_1.0.5               R6_2.6.1                 mime_0.13               
+ [76] textshaping_1.0.0        listviewer_4.0.0         colorspace_2.1-1        
+ [79] Cairo_1.6-2              dichromat_2.0-0.1        RSQLite_2.3.9           
+ [82] config_0.3.2             tidyr_1.3.1              generics_0.1.4          
+ [85] rtracklayer_1.66.0       httr_1.4.7               htmlwidgets_1.6.4       
+ [88] S4Arrays_1.6.0           pkgconfig_2.0.3          gtable_0.3.6            
+ [91] rsconnect_1.3.4          blob_1.2.4               ComplexHeatmap_2.22.0   
+ [94] XVector_0.46.0           htmltools_0.5.8.1        dotCall64_1.2           
+ [97] rintrojs_0.3.4           clue_0.3-66              scales_1.4.0            
+[100] png_0.1-8                attempt_0.3.1            knitr_1.50              
+[103] rstudioapi_0.17.1        rjson_0.2.23             nlme_3.1-167            
+[106] curl_6.2.2               shinyAce_0.4.4           cachem_1.1.0            
+[109] GlobalOptions_0.1.2      BiocVersion_3.20.0       miniUI_0.1.2            
+[112] parallel_4.4.3           vipor_0.4.7              AnnotationDbi_1.68.0    
+[115] restfulr_0.0.15          pillar_1.10.2            grid_4.4.3              
+[118] vctrs_0.6.5              promises_1.3.2           BiocSingular_1.22.0     
+[121] dbplyr_2.5.0             beachmat_2.22.0          cluster_2.1.8.1         
+[124] xtable_1.8-4             beeswarm_0.4.0           paletteer_1.6.0         
+[127] evaluate_1.0.3           magick_2.8.6             cli_3.6.4               
+[130] locfit_1.5-9.12          compiler_4.4.3           Rsamtools_2.22.0        
+[133] crayon_1.5.3             labeling_0.4.3           rematch2_2.1.2          
+[136] ggbeeswarm_0.7.2         viridisLite_0.4.2        BiocParallel_1.40.0     
+[139] Biostrings_2.74.1        lazyeval_0.2.2           colourpicker_1.3.0      
+[142] Matrix_1.7-3             ExperimentHub_2.14.0     benchmarkme_1.0.8       
+[145] bit64_4.6.0-1            ggplot2_3.5.2            KEGGREST_1.46.0         
+[148] statmod_1.5.0            AnnotationHub_3.14.0     fontawesome_0.5.3       
+[151] igraph_2.1.4             memoise_2.0.1            bslib_0.9.0             
+[154] benchmarkmeData_1.0.4    bit_4.6.0     
