@@ -1,5 +1,5 @@
 ---
-title: "09-UnfiltNMstats_per_cluster"
+title: "10-UnfiltNMstats_per_cluster"
 author: "Bernie Mulvey"
 date: "2025-10-03"
 output: html_document
@@ -60,7 +60,7 @@ lc3cd <- merge.data.table(lc3cd,ans,by="origDomain",all.x=T)
 lc3cd[,Domain:=paste0(origDomain,"<br>(",propNMspots,"% spots >0 NM area) ")]
 
 ### histogram
-pdf("plots/08_validitycheck_25hdg75svg_louv1/09a-nonzero_NMareas_per_cluster_hist.pdf",width=9,height=9)
+pdf("plots/08_validitycheck_25hdg75svg_louv1/10a-nonzero_NMareas_per_cluster_hist.pdf",width=9,height=9)
 ggplot(lc3cd[Prop_NM>0],aes(x=100*Prop_NM))+
     geom_histogram(bins=75)+
     facet_wrap(~Domain,scales="fixed",ncol=3)+
@@ -84,7 +84,7 @@ lc3cd <- merge.data.table(lc3cd,ans,by="origDomain",all.x=T)
 lc3cd[,Domain:=paste0(origDomain,"<br>(",propNMspots,"% spots >0.3% NM area)")]
 
 
-pdf("plots/08_validitycheck_25hdg75svg_louv1/09b-NMarea_per_cluster_hist_above0.003.pdf",height=9,width=9)
+pdf("plots/08_validitycheck_25hdg75svg_louv1/10b-NMarea_per_cluster_hist_above0.003.pdf",height=9,width=9)
 ggplot(lc3cd[Prop_NM>0.003],aes(x=100*Prop_NM))+
     geom_histogram(bins=75)+
     facet_wrap(~Domain,scales="fixed",ncol=3)+
