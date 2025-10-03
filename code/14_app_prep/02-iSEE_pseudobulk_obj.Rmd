@@ -24,7 +24,13 @@ options("styler.addins_style_transformer" = "biocthis::bioc_style()")
 ##
 ```
 
-## load unfiltered pseudobulk data and perform the minimal/generic filtering used elsewhere with the all-clusters object (we didn't actually use the 9 domain object because some were excluded from DE analyses. but for completeness..); get all genes that passed model-specific expression filtering in any DE analysis
+
+load unfiltered 9-domain pseudobulk for later (we need it to get ensgs in the meantime)
+```{r}
+unfilt <- readRDS("processed-data/12_DEanalyses_removedsampsAndFinalNMseg/01a-DGElist_allClust_10spotmin_NOfilt.RDS")
+```
+
+## get all genes that passed model-specific expression filtering in any DE analysis
 ```{r}
 deres <- readRDS("processed-data/12_DEanalyses_removedsampsAndFinalNMseg/02b-voomLmFit_objs_and_DE_tables_LabSex_LabE2vE4_LabSingleGenos_LabAnces_LabAncesE4E2_noMixClusts_YRIcontAndCat_JUL2025.RDS")
 
@@ -42,7 +48,6 @@ allens <- unique(unlist(lapply(deres,function(a){
 })))
 
 rm(deres)
-
 ## also get all genes from marker analyses and NM DE
 mks <- readRDS("processed-data/13_markers_and_registration_final/01-HDGSVG2575louv1_regWrapOut.RDS")
 mks <- unique(mks$enrichment$ensembl)
@@ -84,10 +89,10 @@ allens <- unique(c(allens,as.data.table(unfilt$genes)[gene_name %in% tfxpr,gene_
 rm(tfxpr,tfxpra,tfxprb)
 ```
 
-load unfiltered 9-domain pseudobulk and subset to genes from above, then calc normalized lib sizes and make a summarizedExperiment obj
+perform the minimal/generic filtering used elsewhere with the all-clusters object (we didn't actually use the 9 domain object because some were excluded from DE analyses. but for completeness..);  then calc normalized lib sizes and make a summarizedExperiment obj
 ```{r}
 ## subset
-unfilt <- readRDS("processed-data/12_DEanalyses_removedsampsAndFinalNMseg/01a-DGElist_allClust_10spotmin_NOfilt.RDS")
+
 allens <- allens[allens %in% rownames(unfilt)]
 filt <- unfilt[allens,]
 
@@ -95,6 +100,19 @@ filt <- edgeR::calcNormFactors(filt,method = "TMM")
 
 subcoldat <- as.data.table(filt$samples,keep.rownames=T)
 subcoldat <- subcoldat[,.(rn,sample_id,brnum,APOE,Ancestry,Sex,Age,hemisphere,tissueNMscore,YRI,label)]
+
+subcoldat[,carriertype:=ifelse(APOE %in% c("E4het","E4hom"),"E4 carrier","E2 carrier")]
+setnames(subcoldat,"carriertype","APOE Carrier Type")
+
+setnames(subcoldat,"label","Domain")
+
+subcoldat[APOE=="E2hom",APOE:="E2 Homozygous"]
+subcoldat[APOE=="E2het",APOE:="E2 Heterozygous"]
+subcoldat[APOE=="E4hom",APOE:="E4 Homozygous"]
+subcoldat[APOE=="E4het",APOE:="E4 Heterozygous"]
+setnames(subcoldat,"APOE","APOE Genotype")
+
+setnames(subcoldat,"YRI", "Est. Pct African Genomic Ancestry")
 subcoldat <- as.data.frame(subcoldat,row.names=subcoldat$rn)[colnames(filt$counts),]
 subcoldat$rn <- NULL
 

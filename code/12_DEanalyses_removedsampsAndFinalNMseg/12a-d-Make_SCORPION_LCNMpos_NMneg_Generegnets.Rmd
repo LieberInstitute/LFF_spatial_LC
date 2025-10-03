@@ -83,7 +83,7 @@ tftab <- tftab[tf %in% rownames(lc3)&target %in% rownames(lc3)] # TF and target 
 tftab <- as.data.frame(tftab) # needs to be a data.frame 
 
 ## get PPI from SCORPION paper and filter
-load("raw-data/ref_data/hg38_PPI.RData") # from paper repository. no rownames 
+load("raw-data/ref_data/hg38_PPI.RData") # from paper repository; no rownames. https://github.com/dosorio/SCORPION/tree/v.1.0.0/Data 
 hsaPPI <- as.data.table(hsaPPI)
 hsaPPI <- hsaPPI[tf1 %in% rownames(lc3)&tf2 %in% rownames(lc3)] # each TF is in at least one of the two count matrices
 hsaPPI <- as.data.frame(hsaPPI) # needs to be a data.frame 

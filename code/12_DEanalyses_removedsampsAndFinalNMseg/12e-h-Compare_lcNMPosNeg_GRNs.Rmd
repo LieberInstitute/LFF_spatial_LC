@@ -178,9 +178,10 @@ rm(rnetsout)
 ## using the specific edges only (1669 edges), get a network of the largest-difference (effect) edges:
 get edges that come out as being specific to a TF interaction from one network or the other, AND with differences larger than one of their directions edge weights or difference in edge weight >5, AND where NM+ or NM- edge weight is >2 --> 47 edges. put a sign on the edge weight difference to indicate more active network
 ```{r}
-topdifnet <- rnetspec[diff>abs(nmp)|diff>abs(nmn)|diff>5][abs(nmp)>2|abs(nmn)>2]
+topdifnet <- rnetspec[diff>abs(nmp)|diff>abs(nmn)|diff>5][nmp>2|nmn>2]
+# MLX -> adipoR2 is an interesting NM+ specific, large-difference hit that doesn't pass the diff>NMP threshold, but because the NMP edge score is high
+topdifnet <- as.data.table(rbind(topdifnet,rnetspec[gene=="ADIPOR2"&TF=="MLX"]))
 topdifnet[,diff:=ifelse(nmp>nmn,yes=diff,no=-1*diff)]
-topdifnet[,primaryefdir:=ifelse(abs(nmp)>abs(nmn),yes=sign(nmp),no=sign(nmn))]
 fwrite(topdifnet,"processed-data/12_DEanalyses_removedsampsAndFinalNMseg/12f-NMgrns_DomspecEdges_wLargeDiffAndLargeEffect_net.txt",sep='\t',quote=F,row.names=F)
 ```
 
@@ -192,7 +193,7 @@ mlxplotregs <- unique(rbind(
     mlxplot[gene=="MLX"][abs(nmp)==max(abs(nmp))],
     mlxplot[gene=="MLX"][abs(nmn)==max(abs(nmn))]
 ))
-# lol okay just autoregulation ^. now drop the MLX-as-target-rows
+# lol okay just autoregulation ^. so drop the MLX-as-target-rows
 mlxplot <- mlxplot[gene!="MLX"]
 
 ## ## and top 10% of MLX's signed target edges, whichever ABSOLUTE edge weight is larger
@@ -205,21 +206,21 @@ mlxplot[lgwt==abs(nmp),lgwt:=nmp]
 mlxplot[lgwt==abs(nmn),lgwt:=nmn]
 
 ## find the proportion of positive and negative larger-edge-weights
-targupprop <- nrow(mlxplot[lgwt>0])/nrow(mlxplot)
+targnmpprop <- nrow(mlxplot[lgwt>0])/nrow(mlxplot)
 ## 0.778 of MLX's target edges are positive
 
-# get target-effect-direction-proportionate number of top 2% highest edge weights, so
-# 0.98 + (0.02 * (1-targupprop)) positive edges: >98.44ish %ile
-# 0 + (0.02*(1-targupprop)) negative edges: <0.44ish %ile.
+# get activer-subdomain-proportionate number of top 10% highest edge weights, so
+# 0.9 + (0.1 * (1-targnmpprop)) positive edges: >92.2ish %ile
+# 0 + (0.1*(1-targnmpprop)) negative edges: <7.8ish %ile.
 # something about working ^this out threw me for a massive fucking loop but the math works so okay 
 mlxplot <- rbind(
-    mlxplot[lgwt>quantile(lgwt,(0.98+(0.02*(1-targupprop))))],
-    mlxplot[lgwt<quantile(lgwt,(0.02*(1-targupprop)))]
+    mlxplot[lgwt>quantile(lgwt,(0.9+(0.1*(1-targnmpprop))))],
+    mlxplot[lgwt<quantile(lgwt,(0.1*(1-targnmpprop)))]
 )
 
 mlxplot[,lgwt:=NULL]
 # add the MLX as target part
-mlxplot <- as.data.table(rbind(mlxplot[],mlxplotregs))
+mlxplot <- as.data.table(rbind(mlxplot,mlxplotregs))
 
 fwrite(mlxplot,"processed-data/12_DEanalyses_removedsampsAndFinalNMseg/12g-MLX_largesteffectedges_net.txt",sep='\t',quote=F,row.names=F,col.names=T)
 ```
