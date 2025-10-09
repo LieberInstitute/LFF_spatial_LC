@@ -41,7 +41,7 @@ spg = sc.read(spg_path)
 spgP = spg[spg.obs['sample_id'] == this_sample, :]
 unique_sample_id = spgP.obs['sample_id'].unique()[0]
 unique_capture_id = spgP.obs['capture_id'].unique()[0]
-samui_dir = Path(here('processed-data', '16_samui', f"{unique_sample_id}"))
+samui_dir = Path(here('processed-data', '16_samui', f"{unique_capture_id}"))
 samui_dir.mkdir(parents = True, exist_ok = True)
 json_path = Path(here("processed-data", "01_spaceranger", unique_capture_id, "outs", "spatial", "scalefactors_json.json"))
 #   Read in the spaceranger JSON to calculate meters per pixel for
@@ -67,6 +67,8 @@ gene_df = pd.DataFrame(
 gene_df = gene_df.loc[: , ~gene_df.columns.duplicated()].copy()
 gene_df.index.name = None
 
+gene_df.index = gene_df.index.str.split('_').str[0]
+
 #precast_columns = spgP.obs.filter(like="PRECAST")
 #precast_columns = spgP.obs[["spd_label"]].join(precast_columns)
 #precast_df = pd.DataFrame(precast_columns)
@@ -84,6 +86,7 @@ img_channels = 'rgb'
 #default_channels = {'blue': 'DAPI', 'green': 'NeuN', 'yellow': 'Claudin5', 'red': 'WFA', 'white':'segDAPI', 'white':'segNeuN', 'white':'segWFA', 'white':'segClaudin5'}
 #img_path = here('processed-data', 'Images', 'VistoSeg', 'Capture_areas', '{}.tif')
 img_name = unique_capture_id +'.tif'
+img_path = here('processed-data', 'Images', 'VistoSeg', img_name)
 img_path = here('processed-data', 'Images', 'VistoSeg', img_name)
 
 tissue_positions_path = Path(here("processed-data", "01_spaceranger", unique_capture_id, "outs", "spatial", "tissue_positions.csv"))
