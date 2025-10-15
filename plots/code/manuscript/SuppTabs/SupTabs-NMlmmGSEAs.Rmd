@@ -35,6 +35,7 @@ nmlm2 <- lapply(nmlm,function(x){
     return(z)
 })
 nmlm2 <- rbindlist(nmlm2,idcol="Coefficient Sign")
+nmlm2[,Rank:=as.numeric(Rank)]
 
 nmi <- nmlm2[`Spot-Level NM Metric`=="Intensity_NM"]
 nmp <- nmlm2[`Spot-Level NM Metric`=="Prop_NM"]
