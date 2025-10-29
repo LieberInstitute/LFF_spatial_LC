@@ -23,7 +23,7 @@ echo "Processing sample ${donor}"
 date
 
 
-module load samui/1.0.0-next.49
+module load samui/1.0.0-next.45
 python 03-create_samui.py $donor
 
 echo "**** Job ends ****"

@@ -35,15 +35,22 @@ spot_diameter_m = 55e-6 # 5-micrometer diameter for Visium spot
 #   Gather gene-expression data into a DataFrame to later as a feature
 ################################################################################
 spg_path = here("processed-data", "16_samui", "spg1.h5ad")
+spg_path = here("processed-data", "16_samui", "spe_raw.h5ad")
+spg_path = here("processed-data", "16_samui", "spe_QCed_sections.h5ad")
+
+spg_path = here("processed-data", "16_samui", "01-Samui_TissSect_SPE_RotsMirrors_logcounts_lowres.h5ad")
 spg = sc.read(spg_path)
+
+unique_sample_ids = spg.obs['sample_id'].unique
+unique_capture_ids = spg.obs['capture_id']
 
 #path_groups = spg.obs['path_groups'].cat.categories
 spgP = spg[spg.obs['sample_id'] == this_sample, :]
-unique_sample_id = spgP.obs['sample_id'].unique()[0]
-unique_capture_id = spgP.obs['capture_id'].unique()[0]
-samui_dir = Path(here('processed-data', '16_samui', f"{unique_capture_id}"))
+capture_id=spgP.obs['capture_id'].unique()[0]
+
+samui_dir = Path(here('processed-data', '16_samui', f"{this_sample}"))
 samui_dir.mkdir(parents = True, exist_ok = True)
-json_path = Path(here("processed-data", "01_spaceranger", unique_capture_id, "outs", "spatial", "scalefactors_json.json"))
+json_path = Path(here("processed-data", "01_spaceranger", capture_id, "outs", "spatial", "scalefactors_json.json"))
 #   Read in the spaceranger JSON to calculate meters per pixel for
 #   the full-resolution image
 with open(json_path, 'r') as f:
@@ -52,7 +59,7 @@ with open(json_path, 'r') as f:
 m_per_px = spot_diameter_m / spaceranger_json['spot_diameter_fullres']
 
 # spgP.obs.index = spgP.obs.index.str.replace('_'+unique_sample_id , '')
-spgP.obs.index.name = "barcode"
+#spgP.obs.index.name = "barcode"
 
 
 #   Convert the sparse gene-expression matrix to pandas DataFrame, with the
@@ -65,9 +72,9 @@ gene_df = pd.DataFrame(
 #   Some gene symbols are actually duplicated. Just take the first column in
 #   any duplicated cases
 gene_df = gene_df.loc[: , ~gene_df.columns.duplicated()].copy()
-gene_df.index.name = None
+#gene_df.index.name = None
 
-gene_df.index = gene_df.index.str.split('_').str[0]
+#gene_df.index = gene_df.index.str.split('_').str[0]
 
 #precast_columns = spgP.obs.filter(like="PRECAST")
 #precast_columns = spgP.obs[["spd_label"]].join(precast_columns)
@@ -79,21 +86,26 @@ gene_df.index = gene_df.index.str.split('_').str[0]
 #       'spg_NNeuN', 'spg_PNeuN', 'spg_INeuN', 'spg_CNNeuN', 'spg_NWFA', 'spg_PWFA', 'spg_IWFA', 'spg_CNWFA',
 #       'spg_NClaudin5', 'spg_PClaudin5', 'spg_IClaudin5']]
 
+tissue_positions_cols=spgP.obs.filter(like="pxl_")
+tissue_positions_df=pd.DataFrame(tissue_positions_cols)
 ################################################################################
 #   Use the Samui API to create the importable directory for this combined "sample"
 ################################################################################
 img_channels = 'rgb'
 #default_channels = {'blue': 'DAPI', 'green': 'NeuN', 'yellow': 'Claudin5', 'red': 'WFA', 'white':'segDAPI', 'white':'segNeuN', 'white':'segWFA', 'white':'segClaudin5'}
 #img_path = here('processed-data', 'Images', 'VistoSeg', 'Capture_areas', '{}.tif')
-img_name = unique_capture_id +'.tif'
-img_path = here('processed-data', 'Images', 'VistoSeg', img_name)
-img_path = here('processed-data', 'Images', 'VistoSeg', img_name)
+img_name = capture_id +'.tif'
+#img_path = here('processed-data', 'Images', 'VistoSeg', img_name)
+#img_path = here('raw-data', 'Images', img_name)
+img_path = here('processed-data', '16_samui', 'rot_vis_tifs', img_name)
 
-tissue_positions_path = Path(here("processed-data", "01_spaceranger", unique_capture_id, "outs", "spatial", "tissue_positions.csv"))
-tissue_positions = pd.read_csv(tissue_positions_path ,index_col = 0).rename({'pxl_row_in_fullres': 'y', 'pxl_col_in_fullres': 'x'},axis = 1)
+#tissue_positions_path = Path(here("processed-data", "01_spaceranger", capture_id, "outs", "spatial", "tissue_positions.csv"))
+#tissue_positions = pd.read_csv(tissue_positions_path ,index_col = 0).rename({'pxl_row_in_fullres': 'y', 'pxl_col_in_fullres': 'x'},axis = 1)
+tissue_positions = tissue_positions_df.rename({'pxl_row_in_fullres': 'y', 'pxl_col_in_fullres': 'x'},axis = 1)
 tissue_positions.index.name = None
 tissue_positions = tissue_positions[['x', 'y']].astype(int)
-
+#tp_sub = tissue_positions.reindex(gene_df.index).dropna(how="all")
+ 
 default_gene = 'SNAP25'
 assert default_gene in gene_df.columns, "Default gene not in AnnData"
 
