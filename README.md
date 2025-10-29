@@ -23,7 +23,7 @@ Code for analyses is contained within subdirectories of this repository:
 Interactive web portals have been made available using [SpatialLIBD](https://research.libd.org/spatialLIBD/) to visualize the spatial domain assignments and gene expression in the H&E stained tissue. Pseudobulk gene expression data is also provided in an [iSEE](https://bioconductor.org/packages/release/bioc/html/iSEE.html) app to allow users to browse domain expression patterns across different variables (sex, APOE genotype, and so forth). The respective browsers and their inbuilt documentation can be found at:
 
 - [spatialLIBD Visualization Browser](https://interactive.libd.org/LFF_LC_spatialLIBD/)
-- iSEE browser: pending
+- [iSEE explorer (bulk expression by tissue domain)](https://interactive.libd.org/lff_lc-pseudobulk/)
 
 ##### Supplemental Data Files
 Supplemental data mentioned in the manuscript are available through are available through the Globus endpoint [jhpce#LFF_LC](https://research.libd.org/globus/).
