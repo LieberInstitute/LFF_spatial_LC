@@ -12,6 +12,11 @@ library(dplyr)
 spe = readRDS(
   "/dcs05/lieber/marmaypag/LFF_spatialLC_LIBD4140/LFF_spatial_LC/processed-data/14_apps_prep/01-Samui_TissSect_SPE_RotsMirrors.RDS"
   )
+  
+spe_path= "/dcs05/lieber/marmaypag/LFF_spatialLC_LIBD4140/LFF_spatial_LC/processed-data/17_globus/01-Samui_TissSect_SPE_RotsMirrors_logcounts_lowres.RDS"
+spe =readRDS(spe_path)
+coords <- DataFrame(spatialCoords(spe))  
+colData(spe) <- cbind(colData(spe), coords)
 ## Load SpD data ----
 #finalized_spd <- readRDS(here("processed-data/rds/spatial_cluster", "PRECAST","test_clus_label_df_semi_inform_k_2-16.rds"))
 
@@ -34,7 +39,7 @@ spe = readRDS(
 #spe$neun_pos <- ifelse(spe$spg_PNeuN > 0.05 & spe$spg_PNeuN < 0.3,TRUE, FALSE)
 #spe$vasc_pos <- ifelse(spe$spg_PClaudin5 > 0.05 & spe$spg_PClaudin5 < 0.20,TRUE, FALSE)
  
-spe_out <- here("processed-data", "16_samui", "spg1.h5ad")
+spe_out <- here("processed-data", "16_samui", "01-Samui_TissSect_SPE_RotsMirrors_logcounts_lowres.h5ad")
 
 write_anndata <- function(sce, out_path) {
   invisible(
