@@ -1,13 +1,13 @@
 **** Job starts ****
-Fri Sep 12 03:53:04 PM EDT 2025
+Fri Sep 12 05:11:33 PM EDT 2025
 **** JHPCE info ****
 User: rmiller
-Job id: 22305873
+Job id: 22309332
 Job name: 03-create_samui
 Hostname: 
 Task id: 1
 Processing sample V13M06-331_A1s2
-Fri Sep 12 03:53:04 PM EDT 2025
+Fri Sep 12 05:11:33 PM EDT 2025
 Loading LIBD SLURM module for samui/1.0.0-next.49
 /jhpce/shared/libd/core/samui/1.0.0-next.49/samui_env/lib/python3.10/site-packages/pydantic/_internal/_config.py:322: UserWarning: Valid config keys have changed in V2:
 * 'allow_mutation' has been removed
@@ -16,7 +16,7 @@ Loading LIBD SLURM module for samui/1.0.0-next.49
   warnings.warn(
 /jhpce/shared/libd/core/samui/1.0.0-next.49/samui_env/lib/python3.10/site-packages/anndata/_core/anndata.py:1820: UserWarning: Variable names are not unique. To make them unique, call `.var_names_make_unique`.
   utils.warn_names_duplicates("var")
-[15:53:34] INFO     Transforming                                    logger.py:27
+[17:12:16] INFO     Transforming                                    logger.py:27
                     /dcs05/lieber/marmaypag/LFF_spatialLC_LIBD4140/             
                     LFF_spatial_LC/processed-data/16_samui/V13M06-3             
                     31_A1s2/V13M06-331_A1.tif to COG.                           
@@ -26,16 +26,16 @@ Loading LIBD SLURM module for samui/1.0.0-next.49
                     /dcs05/lieber/marmaypag/LFF_spatialLC_LIBD4140/             
                     LFF_spatial_LC/processed-data/16_samui/V13M06-3             
                     31_A1s2/V13M06-331_A1.tif                                   
-[15:53:51] INFO     Writing COG                                     logger.py:27
+[17:12:32] INFO     Writing COG                                     logger.py:27
                     /dcs05/lieber/marmaypag/LFF_spatialLC_LIBD4140/             
                     LFF_spatial_LC/processed-data/16_samui/V13M06-3             
                     31_A1s2/V13M06-331_A1.tif                                   
-[15:54:18] INFO     V13M06-331_A1s2 Adding chunked feature 'Genes'  logger.py:27
+[17:12:57] INFO     V13M06-331_A1s2 Adding chunked feature 'Genes'  logger.py:27
 /jhpce/shared/libd/core/samui/1.0.0-next.49/samui/loopy/feature.py:126: FutureWarning: The behavior of array concatenation with empty entries is deprecated. In a future version, this will no longer exclude empty items when determining the result dtype. To retain the old behavior, exclude the empty entries before the concat operation.
   joined = template.join(feat, validate="one_to_one")
-[16:06:13] INFO     V13M06-331_A1s2 Concatenating and compressing   logger.py:27
+[17:24:10] INFO     V13M06-331_A1s2 Concatenating and compressing   logger.py:27
                     chunks                                                      
-[16:06:32] INFO     Writing compressed chunks for Genes: 6793544    logger.py:27
+[17:24:11] INFO     Writing compressed chunks for Genes: 1254456    logger.py:27
                     bytes                                                       
            INFO     'V13M06-331_A1s2' written to                    logger.py:27
                     /dcs05/lieber/marmaypag/LFF_spatialLC_LIBD4140/             
@@ -58,6 +58,6 @@ tifffile            2024.2.12
 Python 3.10.13 | packaged by conda-forge | (main, Dec 23 2023, 15:36:39) [GCC 12.3.0]
 Linux-5.14.0-427.13.1.el9_4.x86_64-x86_64-with-glibc2.34
 -----
-Session information updated at 2025-09-12 16:06
+Session information updated at 2025-09-12 17:24
 **** Job ends ****
-Fri Sep 12 04:06:33 PM EDT 2025
+Fri Sep 12 05:24:13 PM EDT 2025
