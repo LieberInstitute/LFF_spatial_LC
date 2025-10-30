@@ -23,8 +23,6 @@ from scipy.spatial import KDTree
 import glob
 
 
-#his_donor = sys.argv[1:]
-#this_donor = ''.join(this_donor)
 this_sample = sys.argv[1:]
 this_sample = ''.join(this_sample)
 
@@ -94,10 +92,10 @@ tissue_positions_df=pd.DataFrame(tissue_positions_cols)
 img_channels = 'rgb'
 #default_channels = {'blue': 'DAPI', 'green': 'NeuN', 'yellow': 'Claudin5', 'red': 'WFA', 'white':'segDAPI', 'white':'segNeuN', 'white':'segWFA', 'white':'segClaudin5'}
 #img_path = here('processed-data', 'Images', 'VistoSeg', 'Capture_areas', '{}.tif')
-img_name = capture_id +'.tif'
+img_name = sample_id +'.tif'
 #img_path = here('processed-data', 'Images', 'VistoSeg', img_name)
 #img_path = here('raw-data', 'Images', img_name)
-img_path = here('processed-data', '16_samui', 'rot_vis_tifs', img_name)
+img_path = here('processed-data', '16_samui', 'rot_vis_tifs_1029', img_name)
 
 #tissue_positions_path = Path(here("processed-data", "01_spaceranger", capture_id, "outs", "spatial", "tissue_positions.csv"))
 #tissue_positions = pd.read_csv(tissue_positions_path ,index_col = 0).rename({'pxl_row_in_fullres': 'y', 'pxl_col_in_fullres': 'x'},axis = 1)

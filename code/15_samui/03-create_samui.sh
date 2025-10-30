@@ -5,8 +5,6 @@
 #SBATCH -e logs/samui_%a.txt
 #SBATCH --array=1
 
-#  -43%4
-
 echo "**** Job starts ****"
 date
 
