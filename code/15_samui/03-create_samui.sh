@@ -3,7 +3,7 @@
 #SBATCH --job-name=03-create_samui
 #SBATCH -o logs/samui_%a.txt
 #SBATCH -e logs/samui_%a.txt
-#SBATCH --array=1
+#SBATCH --array=2-85%10
 
 echo "**** Job starts ****"
 date
