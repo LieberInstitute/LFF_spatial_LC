@@ -40,11 +40,12 @@ spg_path = here("processed-data", "16_samui", "01-Samui_TissSect_SPE_RotsMirrors
 spg = sc.read(spg_path)
 
 unique_sample_ids = spg.obs['sample_id'].unique
-unique_capture_ids = spg.obs['capture_id']
+unique_capture_ids = spg.obs['capture_id'].unique
 
 #path_groups = spg.obs['path_groups'].cat.categories
 spgP = spg[spg.obs['sample_id'] == this_sample, :]
 capture_id=spgP.obs['capture_id'].unique()[0]
+sample_id=spgP.obs['sample_id'].unique()[0]
 
 samui_dir = Path(here('processed-data', '16_samui', f"{this_sample}"))
 samui_dir.mkdir(parents = True, exist_ok = True)
