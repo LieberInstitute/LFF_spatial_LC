@@ -1,34 +1,59 @@
 **** Job starts ****
-Fri Sep 12 10:24:09 AM EDT 2025
+Thu Oct 30 09:52:20 AM EDT 2025
 **** JHPCE info ****
-User: rmiller
-Job id: 22286461
+User: mtippani
+Job id: 23772844
 Job name: 03-create_samui
 Hostname: 
 Task id: 28
-Processing sample Br6085
-Fri Sep 12 10:24:09 AM EDT 2025
-Loading LIBD SLURM module for samui/1.0.0-next.49
-/jhpce/shared/libd/core/samui/1.0.0-next.49/samui_env/lib/python3.10/site-packages/pydantic/_internal/_config.py:322: UserWarning: Valid config keys have changed in V2:
+Processing sample V13M06-404_B1s1
+Thu Oct 30 09:52:21 AM EDT 2025
+Loading LIBD SLURM module for samui/1.0.0-next.45
+/jhpce/shared/libd/core/samui/1.0.0-next.45/samui_env/lib/python3.10/site-packages/pydantic/_internal/_config.py:261: UserWarning: Valid config keys have changed in V2:
 * 'allow_mutation' has been removed
   warnings.warn(message, UserWarning)
-/jhpce/shared/libd/core/samui/1.0.0-next.49/samui_env/lib/python3.10/site-packages/anndata/__init__.py:55: FutureWarning: `anndata.read` is deprecated, use `anndata.read_h5ad` instead. `ad.read` will be removed in mid 2024.
-  warnings.warn(
-/jhpce/shared/libd/core/samui/1.0.0-next.49/samui_env/lib/python3.10/site-packages/anndata/_core/anndata.py:1820: UserWarning: Variable names are not unique. To make them unique, call `.var_names_make_unique`.
+/jhpce/shared/libd/core/samui/1.0.0-next.45/samui_env/lib/python3.10/site-packages/anndata/_core/anndata.py:1832: UserWarning: Variable names are not unique. To make them unique, call `.var_names_make_unique`.
   utils.warn_names_duplicates("var")
-Traceback (most recent call last):
-  File "/dcs05/lieber/marmaypag/LFF_spatialLC_LIBD4140/LFF_spatial_LC/code/15_samui/03-create_samui.py", line 76, in <module>
-    tissue_positions = pd.read_csv(tissue_positions_path ,index_col = 0).rename({'pxl_row_in_fullres': 'y', 'pxl_col_in_fullres': 'x'},axis = 1)
-  File "/jhpce/shared/libd/core/samui/1.0.0-next.49/samui_env/lib/python3.10/site-packages/pandas/io/parsers/readers.py", line 1026, in read_csv
-    return _read(filepath_or_buffer, kwds)
-  File "/jhpce/shared/libd/core/samui/1.0.0-next.49/samui_env/lib/python3.10/site-packages/pandas/io/parsers/readers.py", line 620, in _read
-    parser = TextFileReader(filepath_or_buffer, **kwds)
-  File "/jhpce/shared/libd/core/samui/1.0.0-next.49/samui_env/lib/python3.10/site-packages/pandas/io/parsers/readers.py", line 1620, in __init__
-    self._engine = self._make_engine(f, self.engine)
-  File "/jhpce/shared/libd/core/samui/1.0.0-next.49/samui_env/lib/python3.10/site-packages/pandas/io/parsers/readers.py", line 1880, in _make_engine
-    self.handles = get_handle(
-  File "/jhpce/shared/libd/core/samui/1.0.0-next.49/samui_env/lib/python3.10/site-packages/pandas/io/common.py", line 873, in get_handle
-    handle = open(
-FileNotFoundError: [Errno 2] No such file or directory: '/dcs05/lieber/marmaypag/LFF_spatialLC_LIBD4140/LFF_spatial_LC/processed-data/01_spaceranger/V13M06-402_C1s1/outs/spatial/tissue_positions.csv'
+[09:52:52] INFO     Transforming                                    logger.py:27
+                    /dcs05/lieber/marmaypag/LFF_spatialLC_LIBD4140/             
+                    LFF_spatial_LC/processed-data/16_samui/V13M06-4             
+                    04_B1s1/V13M06-404_B1s1.tif to COG.                         
+           INFO     'V13M06-404_B1s1' Executing queued functions    logger.py:27
+           INFO     V13M06-404_B1s1 Adding coords 'coords'          logger.py:27
+           INFO     Writing uncompressed GeoTIFF                    logger.py:27
+                    /dcs05/lieber/marmaypag/LFF_spatialLC_LIBD4140/             
+                    LFF_spatial_LC/processed-data/16_samui/V13M06-4             
+                    04_B1s1/V13M06-404_B1s1.tif                                 
+[09:53:09] INFO     Writing COG                                     logger.py:27
+                    /dcs05/lieber/marmaypag/LFF_spatialLC_LIBD4140/             
+                    LFF_spatial_LC/processed-data/16_samui/V13M06-4             
+                    04_B1s1/V13M06-404_B1s1.tif                                 
+[09:53:32] INFO     V13M06-404_B1s1 Adding chunked feature 'Genes'  logger.py:27
+[10:01:43] INFO     V13M06-404_B1s1 Concatenating and compressing   logger.py:27
+                    chunks                                                      
+[10:01:49] INFO     Writing compressed chunks for Genes: 18952698   logger.py:27
+                    bytes                                                       
+           INFO     'V13M06-404_B1s1' written to                    logger.py:27
+                    /dcs05/lieber/marmaypag/LFF_spatialLC_LIBD4140/             
+                    LFF_spatial_LC/processed-data/16_samui/V13M06-4             
+                    04_B1s1                                                     
+-----
+PIL                 10.0.0
+affine              2.4.0
+anndata             0.9.1
+loopy               NA
+matplotlib          3.7.2
+numpy               1.24.4
+pandas              2.0.3
+pyhere              1.0.0
+scanpy              1.9.3
+scipy               1.11.1
+session_info        1.0.0
+tifffile            2023.7.4
+-----
+Python 3.10.12 | packaged by conda-forge | (main, Jun 23 2023, 22:40:32) [GCC 12.3.0]
+Linux-5.14.0-427.13.1.el9_4.x86_64-x86_64-with-glibc2.34
+-----
+Session information updated at 2025-10-30 10:01
 **** Job ends ****
-Fri Sep 12 10:24:14 AM EDT 2025
+Thu Oct 30 10:01:50 AM EDT 2025

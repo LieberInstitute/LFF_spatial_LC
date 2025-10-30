@@ -1,28 +1,59 @@
 **** Job starts ****
-Fri Sep 12 10:27:51 AM EDT 2025
+Thu Oct 30 09:37:07 AM EDT 2025
 **** JHPCE info ****
-User: rmiller
-Job id: 22287023
+User: mtippani
+Job id: 23772566
 Job name: 03-create_samui
 Hostname: 
 Task id: 8
-Processing sample Br5529
-Fri Sep 12 10:27:51 AM EDT 2025
-Loading LIBD SLURM module for samui/1.0.0-next.49
-/jhpce/shared/libd/core/samui/1.0.0-next.49/samui_env/lib/python3.10/site-packages/pydantic/_internal/_config.py:322: UserWarning: Valid config keys have changed in V2:
+Processing sample V13M06-331_D1s2
+Thu Oct 30 09:37:07 AM EDT 2025
+Loading LIBD SLURM module for samui/1.0.0-next.45
+/jhpce/shared/libd/core/samui/1.0.0-next.45/samui_env/lib/python3.10/site-packages/pydantic/_internal/_config.py:261: UserWarning: Valid config keys have changed in V2:
 * 'allow_mutation' has been removed
   warnings.warn(message, UserWarning)
-/jhpce/shared/libd/core/samui/1.0.0-next.49/samui_env/lib/python3.10/site-packages/anndata/__init__.py:55: FutureWarning: `anndata.read` is deprecated, use `anndata.read_h5ad` instead. `ad.read` will be removed in mid 2024.
-  warnings.warn(
-/jhpce/shared/libd/core/samui/1.0.0-next.49/samui_env/lib/python3.10/site-packages/anndata/_core/anndata.py:1820: UserWarning: Variable names are not unique. To make them unique, call `.var_names_make_unique`.
+/jhpce/shared/libd/core/samui/1.0.0-next.45/samui_env/lib/python3.10/site-packages/anndata/_core/anndata.py:1832: UserWarning: Variable names are not unique. To make them unique, call `.var_names_make_unique`.
   utils.warn_names_duplicates("var")
-Traceback (most recent call last):
-  File "/dcs05/lieber/marmaypag/LFF_spatialLC_LIBD4140/LFF_spatial_LC/code/15_samui/03-create_samui.py", line 87, in <module>
-    this_sample.add_image(tiff = img_path, channels = img_channels, scale = m_per_px)
-  File "/jhpce/shared/libd/core/samui/1.0.0-next.49/samui/loopy/sample.py", line 62, in wrapper
-    return func(self, *args, **kwargs)
-  File "/jhpce/shared/libd/core/samui/1.0.0-next.49/samui/loopy/sample.py", line 163, in add_image
-    raise ValueError(f"Tiff file {tiff} not found")
-ValueError: Tiff file /dcs05/lieber/marmaypag/LFF_spatialLC_LIBD4140/LFF_spatial_LC/processed-data/Images/VistoSeg/{}.tif not found
+[09:37:56] INFO     Transforming                                    logger.py:27
+                    /dcs05/lieber/marmaypag/LFF_spatialLC_LIBD4140/             
+                    LFF_spatial_LC/processed-data/16_samui/V13M06-3             
+                    31_D1s2/V13M06-331_D1s2.tif to COG.                         
+           INFO     'V13M06-331_D1s2' Executing queued functions    logger.py:27
+           INFO     V13M06-331_D1s2 Adding coords 'coords'          logger.py:27
+           INFO     Writing uncompressed GeoTIFF                    logger.py:27
+                    /dcs05/lieber/marmaypag/LFF_spatialLC_LIBD4140/             
+                    LFF_spatial_LC/processed-data/16_samui/V13M06-3             
+                    31_D1s2/V13M06-331_D1s2.tif                                 
+[09:38:24] INFO     Writing COG                                     logger.py:27
+                    /dcs05/lieber/marmaypag/LFF_spatialLC_LIBD4140/             
+                    LFF_spatial_LC/processed-data/16_samui/V13M06-3             
+                    31_D1s2/V13M06-331_D1s2.tif                                 
+[09:38:40] INFO     V13M06-331_D1s2 Adding chunked feature 'Genes'  logger.py:27
+[09:41:27] INFO     V13M06-331_D1s2 Concatenating and compressing   logger.py:27
+                    chunks                                                      
+[09:41:31] INFO     Writing compressed chunks for Genes: 20160215   logger.py:27
+                    bytes                                                       
+           INFO     'V13M06-331_D1s2' written to                    logger.py:27
+                    /dcs05/lieber/marmaypag/LFF_spatialLC_LIBD4140/             
+                    LFF_spatial_LC/processed-data/16_samui/V13M06-3             
+                    31_D1s2                                                     
+-----
+PIL                 10.0.0
+affine              2.4.0
+anndata             0.9.1
+loopy               NA
+matplotlib          3.7.2
+numpy               1.24.4
+pandas              2.0.3
+pyhere              1.0.0
+scanpy              1.9.3
+scipy               1.11.1
+session_info        1.0.0
+tifffile            2023.7.4
+-----
+Python 3.10.12 | packaged by conda-forge | (main, Jun 23 2023, 22:40:32) [GCC 12.3.0]
+Linux-5.14.0-427.13.1.el9_4.x86_64-x86_64-with-glibc2.34
+-----
+Session information updated at 2025-10-30 09:41
 **** Job ends ****
-Fri Sep 12 10:28:01 AM EDT 2025
+Thu Oct 30 09:41:32 AM EDT 2025

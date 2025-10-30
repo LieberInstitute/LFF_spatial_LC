@@ -1,0 +1,22 @@
+**** Job starts ****
+Thu Oct 30 10:25:55 AM EDT 2025
+**** JHPCE info ****
+User: mtippani
+Job id: 23773162
+Job name: 03-create_samui
+Hostname: 
+Task id: 65
+Processing sample V13B23-366_A1s1
+Thu Oct 30 10:25:55 AM EDT 2025
+Loading LIBD SLURM module for samui/1.0.0-next.45
+/jhpce/shared/libd/core/samui/1.0.0-next.45/samui_env/lib/python3.10/site-packages/pydantic/_internal/_config.py:261: UserWarning: Valid config keys have changed in V2:
+* 'allow_mutation' has been removed
+  warnings.warn(message, UserWarning)
+/jhpce/shared/libd/core/samui/1.0.0-next.45/samui_env/lib/python3.10/site-packages/anndata/_core/anndata.py:1832: UserWarning: Variable names are not unique. To make them unique, call `.var_names_make_unique`.
+  utils.warn_names_duplicates("var")
+Traceback (most recent call last):
+  File "/dcs05/lieber/marmaypag/LFF_spatialLC_LIBD4140/LFF_spatial_LC/code/15_samui/03-create_samui.py", line 55, in <module>
+    with open(json_path, 'r') as f:
+FileNotFoundError: [Errno 2] No such file or directory: '/dcs05/lieber/marmaypag/LFF_spatialLC_LIBD4140/LFF_spatial_LC/processed-data/01_spaceranger/V13B23-366_A1/outs/spatial/scalefactors_json.json'
+**** Job ends ****
+Thu Oct 30 10:25:59 AM EDT 2025
