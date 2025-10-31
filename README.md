@@ -32,4 +32,5 @@ Supplemental data mentioned in the manuscript are available through are availabl
 FASTQ files from Visium are available through GEO [GSE307866](https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE307866). Addditional processed data may be added to GEO and/or the Globus endpoint in the process of review and publication. 
 
 ### How to Cite
-DOI pending.
+Mulvey, B. and Divecha, H., et al. Impact of Alzheimer's disease risk factors and local neuromelanin content on the transcriptomic landscape of the human locus coeruleus. BioRxiv (2025) doi:[10.1101/2024.12.07.627362.
+](https://doi.org/10.1101/2025.10.29.685354)
