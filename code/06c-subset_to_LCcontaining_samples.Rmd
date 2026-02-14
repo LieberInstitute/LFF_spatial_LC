@@ -43,9 +43,12 @@ now, we're just cutting the SPE down by dropping donors without LC:
 ```{r}
 spe <- readRDS("processed-data/06-countsOnly_noImgData_QCed_SPE_split_to_tissSections.RDS")
 
-spe <- spe[,!(spe$brnum %in% paste0("Br",c(5517,5276,5712)))]
+spe2 <- spe[,!(spe$brnum %in% paste0("Br",c(5517,5276,5712)))]
 
-saveRDS(spe,"processed-data/06-LCposDonorsOnly_countsOnly_noImgData_QCed_SPE_split_to_tissSections.RDS")
+### the seqinfo class moved to a new package only available in R 4.5+; to maintain compatability, make sure we replace the SPE's seqinfo slot with that of an older SPE. they're both empty anyhow, but we can't NULL a GRanges object >:(
+spe2@rowRanges@unlistData@seqinfo <- spe@rowRanges@unlistData@seqinfo
+
+saveRDS(spe2,"processed-data/06-LCposDonorsOnly_countsOnly_noImgData_QCed_SPE_split_to_tissSections.RDS")
 ```
 
 repp inf
