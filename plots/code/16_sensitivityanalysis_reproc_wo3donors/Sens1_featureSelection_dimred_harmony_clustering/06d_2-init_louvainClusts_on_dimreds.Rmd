@@ -1,0 +1,303 @@
+---
+title: "06d-init_louvainClusts_on_dimreds"
+output: html_document
+date: "2026-02-16"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(fig.height = 10,fig.width = 7,include = FALSE)
+#### sets tab autocompletion for directories to begin from the directory containing the .Rproj session, instead of the script's directory if different
+knitr::opts_knit$set(root.dir = here::here())
+
+library(data.table)
+library(ggplot2)
+library(gridExtra)
+library(ggrastr)
+library(Polychrome)
+
+## rstudio GUI tweaks
+require(colorout)
+ColorOut()
+options("styler.addins_style_transformer" = "biocthis::bioc_style()")
+##
+
+## enable forked parallel processing with BiocParallel::multicoreParam, future::, etc. seemed to need this a couple times, but otherwise havent so its here as a preventative measure. part of this is adding the line 
+# OBJC_DISABLE_INITIALIZE_FORK_SAFETY=YES
+# to Renviron.site. see e.g. top response on https://stackoverflow.com/questions/73638290/python-on-mac-is-it-safe-to-set-objc-disable-initialize-fork-safety-yes-globall 
+library(parallelly)
+options(parallelly.supportsMulticore.disableOn="")
+options(parallelly.fork.enable=TRUE)
+library(BiocParallel)
+options(bphost="localhost")
+
+
+## ggplot defaults
+theme_set(theme_bw()+theme(axis.text.x = element_text(size = 10), axis.title.x = element_text(size = 11), axis.text.y = element_text(size = 10), axis.title.y = element_text(size =11), plot.title = element_text(size = 13,hjust=0.5), strip.text = element_text(size=11), legend.text = element_text(size=9), legend.title = element_text(size=10,hjust=0.5)))
+
+## last of all, unload the base package datasets, whose data keep getting in the way of autocompletions (e.g., Theoph is priortized over TRUE)
+unloadNamespace("datasets")
+```
+
+# only use louvain clusterings (leiden returned 100s to 1000s)
+```{r}
+dimrs <- readRDS("processed-data/07_2_LCsampsonly_featureSelection_dimred_harmony_clustering/02_02-PCA_harmo_UMAP_matrices_HDG_SVG_2575only.RDS")
+
+## we want the uncorrected dimred (slot 1) and HARMONYd (slot 3) dimred from these two lists.
+alldimr <- c(dimrs[c(1,3)])
+
+## to save RAM, subset each of these to the first three PCs
+## get the first 3 pcs, only ones we're plotting
+alldimr <- lapply(alldimr,function(adr){
+   keepn <- colnames(adr)[1:3]
+   y <- as.data.table(adr,keep.rownames=T)
+   keepn <- c("rn",keepn)
+   y <- y[,..keepn]
+   # standardize col names for plotting 
+   setnames(y,c(2:4),paste0("Dimred_component_",c(1:3)))
+   return(y)
+})
+
+
+### get clusterings
+louvs <- fread("processed-data/07_2_LCsampsonly_featureSelection_dimred_harmony_clustering/04_2-LConly_HDG_SVG_2575_Louv1_clustering.txt")
+setnames(louvs,2,"clusid")
+
+## get annotations list, append
+anno <- fread("processed-data/07_2_LCsampsonly_featureSelection_dimred_harmony_clustering/08_2-25hdg75svg_louv1_annots.txt")
+
+louvs <- merge.data.table(louvs,anno[,.(clusid,anno)],by="clusid")
+
+## clean up
+rm(anno)
+```
+
+## define helper function to extract a single legend - from https://statisticsglobe.com/add-common-legend-to-combined-ggplot2-plots-in-r/#example-2-add-shared-legend-to-ggplot2-plots-using-gridextra-package 
+```{r}
+extract_legend <- function(my_ggp) {
+  step1 <- ggplot_gtable(ggplot_build(my_ggp))
+  step2 <- which(sapply(step1$grobs, function(x) x$name) == "guide-box")
+  step3 <- step1$grobs[[step2]]
+  return(step3)
+}
+```
+
+####################
+#### Full dimRs ####
+####################
+
+## plot cluster assignments onto dims 1-2, 1-3, 2-3
+```{r}
+lapply(names(alldimr),FUN=function(adrn){
+   ## the clusterings corresponding to non-glm PCAs don't contain the string PCA at all, so we need to remove 'PCA' from those list entry names for this to work properly
+   keepcols <- c("rn","anno")
+   tmplouvs <- copy(louvs)[,..keepcols]
+   
+   curdr <- copy(alldimr[[adrn]])
+   
+   clus <- "anno"
+   nclus <- length(unique(tmplouvs[,get(clus)]))
+   pal <- palette36.colors(n = nclus+2)[c(3:(nclus+2))]
+      
+      # next line is needed for consistency in color-cluster assignments between libdspatial and the generated legend below
+   names(pal) <- unique(tmplouvs$anno)
+   
+   pltdat <- merge.data.table(curdr,tmplouvs[,.(rn,anno)],by="rn")
+
+   ## make shared legend
+   leg.tmp <- ggplot(pltdat,aes(x=Dimred_component_1,y=Dimred_component_2,col=get(clus)))+
+      geom_point(size=0.2,stroke = 0)+
+      scale_color_manual(values=as.character(pal))+
+      guides(color=guide_legend(ncol=2,override.aes=list(size=3)))+
+      theme(
+         legend.text = element_text(size = 10),
+         legend.title = element_text(size = 10, hjust = 0.5),
+         legend.spacing.y = unit(0, "cm"),
+         legend.spacing.x = unit(0.1, "cm"))
+   leg.tmp2 <- extract_legend(leg.tmp)
+   dev.off()
+      
+## now generate the 3 pc pair plots
+colcombs <- list(c("Dimred_component_1","Dimred_component_2"),
+                 c("Dimred_component_1","Dimred_component_3"),
+                 c("Dimred_component_2","Dimred_component_3"))
+
+   p <- lapply(colcombs,FUN=function(cc){
+      ggplot(pltdat,aes_string(x=cc[1],y=cc[2],color=clus))+
+         scale_color_manual(values=pal)+
+         rasterize(geom_point(size=0.4,stroke=0),dpi=300,dev="cairo_png")+
+         guides(color="none")+
+         ggtitle(paste0(clus,":\non ",adrn))+
+         theme(title = element_text(size=9))
+   })
+   ## append legend into the fourth slot of the list so we can have a 2x2 grid of three plots and a legend.  
+   p[[length(p)+1]] <- leg.tmp2
+   
+   pdf(paste0("plots/16_sensitivityanalysis_reproc_wo3donors/Sens1_featureSelection_dimred_harmony_clustering/06d_2_clusts_on",adrn,"_on_PCA_and_Harmo.pdf"),height=13,width=21)
+   #do.call("grid.arrange",list(arrangeGrob(grobs=p,ncol=3),leg.tmp2,ncol=2,widths=c(19,2)))
+   do.call("grid.arrange",c(p,ncol=2))
+   dev.off()
+})
+
+
+```
+
+################
+#### UMAPS ####
+################
+## we also want to do the UMAPs in the same manner as these two things above.
+```{r}
+## we want the uncorrected and corrected UMAPs (slots 2 and 4)
+allumap <- dimrs[c(2,4)]
+allumap <- lapply(allumap,function(x){as.data.table(x,keep.rownames=T)})
+```
+
+```{r}
+lapply(names(allumap),FUN=function(adrn){
+   ## the clusterings corresponding to non-glm PCAs don't contain the string PCA at all, so we need to remove 'PCA' from those list entry names for this to work properly.
+   
+   cluscols <- "anno"
+   keepcols <- c("rn",cluscols)
+   
+   tmplouvs <- copy(louvs)[,..keepcols]
+   
+   curdr <- copy(allumap[[adrn]])
+   
+   clus <- "anno"
+   nclus <- length(unique(tmplouvs[,get(clus)]))
+   pal <- palette36.colors(n = nclus+2)[c(3:(nclus+2))]
+      
+   # next line is needed for consistency in color-cluster assignments between libdspatial and the generated legend below
+   names(pal) <- unique(tmplouvs$anno)
+   
+   pltdat <- merge.data.table(curdr,tmplouvs[,.(rn,anno)],by="rn")
+
+   p <- ggplot(pltdat,aes_string(x="UMAP1",y="UMAP2",color=clus))+
+         scale_color_manual(values=pal)+
+         rasterize(geom_point(size=0.4,stroke=0),dpi=300,dev="cairo_png")+
+         ggtitle(paste0(clus,":\non ",adrn))+
+         guides(color=guide_legend(override.aes=list(size=2)))+
+         theme(title = element_text(size=9))
+      
+      pdf(paste0("plots/07_2_featureSelection_dimred_harmony_clustering/06d_2_clusters_on_",adrn,".pdf"),height=9,width=12)
+      print(p)
+      dev.off()
+})
+
+```
+
+reprod info:
+```{r}
+sessionInfo()
+sessioninfo::session_info()
+```
+R version 4.5.2 (2025-10-31)
+Platform: aarch64-apple-darwin20
+Running under: macOS Tahoe 26.2
+
+Matrix products: default
+BLAS:   /System/Library/Frameworks/Accelerate.framework/Versions/A/Frameworks/vecLib.framework/Versions/A/libBLAS.dylib 
+LAPACK: /Library/Frameworks/R.framework/Versions/4.5-arm64/Resources/lib/libRlapack.dylib;  LAPACK version 3.12.1
+
+locale:
+[1] en_US.UTF-8/en_US.UTF-8/en_US.UTF-8/C/en_US.UTF-8/en_US.UTF-8
+
+time zone: America/Chicago
+tzcode source: internal
+
+attached base packages:
+[1] stats     graphics  grDevices utils     methods   base     
+
+other attached packages:
+[1] BiocParallel_1.44.0 parallelly_1.46.1   colorout_1.3-3      Polychrome_1.5.4   
+[5] ggrastr_1.0.2       gridExtra_2.3       ggplot2_4.0.2       data.table_1.18.2.1
+
+loaded via a namespace (and not attached):
+ [1] gtable_0.3.6         dplyr_1.2.0          compiler_4.5.2      
+ [4] tidyselect_1.2.1     ggbeeswarm_0.7.3     parallel_4.5.2      
+ [7] dichromat_2.0-0.1    png_0.1-8            scales_1.4.0        
+[10] yaml_2.3.12          fastmap_1.2.0        here_1.0.2          
+[13] R6_2.6.1             labeling_0.4.3       generics_0.1.4      
+[16] knitr_1.51           tibble_3.3.1         rprojroot_2.1.1     
+[19] pillar_1.11.1        RColorBrewer_1.1-3   rlang_1.1.7         
+[22] xfun_0.56            S7_0.2.1             otel_0.2.0          
+[25] cli_3.6.5            withr_3.0.2          magrittr_2.0.4      
+[28] digest_0.6.39        grid_4.5.2           rstudioapi_0.18.0   
+[31] beeswarm_0.4.0       lifecycle_1.0.5      vipor_0.4.7         
+[34] vctrs_0.7.1          scatterplot3d_0.3-44 evaluate_1.0.5      
+[37] glue_1.8.0           farver_2.1.2         codetools_0.2-20    
+[40] rsconnect_1.7.0      colorspace_2.1-2     rmarkdown_2.30      
+[43] tools_4.5.2          pkgconfig_2.0.3      htmltools_0.5.9     
+> sessioninfo::session_info()
+─ Session info ────────────────────────────────────────────────────────────────────
+ setting  value
+ version  R version 4.5.2 (2025-10-31)
+ os       macOS Tahoe 26.2
+ system   aarch64, darwin20
+ ui       RStudio
+ language (EN)
+ collate  en_US.UTF-8
+ ctype    en_US.UTF-8
+ tz       America/Chicago
+ date     2026-02-17
+ rstudio  2026.01.0+392 Apple Blossom (desktop)
+ pandoc   3.6.3 @ /Applications/RStudio.app/Contents/Resources/app/quarto/bin/tools/aarch64/ (via rmarkdown)
+ quarto   1.8.25 @ /Applications/RStudio.app/Contents/Resources/app/quarto/bin/quarto
+
+─ Packages ────────────────────────────────────────────────────────────────────────
+ package       * version  date (UTC) lib source
+ beeswarm        0.4.0    2021-06-01 [1] CRAN (R 4.5.0)
+ BiocParallel  * 1.44.0   2025-10-29 [1] Bioconductor 3.22 (R 4.5.1)
+ cli             3.6.5    2025-04-23 [1] CRAN (R 4.5.0)
+ codetools       0.2-20   2024-03-31 [1] CRAN (R 4.5.2)
+ colorout      * 1.3-3    2026-01-31 [1] Github (jalvesaq/colorout@64863bb)
+ colorspace      2.1-2    2025-09-22 [1] CRAN (R 4.5.0)
+ data.table    * 1.18.2.1 2026-01-27 [1] CRAN (R 4.5.2)
+ dichromat       2.0-0.1  2022-05-02 [1] CRAN (R 4.5.0)
+ digest          0.6.39   2025-11-19 [1] CRAN (R 4.5.2)
+ dplyr           1.2.0    2026-02-03 [1] CRAN (R 4.5.2)
+ evaluate        1.0.5    2025-08-27 [1] CRAN (R 4.5.0)
+ farver          2.1.2    2024-05-13 [1] CRAN (R 4.5.0)
+ fastmap         1.2.0    2024-05-15 [1] CRAN (R 4.5.0)
+ generics        0.1.4    2025-05-09 [1] CRAN (R 4.5.0)
+ ggbeeswarm      0.7.3    2025-11-29 [1] CRAN (R 4.5.2)
+ ggplot2       * 4.0.2    2026-02-03 [1] CRAN (R 4.5.2)
+ ggrastr       * 1.0.2    2023-06-01 [1] CRAN (R 4.5.0)
+ glue            1.8.0    2024-09-30 [1] CRAN (R 4.5.0)
+ gridExtra     * 2.3      2017-09-09 [1] CRAN (R 4.5.0)
+ gtable          0.3.6    2024-10-25 [1] CRAN (R 4.5.0)
+ here            1.0.2    2025-09-15 [1] CRAN (R 4.5.0)
+ htmltools       0.5.9    2025-12-04 [1] CRAN (R 4.5.2)
+ knitr           1.51     2025-12-20 [1] CRAN (R 4.5.2)
+ labeling        0.4.3    2023-08-29 [1] CRAN (R 4.5.0)
+ lifecycle       1.0.5    2026-01-08 [1] CRAN (R 4.5.2)
+ magrittr        2.0.4    2025-09-12 [1] CRAN (R 4.5.0)
+ otel            0.2.0    2025-08-29 [1] CRAN (R 4.5.0)
+ parallelly    * 1.46.1   2026-01-08 [1] CRAN (R 4.5.2)
+ pillar          1.11.1   2025-09-17 [1] CRAN (R 4.5.0)
+ pkgconfig       2.0.3    2019-09-22 [1] CRAN (R 4.5.0)
+ png             0.1-8    2022-11-29 [1] CRAN (R 4.5.0)
+ Polychrome    * 1.5.4    2025-04-06 [1] CRAN (R 4.5.0)
+ R6              2.6.1    2025-02-15 [1] CRAN (R 4.5.0)
+ RColorBrewer    1.1-3    2022-04-03 [1] CRAN (R 4.5.0)
+ rlang           1.1.7    2026-01-09 [1] CRAN (R 4.5.2)
+ rmarkdown       2.30     2025-09-28 [1] CRAN (R 4.5.0)
+ rprojroot       2.1.1    2025-08-26 [1] CRAN (R 4.5.0)
+ rsconnect       1.7.0    2025-12-06 [1] CRAN (R 4.5.2)
+ rstudioapi      0.18.0   2026-01-16 [1] CRAN (R 4.5.2)
+ S7              0.2.1    2025-11-14 [1] CRAN (R 4.5.2)
+ scales          1.4.0    2025-04-24 [1] CRAN (R 4.5.0)
+ scatterplot3d   0.3-44   2023-05-05 [1] CRAN (R 4.5.0)
+ sessioninfo     1.2.3    2025-02-05 [1] CRAN (R 4.5.0)
+ tibble          3.3.1    2026-01-11 [1] CRAN (R 4.5.2)
+ tidyselect      1.2.1    2024-03-11 [1] CRAN (R 4.5.0)
+ vctrs           0.7.1    2026-01-23 [1] CRAN (R 4.5.2)
+ vipor           0.4.7    2023-12-18 [1] CRAN (R 4.5.0)
+ withr           3.0.2    2024-10-28 [1] CRAN (R 4.5.0)
+ xfun            0.56     2026-01-18 [1] CRAN (R 4.5.2)
+ yaml            2.3.12   2025-12-10 [1] CRAN (R 4.5.2)
+
+ [1] /Library/Frameworks/R.framework/Versions/4.5-arm64/Resources/library
+ [2] /Users/bmulvey/Library/R/arm64/4.5/library
+ * ── Packages attached to the search path.
+
+───────────────────────────────────────────────────────────────────────────────────

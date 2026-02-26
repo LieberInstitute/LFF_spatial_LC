@@ -1,0 +1,160 @@
+---
+title: "09-DE_compareoldnew"
+author: "Bernie Mulvey"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(fig.height = 10,fig.width = 7,include = FALSE)
+#### sets tab autocompletion for directories to begin from the directory containing the .Rproj session, instead of the script's directory if different
+knitr::opts_knit$set(root.dir = here::here())
+
+library(data.table)
+library(ggplot2)
+library(ggtext)
+library(gridExtra)
+
+## rstudio GUI tweaks
+require(colorout)
+ColorOut()
+options("styler.addins_style_transformer" = "biocthis::bioc_style()")
+##
+
+## enable forked parallel processing with BiocParallel::multicoreParam, future::, etc. seemed to need this a couple times, but otherwise havent so its here as a preventative measure. part of this is adding the line 
+# OBJC_DISABLE_INITIALIZE_FORK_SAFETY=YES
+# to Renviron.site. see e.g. top response on https://stackoverflow.com/questions/73638290/python-on-mac-is-it-safe-to-set-objc-disable-initialize-fork-safety-yes-globall 
+library(parallelly)
+library(parallel)
+options(parallelly.supportsMulticore.disableOn="")
+options(parallelly.fork.enable=TRUE)
+library(BiocParallel)
+options(bphost="localhost")
+
+
+## ggplot defaults
+theme_set(theme_bw()+theme(axis.text.x = element_text(size = 8,color = "#000000"), axis.title.x = element_text(size = 9,color = "#000000"), axis.text.y = element_text(size = 8,color = "#000000"), axis.title.y = element_text(size =9,color = "#000000"), plot.title = element_markdown(size = 10,hjust=0.5,color = "#000000"), strip.text = element_text(size=11), legend.text = element_text(size=7,color = "#000000"), legend.title = element_text(size=8,hjust=0.5,color = "#000000"),axis.ticks = element_line(linewidth=0.5),panel.grid.major = element_line(linewidth=0.5),panel.grid.minor=element_line(linewidth=0.25),plot.title.position="plot"))
+
+## last of all, unload the base package datasets, whose data keep getting in the way of autocompletions (e.g., Theoph is priortized over TRUE)
+unloadNamespace("datasets")
+```
+
+```{r}
+origde <- readRDS("processed-data/12_DEanalyses_removedsampsAndFinalNMseg/02b-voomLmFit_objs_and_DE_tables_LabSex_LabE2vE4_LabSingleGenos_LabAnces_LabAncesE4E2_noMixClusts_YRIcontAndCat_JUL2025.RDS")
+### subset to the DE tests we're using here (ie ones in the preprint)
+origde2 <- c(origde[[1]]$E2E4label$detabs,origde[[1]]$sexlabel$detabs,origde$cat_ances$AncesByLabel$detabs)
+origdeYRIAPO <- origde$cat_ances$YRIAPOlabel$detabs
+origdeYRIAPO <- origdeYRIAPO[grep(names(origdeYRIAPO),pattern="E4YRI_vs_E2YRI|E4CEU_vs_E2CEU",value=T)]
+origde2 <- c(origde2,origdeYRIAPO)
+rm(origde,origdeYRIAPO)
+
+###
+newde <- readRDS("processed-data/16_sensitivityanalysis_reproc_wo3donors/Sens4_DEanalyses_removedsampsAndFinalNMseg/02b_2-voomLmFit_objs_and_DE_tables_LabSex_LabE2vE4_LabSingleGenos_LabAnces_LabAncesE4E2_noMixClusts_YRIcontAndCat_Feb26.RDS")
+### subset to the DE tests we're using here (ie ones in the preprint)
+newde2 <- c(newde[[1]]$E2E4label$detabs,newde[[1]]$sexlabel$detabs,newde$cat_ances$AncesByLabel$detabs)
+newdeYRIAPO <- newde$cat_ances$YRIAPOlabel$detabs
+newdeYRIAPO <- newdeYRIAPO[grep(names(newdeYRIAPO),pattern="E4YRI_vs_E2YRI|E4CEU_vs_E2CEU",value=T)]
+newde2 <- c(newde2,newdeYRIAPO)
+rm(newde,newdeYRIAPO)
+```
+
+## wow, super conveniently these two lists come out in the same order for each cluster-contrast. so we can just mapply it with a rel. simple string check to verify.
+
+## make a table of original labels and their 1-to-1 counterpart of the new labels
+```{r}
+lablut <- as.data.frame(matrix(nrow=5,ncol=2))
+lablut[1,] <- rep("ACHE_SERT_LC_WM",2)
+lablut[2,] <- rep("ACHE_SERT_Npep",2)
+lablut[3,] <- rep("LC",2)
+lablut[4,] <- c("Astro","Astro_Vasc_Mural")
+lablut[5,] <- c("Oligo_Astro","Oligo_1")
+
+colnames(lablut) <- c("orig","reproc")
+rownames(lablut) <- lablut$orig
+```
+
+```{r}
+comps <- mcmapply(n=newde2,o=origde2,nn=names(newde2),on=names(origde2),mc.cores=5,SIMPLIFY=FALSE,function(n,o,nn,on){
+    ## extract the cluster ID from on and nn
+    onc <- gsub(on,pattern="(.*)(_E4YRI_vs_E2YRI|_E4CEU_vs_E2CEU|_Sex|_E4vE2|_YRI)",replacement="\\1")
+    nnc <- gsub(nn,pattern="(.*)(_E4YRI_vs_E2YRI|_E4CEU_vs_E2CEU|_Sex|_E4vE2|_YRI)",replacement="\\1")
+    stopifnot(lablut[onc,"reproc"]==nnc)
+    
+    ## extract test ID from on and nn
+    ont <- gsub(on,pattern="(.*)(_E4YRI_vs_E2YRI|_E4CEU_vs_E2CEU|_Sex|_E4vE2|_YRI)",replacement="\\2")
+    nnt <- gsub(nn,pattern="(.*)(_E4YRI_vs_E2YRI|_E4CEU_vs_E2CEU|_Sex|_E4vE2|_YRI)",replacement="\\2")
+    stopifnot(nnt==ont)
+    
+    # if we're here, we've got the same test for a cluster and its match yipee
+    setnames(n,"t","tstat_new")
+    setnames(o,"t","tstat_orig")
+    
+    ntmp <- n[,.(gene_id,tstat_new)]
+    otmp <- o[,.(gene_id,tstat_orig)]
+    tmp <- merge(ntmp,otmp,by="gene_id",all=T)
+    outcor.s <- cor(tmp$tstat_new,tmp$tstat_orig,use="pairwise.complete.obs",method = "spearman")
+    outcor.p <- cor(tmp$tstat_new,tmp$tstat_orig,use="pairwise.complete.obs",method = "pearson")
+    retlist <- c(outcor.s,outcor.p)
+    names(retlist) <- paste0(onc,"-",nnc,ont,c("_spear","_pear"))
+    return(retlist)
+})
+
+comps2 <- lapply(comps,as.data.table,keep.rownames=T)
+comps3 <- rbindlist(comps2)
+setnames(comps3,c("test","stat"))
+
+## de test type
+comps3[,contrast:=gsub(test,pattern="(.*)(_E4YRI_vs_E2YRI|_E4CEU_vs_E2CEU|_Sex|_E4vE2|_YRI)",replacement="\\2")]
+comps3[,contrast:=gsub(contrast,pattern="^_",replacement="")]
+
+## correlation method
+comps3[,method:=gsub(contrast,pattern=".*_(pear|spear)$",replacement="\\1")]
+## finish tidying de test type
+comps3[,contrast:=gsub(contrast,pattern="_spear|_pear",replacement="")]
+comps3[,origclust:=gsub(test,pattern="^(.*)-.*$",replacement="\\1")]
+
+lablut <- as.data.table(lablut)
+comps3 <- merge.data.table(comps3,lablut,by.x="origclust",by.y="orig")
+setnames(comps3,"reproc","newclust")
+comps3[,test:=NULL]
+
+comps3[contrast=="YRI",contrast:="Categorical AA-EA"]
+comps3[contrast=="E4CEU_vs_E2CEU",contrast:="EA-only E4-E2"]
+comps3[contrast=="E4YRI_vs_E2YRI",contrast:="AA-only E4-E2"]
+
+rm(lablut,origde2,newde2,comps2,comps)
+
+```
+
+```{r}
+plts <- lapply(c("spear","pear"),function(x){
+    tmpdat <- copy(comps3[method==x])
+    tmpdat[,oldnew:=ifelse(origclust==newclust,origclust,paste0(origclust," vs ", newclust))]
+    p <- ggplot(tmpdat,aes(x=contrast,y=oldnew,col=stat,size=stat))+
+        geom_point()+
+        scale_color_gradient2(low="blue",mid="white",high="red",midpoint=0.75,limits=c(0.5,1),name = "Correlation")+
+        scale_size_continuous(range=c(3,3.25),limits=c(0,1))+
+        guides(size="none")+
+        xlab("DE Test")+
+        ylab("Cluster ID (Original vs New\n, if label was changed)")+
+        ggtitle(paste0(x, " correl. of DE tests"))+
+        theme(axis.text.x=element_text(angle=45,hjust=1,vjust=1))
+    return(p)
+})
+
+png("plots/16_sensitivityanalysis_reproc_wo3donors/compareoldnewDE_spearman.png",height=400,width=300)
+plts[[1]]
+dev.off()
+
+png("plots/16_sensitivityanalysis_reproc_wo3donors/compareoldnewDE_pearson.png",height=400,width=300)
+plts[[2]]
+dev.off()
+
+
+
+
+
+
+
+
+```
