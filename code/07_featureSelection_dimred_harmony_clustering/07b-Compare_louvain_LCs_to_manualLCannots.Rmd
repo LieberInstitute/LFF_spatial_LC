@@ -72,25 +72,33 @@ stopifnot(all(names(autoan) %in% names(louvs3)))
 
 ```{r}
 pblc.louv <- lapply(X=names(autoan),FUN=function(clu){
+    
+    ## subset to a two column table: spot identifier and current label assignments
     curn <- c("rn",clu)
     tmplouv <- louvs3[,..curn]
     
+    # append the auto-annotations corresponding to these labels
     tmplouv <- merge.data.table(tmplouv,autoan[[clu]],by.x=clu,by.y="clusid")
+    # collapse all LC labels together for this test (e.g., if there exist autoanno LC.1 and LC.2, those will become one "LC" label here)
     tmplouv[autoanno %in% grep(autoanno,pattern="LC",value=T),autoanno:="LC"]
+    # for LC-vs-everything else analysis, label all non LC spots "Other"
     tmplouv[autoanno!="LC",autoanno:="Other"]
     
+    # now append the LC or Other annotations
     tmplouv <- DataFrame(tmplouv,row.names=tmplouv$rn)[colnames(lc3),]
     colLabels(lc3) <- tmplouv$autoanno
     
+    ## pseudobulk LC spots and Other Spots for each sample; only keep LC pseudobulks (assays="LC"); filter to pseudobulks containing at least 5 LC spots; filter to genes with 1+ count in 20+ samples; calculate normalized counts using TMM, the bulk RNA-seq standard approach. 
     lcpb <- aggregateToPseudoBulk(lc3,sample_id = "sample_id",cluster_id = "label")
     lcpb <- processAssays(lcpb,formula=~1,assays = "LC",min.cells = 5,min.count=1,min.samples = 20,normalize.method = "TMM")
+    # get the normalized expression matrix: one column
     lcpb <- as.matrix(lcpb$LC$E)
     return(lcpb)
 })
 names(pblc.louv) <- names(autoan)
 ```
 
-## get pseudobulk expression for the two manual annotations
+## using the same methods as above, get pseudobulk expression for the two manual annotations
 ```{r}
 manpbs <- lapply(names(manlcs)[2:ncol(manlcs)],function(m){
     curmname <- c("rn",m)

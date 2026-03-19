@@ -1,0 +1,405 @@
+---
+title: "SupFigs-SensitivtyReprocessing"
+author: "Bernie Mulvey"
+date: "2026-03-12"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(fig.height = 10,fig.width = 7,include = FALSE)
+#### sets tab autocompletion for directories to begin from the directory containing the .Rproj session, instead of the script's directory if different
+knitr::opts_knit$set(root.dir = here::here())
+
+library(data.table)
+library(ggplot2)
+library(ggtext)
+library(gridExtra)
+library(ggrastr)
+library(Cairo)
+library(edgeR)
+library(limma)
+# library(SpatialFeatureExperiment)
+
+greaterOrEqual <- function(x,y) {
+    precision <- sqrt(.Machine$double.eps)
+    (x >= y) | (abs(x-y) <= precision)
+}
+
+lessOrEqual <- function(x,y){
+    precision <- sqrt(.Machine$double.eps)
+    (x <= y) | (abs(x-y) <= precision)
+}
+
+
+## rstudio GUI tweaks
+require(colorout)
+ColorOut()
+options("styler.addins_style_transformer" = "biocthis::bioc_style()")
+##
+
+## enable forked parallel processing with BiocParallel::multicoreParam, future::, etc. seemed to need this a couple times, but otherwise havent so its here as a preventative measure. part of this is adding the line 
+# OBJC_DISABLE_INITIALIZE_FORK_SAFETY=YES
+# to Renviron.site. see e.g. top response on https://stackoverflow.com/questions/73638290/python-on-mac-is-it-safe-to-set-objc-disable-initialize-fork-safety-yes-globall 
+library(parallelly)
+options(parallelly.supportsMulticore.disableOn="")
+options(parallelly.fork.enable=TRUE)
+library(BiocParallel)
+options(bphost="localhost")
+
+
+## ggplot defaults
+theme_set(theme_bw()+theme(axis.text.x = element_text(size = 8,color = "#000000"), axis.title.x = element_text(size = 9,color = "#000000"), axis.text.y = element_text(size = 8,color = "#000000"), axis.title.y = element_text(size =9,color = "#000000"), plot.title = element_markdown(size = 10,hjust=0.5,color = "#000000"), strip.text = element_text(size=11), legend.text = element_markdown(size=7,color = "#000000"), legend.title = element_text(size=8,hjust=0.5,color = "#000000"),axis.ticks = element_line(linewidth=0.5),panel.grid.major = element_line(linewidth=0.5),panel.grid.minor=element_line(linewidth=0.25),plot.title.position="plot"))
+
+## last of all, unload the base package datasets, whose data keep getting in the way of autocompletions (e.g., Theoph is priortized over TRUE)
+unloadNamespace("datasets")
+```
+
+Panel A: Registration between original and new labels
+```{r}
+sens <- readRDS("processed-data/16_sensitivityanalysis_reproc_wo3donors/Sens2_markers_and_registration_final/04_2-fulldata_to_sensitivitydata_label_regists.RDS")
+
+sens <- rbindlist(sens,idcol="topNgene")
+sens[,Ngene:=as.numeric(gsub(topNgene,pattern="^.*_top_(.*)",replacement="\\1"))]
+sens[,topNgene:=NULL]
+sens <- melt.data.table(sens,id.vars = c("plot_anno","Ngene"))
+
+sens[,variable:=gsub(variable,pattern="SERT\\*, ",replacement="SERT\\*,<br>")]
+sens[,variable:=gsub(variable,pattern="Vascular, ",replacement="Vascular,<br>")]
+
+sens[,variable:=factor(variable,levels=c(
+    "Vascular",
+    "Astro, Vascular,<br>Mural Mixed",
+    "Astro-Oligo Mixed",
+    "Oligo 1",
+    "Oligo 2",
+    "Oligo-Astro Mixed",
+    "Oligo-Neuron Mixed",
+    "*ACHE*, *SERT*,<br>LC, Oligo Mixed",
+    "*ACHE*, *SERT*,<br>Neuropeptide Mixed",
+    "LC"))]
+
+sens[,plot_anno:=gsub(plot_anno,pattern="SERT\\*, ",replacement="SERT\\*,<br>")]
+sens[,plot_anno:=gsub(plot_anno,pattern="Other Types",replacement="Other<br>Types")]
+
+sens[,plot_anno:=factor(plot_anno,levels=rev(c(
+    "Vascular",
+    "Astro",
+    "Astro-Oligo Mixed",
+    "Oligo-Astro Mixed",
+    "Oligo",
+    "Oligo and Other<br>Types Mixed",
+    "*ACHE*, *SERT*,<br>LC, Oligo Mixed",
+    "*ACHE*, *SERT*,<br>Neuropeptide Mixed",
+    "LC" 
+)))]
+
+### shorten, push legend right and widen the plot in illustrator.
+
+pdf("plots/manuscript/SuppFigs/SF-SensitivityReproc/panelA_fulldata_subdata_labelregist.pdf",height=4,width=4)
+ggplot(sens[Ngene==100],aes(x=plot_anno,y=variable,fill=value))+
+    geom_tile()+
+    scale_x_discrete(expand=c(0,0))+
+    scale_y_discrete(expand=c(0,0))+
+    labs(x="Main Analysis Domain",y="Reprocessed Subset Domain",fill="Spearman Cor.<br>(Top 100 Full-Data<br>Domain Markers)")+
+    scale_fill_viridis_c()+
+    #guides(fill=guide_colorbar(theme =theme(legend.key.height = ggplot2::unit(0.04, "npc"))))+
+    theme(axis.text.x=element_markdown(size=8,angle=90,hjust=1,vjust=0.5),
+          axis.text.y=element_markdown(size=8),
+          axis.title.y=element_markdown(size=9),
+          axis.title.x=element_markdown(size=9),
+          legend.text=element_markdown(size=8),
+          legend.title=element_markdown(size=9,hjust=0.5),
+          legend.justification="center",
+          legend.box = element_blank(),
+          legend.key=element_blank())
+dev.off()
+
+rm(sens)
+```
+
+
+DE-DE t-stat correls (all genes)
+```{r}
+subde <- readRDS("processed-data/16_sensitivityanalysis_reproc_wo3donors/Sens4_DEanalyses_removedsampsAndFinalNMseg/02b_2-voomLmFit_objs_and_DE_tables_LabSex_LabE2vE4_LabSingleGenos_LabAnces_LabAncesE4E2_noMixClusts_YRIcontAndCat_Feb26.RDS")
+
+fullde <- readRDS("processed-data/12_DEanalyses_removedsampsAndFinalNMseg/02b-voomLmFit_objs_and_DE_tables_LabSex_LabE2vE4_LabSingleGenos_LabAnces_LabAncesE4E2_noMixClusts_YRIcontAndCat_JUL2025.RDS")
+
+subde <- list(subde$cont_ances$sexlabel$detabs,subde$cont_ances$E2E4label$detabs,subde$cont_ances$AncesByLabel$detabs,subde$cat_ances$AncesByLabel$detabs,  subde$cat_ances$YRIAPOlabel$detabs)
+names(subde) <- c("Sex","E4 vs E2","Ancestry (Continuous)","Ancestry (Categorical)","Ancestry-Stratified E4-E2")
+
+fullde <- list(fullde$cont_ances$sexlabel$detabs,fullde$cont_ances$E2E4label$detabs,fullde$cont_ances$AncesByLabel$detabs,fullde$cat_ances$AncesByLabel$detabs,  fullde$cat_ances$YRIAPOlabel$detabs)
+names(fullde) <- c("Sex","E4 vs E2","Ancestry (Continuous)","Ancestry (Categorical)","Ancestry-Stratified E4-E2")
+
+
+cluspair <- as.data.table(cbind(
+    c("ACHE_SERT_LC_WM","ACHE_SERT_Npep","Astro","LC","Oligo_Astro"),
+    c("ACHE_SERT_LC_WM","ACHE_SERT_Npep","Astro_Vasc_Mural","LC","Oligo_1")
+))
+setnames(cluspair,c("fullclus","subclus"))
+```
+
+```{r}
+cortab <- as.data.frame(matrix(nrow=6,ncol=6))
+cortab[,1] <- c("Sex","E4-E2","AA-EA (Continuous)","AA-EA (Categorical)","AA E4-E2","EA E4-E2")
+colnames(cortab) <- c("contrast",cluspair$fullclus)
+i <- 1 #  clusters
+for (i in c(1:5)){
+    curog <- cluspair[i,fullclus]
+    cursub <- cluspair[i,subclus]
+    j<-1 #  two-cond contrasts, which our lists are pre-ordered by
+    for (j in c(1:4)){
+        # distinguish Astro and Oligo_Astr.o, and LC/ACHE_LC the only two with shared strings
+        patt <- paste0("^",curog)
+        ogn <- grep(names(fullde[[j]]),pattern=patt,value=T)
+        ogdt <- fullde[[j]][[ogn]][,.(gene_id,t)]
+        setnames(ogdt,2,"ogt")
+        
+        # distinguish Astro and Oligo_Astr.o, and LC/ACHE_LC the only two with shared strings
+        patt <- paste0("^",cursub)
+        subn <- grep(names(subde[[j]]),pattern=patt,value=T)
+        subdt <- subde[[j]][[subn]][,.(gene_id,t)]
+        setnames(subdt,2,"subt")
+        
+        cordat <- merge.data.table(ogdt,subdt,by="gene_id",all=T)
+        
+        cortab[j,(i+1)] <- cor(cordat$ogt,cordat$subt,use="pairwise.complete.obs",method="spearman")
+        
+        rm(cordat,subdt,ogdt,subn,ogn,patt)
+    }
+}
+
+## for the ancestry-stratified E4-E2 tests, AA:
+aae4e2.full <- grep(names(fullde$`Ancestry-Stratified E4-E2`),pattern="E4YRI_vs_E2YRI",value=T)
+aae4e2.full <- fullde$`Ancestry-Stratified E4-E2`[aae4e2.full]
+names(aae4e2.full) <- gsub(names(aae4e2.full),pattern="_E4YRI_vs_E2YRI",replacement="")
+
+aae4e2.sub <- grep(names(subde$`Ancestry-Stratified E4-E2`),pattern="E4YRI_vs_E2YRI",value=T)
+aae4e2.sub <- subde$`Ancestry-Stratified E4-E2`[aae4e2.sub]
+names(aae4e2.sub) <- gsub(names(aae4e2.sub),pattern="_E4YRI_vs_E2YRI",replacement="")
+
+outtabnames <- names(cortab)[2:6]
+i<-1
+for (i in c(1:length(outtabnames))){
+    fdt <- aae4e2.full[[outtabnames[i]]]
+    fdt <- fdt[,.(gene_id,t)]
+    setnames(fdt,2,"fullt")
+    
+    sdt <- aae4e2.sub[[cluspair[fullclus==outtabnames[i],subclus]]]
+    sdt <- sdt[,.(gene_id,t)]
+    setnames(sdt,2,"subt")
+    
+    cordat <- merge.data.table(fdt,sdt,by="gene_id",all.x=T,all.y=T)
+    j<-5
+    cortab[j,(i+1)] <- cor(cordat$fullt,cordat$subt,use="pairwise.complete.obs",method="spearman")
+}
+rm(i,j,sdt,fdt,cordat,aae4e2.sub,aae4e2.full)
+
+## for the ancestry-stratified E4-E2 tests, EA:
+eae4e2.full <- grep(names(fullde$`Ancestry-Stratified E4-E2`),pattern="E4CEU_vs_E2CEU",value=T)
+eae4e2.full <- fullde$`Ancestry-Stratified E4-E2`[eae4e2.full]
+names(eae4e2.full) <- gsub(names(eae4e2.full),pattern="_E4CEU_vs_E2CEU",replacement="")
+
+eae4e2.sub <- grep(names(subde$`Ancestry-Stratified E4-E2`),pattern="E4CEU_vs_E2CEU",value=T)
+eae4e2.sub <- subde$`Ancestry-Stratified E4-E2`[eae4e2.sub]
+names(eae4e2.sub) <- gsub(names(eae4e2.sub),pattern="_E4CEU_vs_E2CEU",replacement="")
+
+outtabnames <- names(cortab)[2:6]
+i<-1
+for (i in c(1:length(outtabnames))){
+    fdt <- eae4e2.full[[outtabnames[i]]]
+    fdt <- fdt[,.(gene_id,t)]
+    setnames(fdt,2,"fullt")
+    
+    sdt <- eae4e2.sub[[cluspair[fullclus==outtabnames[i],subclus]]]
+    sdt <- sdt[,.(gene_id,t)]
+    setnames(sdt,2,"subt")
+    
+    cordat <- merge.data.table(fdt,sdt,by="gene_id",all.x=T,all.y=T)
+    j<-6 # EA E4-E2 row
+    cortab[j,(i+1)] <- cor(cordat$fullt,cordat$subt,use="pairwise.complete.obs",method="spearman")
+}
+
+## save this beast lest we fuck it up
+fwrite(cortab,"processed-data/16_sensitivityanalysis_reproc_wo3donors/Sens4_DEanalyses_removedsampsAndFinalNMseg/fulldata_vs_sensitivitydata_allGene_DEtstatcors_forMatchedClusters_named_by_fulldatclust.txt",sep='\t',quote=F,row.names=F,col.names=T)
+
+cortab <- as.data.table(cortab)
+cortab <- melt.data.table(cortab,id.vars="contrast")
+
+cortab[,variable:=as.character(variable)]
+cortab[variable=="Astro",variable:="Astro (Astro<br>Vascular, Mural<br>Mixed)"]
+cortab[variable=="Oligo_Astro",variable:="Oligo, Astro Mixed<br>(Oligo 1)"]
+cortab[variable=="ACHE_SERT_Npep",variable:="*ACHE*, *SERT*,<br>Neuropep. Mixed"]
+cortab[variable=="ACHE_SERT_LC_WM",variable:="*ACHE*, *SERT*,<br>LC, Oligo Mixed"]
+
+cortab[,variable:=factor(variable,levels=rev(c("LC","Astro (Astro<br>Vascular, Mural<br>Mixed)","*ACHE*, *SERT*,<br>Neuropep. Mixed","*ACHE*, *SERT*,<br>LC, Oligo Mixed","Oligo, Astro Mixed<br>(Oligo 1)")))]
+
+cortab[,contrast:=factor(contrast,levels=c("Sex","E4-E2","AA E4-E2","EA E4-E2","AA-EA (Categorical)","AA-EA (Continuous)"))]
+
+pdf("plots/manuscript/SuppFigs/SF-SensitivityReproc/panelB_allGeneDEcorrels_fullDataClusAndSensitCounterpart.pdf",height=4,width=4)
+ggplot(cortab,aes(x=contrast,y=variable,fill=value))+
+    geom_tile()+
+    scale_x_discrete(expand=c(0,0))+
+    scale_y_discrete(expand=c(0,0))+
+    labs(x="Domain (Reanalysis<br>Domain)",y="DE Contrast",fill="Spearman Cor.<br>(Full DE t-Stats)")+
+    scale_fill_viridis_c()+
+    #guides(fill=guide_colorbar(theme =theme(legend.key.height = ggplot2::unit(0.04, "npc"))))+
+    theme(axis.text.x=element_markdown(size=8,angle=30,hjust=1,vjust=0.5),
+          axis.text.y=element_markdown(size=8),
+          axis.title.y=element_markdown(size=9),
+          axis.title.x=element_markdown(size=9),
+          legend.text=element_markdown(size=8),
+          legend.title=element_markdown(size=9,hjust=0.5),
+          legend.justification="center",
+          legend.box = element_blank(),
+          legend.key=element_blank())
+dev.off()
+
+rm(eae4e2.full,eae4e2.sub,cordat,cortab,fdt,sdt,i,j,outtabnames)
+```
+
+
+### panel C: how many full-dataset DEGs come back out
+```{r}
+reptab <- as.data.frame(matrix(nrow=6,ncol=6))
+reptab[,1] <- c("Sex","E4-E2","AA-EA (Continuous)","AA-EA (Categorical)","AA E4-E2","EA E4-E2")
+colnames(reptab) <- c("contrast",cluspair$fullclus)
+i <- 1 #  clusters
+for (i in c(1:5)){
+    curog <- cluspair[i,fullclus]
+    cursub <- cluspair[i,subclus]
+    j<-1 #  two-cond contrasts, which our lists are pre-ordered by
+    for (j in c(1:4)){
+        # distinguish Astro and Oligo_Astr.o, and LC/ACHE_LC the only two with shared strings
+        patt <- paste0("^",curog)
+        ogn <- grep(names(fullde[[j]]),pattern=patt,value=T)
+        ogdt <- fullde[[j]][[ogn]][lessOrEqual(adj.P.Val,0.05),.(gene_id,logFC)]
+        setnames(ogdt,2,"ogfc")
+        if(nrow(ogdt)==0){
+            reptab[j,(i+1)] <- NA
+        } else {
+            # distinguish Astro and Oligo_Astr.o, and LC/ACHE_LC the only two with shared strings
+            patt <- paste0("^",cursub)
+            subn <- grep(names(subde[[j]]),pattern=patt,value=T)
+            subdt <- subde[[j]][[subn]][,.(gene_id,adj.P.Val,logFC)]
+            setnames(subdt,c(2,3),c("subfdr","subfc"))
+            
+            repdat <- merge.data.table(ogdt,subdt,by="gene_id",all.x=T)
+            
+            nrep <- nrow(repdat[lessOrEqual(subfdr,0.05)&greaterOrEqual(subfc*ogfc,0)])
+            nog <- nrow(repdat)
+            pctrep <- round(100*nrep/nog,0)
+            
+            reptab[j,(i+1)] <- paste0(nrep," of ",nog,"<br>(",pctrep,"%)")
+            
+            rm(repdat,subdt,ogdt,subn,ogn,patt)
+        }
+    }
+}
+
+## for the ancestry-stratified E4-E2 tests, AA:
+aae4e2.full <- grep(names(fullde$`Ancestry-Stratified E4-E2`),pattern="E4YRI_vs_E2YRI",value=T)
+aae4e2.full <- fullde$`Ancestry-Stratified E4-E2`[aae4e2.full]
+names(aae4e2.full) <- gsub(names(aae4e2.full),pattern="_E4YRI_vs_E2YRI",replacement="")
+
+aae4e2.sub <- grep(names(subde$`Ancestry-Stratified E4-E2`),pattern="E4YRI_vs_E2YRI",value=T)
+aae4e2.sub <- subde$`Ancestry-Stratified E4-E2`[aae4e2.sub]
+names(aae4e2.sub) <- gsub(names(aae4e2.sub),pattern="_E4YRI_vs_E2YRI",replacement="")
+
+outtabnames <- names(reptab)[2:6]
+i<-1
+for (i in c(1:length(outtabnames))){
+    fdt <- aae4e2.full[[outtabnames[i]]]
+    fdt <- fdt[lessOrEqual(adj.P.Val,0.05),.(gene_id,logFC)]
+    setnames(fdt,2,"ogfc")
+    
+    sdt <- aae4e2.sub[[cluspair[fullclus==outtabnames[i],subclus]]]
+    sdt <- sdt[,.(gene_id,adj.P.Val,logFC)]
+    setnames(sdt,c(2,3),c("subfdr","subfc"))
+    
+    repdat <- merge.data.table(fdt,sdt,by="gene_id",all.x=T)
+            
+    nrep <- nrow(repdat[lessOrEqual(subfdr,0.05)&greaterOrEqual(subfc*ogfc,0)])
+    nog <- nrow(repdat)
+    pctrep <- round(100*nrep/nog,0)
+            
+    j<-5
+    reptab[j,(i+1)] <- reptab[j,(i+1)] <- paste0(nrep," of ",nog,"<br>(",pctrep,"%)")
+}
+rm(i,j,sdt,fdt,cordat,aae4e2.sub,aae4e2.full)
+
+
+## for the ancestry-stratified E4-E2 tests, EA:
+eae4e2.full <- grep(names(fullde$`Ancestry-Stratified E4-E2`),pattern="E4CEU_vs_E2CEU",value=T)
+eae4e2.full <- fullde$`Ancestry-Stratified E4-E2`[eae4e2.full]
+names(eae4e2.full) <- gsub(names(eae4e2.full),pattern="_E4CEU_vs_E2CEU",replacement="")
+
+eae4e2.sub <- grep(names(subde$`Ancestry-Stratified E4-E2`),pattern="E4CEU_vs_E2CEU",value=T)
+eae4e2.sub <- subde$`Ancestry-Stratified E4-E2`[eae4e2.sub]
+names(eae4e2.sub) <- gsub(names(eae4e2.sub),pattern="_E4CEU_vs_E2CEU",replacement="")
+
+outtabnames <- names(reptab)[2:6]
+i<-1
+for (i in c(1:length(outtabnames))){
+    fdt <- eae4e2.full[[outtabnames[i]]]
+    fdt <- fdt[lessOrEqual(adj.P.Val,0.05),.(gene_id,logFC)]
+    setnames(fdt,2,"ogfc")
+    
+    sdt <- eae4e2.sub[[cluspair[fullclus==outtabnames[i],subclus]]]
+    sdt <- sdt[,.(gene_id,adj.P.Val,logFC)]
+    setnames(sdt,c(2,3),c("subfdr","subfc"))
+    
+    repdat <- merge.data.table(fdt,sdt,by="gene_id",all.x=T)
+            
+    nrep <- nrow(repdat[lessOrEqual(subfdr,0.05)&greaterOrEqual(subfc*ogfc,0)])
+    nog <- nrow(repdat)
+    pctrep <- round(100*nrep/nog,0)
+            
+    j<-6
+    reptab[j,(i+1)] <- reptab[j,(i+1)] <- paste0(nrep," of ",nog,"<br>(",pctrep,"%)")
+}
+rm(i,j,sdt,fdt,cordat,eae4e2.sub,eae4e2.full,curog,cursub,nog,nrep,outtabnames,pctrep,repdat)
+
+### plot
+reptab <- as.data.table(reptab)
+reptab <- melt.data.table(reptab,id.vars = "contrast")
+reptab[,variable:=as.character(variable)]
+reptab[variable=="Astro",variable:="Astro (Astro<br>Vascular, Mural<br>Mixed)"]
+reptab[variable=="Oligo_Astro",variable:="Oligo, Astro Mixed<br>(Oligo 1)"]
+reptab[variable=="ACHE_SERT_Npep",variable:="*ACHE*, *SERT*,<br>Neuropep. Mixed"]
+reptab[variable=="ACHE_SERT_LC_WM",variable:="*ACHE*, *SERT*,<br>LC, Oligo Mixed"]
+
+reptab[,proprep:=as.numeric(
+    gsub(value,pattern="^.*\\((..)%\\)$",replacement="\\1"))/100]
+
+
+reptab[,variable:=factor(variable,levels=rev(c("LC","Astro (Astro<br>Vascular, Mural<br>Mixed)","*ACHE*, *SERT*,<br>Neuropep. Mixed","*ACHE*, *SERT*,<br>LC, Oligo Mixed","Oligo, Astro Mixed<br>(Oligo 1)")))]
+reptab[,contrast:=factor(contrast,levels=c("Sex","E4-E2","AA E4-E2","EA E4-E2","AA-EA (Categorical)","AA-EA (Continuous)"))]
+
+fwrite(reptab,"processed-data/16_sensitivityanalysis_reproc_wo3donors/Sens4_DEanalyses_removedsampsAndFinalNMseg/DEreprates_plttab.txt",sep='\t',quote=F,row.names=F,col.names=T)
+
+
+pdf("plots/manuscript/SuppFigs/SF-SensitivityReproc/panelC_proportionFullDEGs_replicatingFDR05anddirection_in_sensitivitydata.pdf",height=5,width=7)
+ggplot(reptab,aes(x=contrast,y=variable,label=value,fill=proprep))+
+    geom_tile()+geom_richtext(size=2)+
+    scale_x_discrete(expand=c(0,0))+
+    scale_y_discrete(expand=c(0,0))+
+    labs(x="Domain (Reanalysis<br>Domain)",y="DE Contrast",fill="Proportion Main<br>Analysis DEGs with<br>Sensitivity Analysis<br>FDR<0.05")+
+    scale_fill_viridis_c(option = "E",begin=0.3,end=1)+
+    #guides(fill=guide_colorbar(theme =theme(legend.key.height = ggplot2::unit(0.04, "npc"))))+
+    theme(axis.text.x=element_markdown(size=8,angle=30,hjust=1,vjust=1),
+          axis.text.y=element_markdown(size=8),
+          axis.title.y=element_markdown(size=9),
+          axis.title.x=element_markdown(size=9),
+          legend.text=element_markdown(size=8),
+          legend.title=element_markdown(size=9,hjust=0.5),
+          legend.justification="center",
+          legend.box = element_blank(),
+          legend.key=element_blank())
+dev.off()
+
+
+
+
+
+
+```

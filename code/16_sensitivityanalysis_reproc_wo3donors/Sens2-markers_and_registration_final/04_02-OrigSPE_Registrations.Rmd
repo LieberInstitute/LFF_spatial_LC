@@ -1,7 +1,7 @@
 ---
-title: "02_02-LCsampsonly_WeberDivecha_registrations_final"
+title: "04_02-LCsampsonly_to_fullData_registration"
 author: "Bernie Mulvey"
-date: "2026-02-12"
+date: "2026-03-12"
 output: html_document
 ---
 
@@ -42,55 +42,53 @@ theme_set(theme_bw()+theme(axis.text.x = element_text(size = 9), axis.title.x = 
 unloadNamespace("datasets")
 ```
 
-
-## weber divecha datasets
+for versioning consistency, rerun regist wrapper on the full SPE and its labels
 ```{r}
-webdvis <- WeberDivechaLCdata_Visium()
-webdsn <- WeberDivechaLCdata_singleNucleus()
+lc3 <- readRDS("processed-data/06-countsOnly_noImgData_QCed_SPE_split_to_tissSections.RDS")
+
+labs <- readRDS("processed-data/07_featureSelection_dimred_harmony_clustering/04-Initial_louvLeid_res0.5-1-2_clusterings.RDS")
+labs <- labs$HARMONYlmbna_HDG_SVG_2575[,.(rn,snnHARMONYlmbna_HDG_SVG_2575_louv_res1)]
+setnames(labs,2,"clusid")
+
+anno <- fread("processed-data/08_validitycheck_25hdg75svg_louv1/10-25hdg75svg_louv1_annots.txt")
+labs <- merge.data.table(labs,anno[,.(clusid,anno)],by="clusid")
+labs <- DataFrame(labs,row.names=labs$rn)[colnames(lc3),]
+
+lc3$anno <- labs$anno
+rm(labs)
 ```
 
-## "spatially register" between the lc3 clusterings and each clustering in each weber divecha dataset
+## make APOE columns tolerable as model variables; append genomwide YRI estimates
 ```{r}
-# fix leading digit in the label_merged column
-webdsn$label_merged <- paste0("x",webdsn$label_merged)
+tmpcd <- as.data.table(colData(lc3),keep.rownames=T)
+tmpcd[APOE=="E4/ E4",APOE:="E4hom"]
+tmpcd[APOE=="E3/ E4",APOE:="E4het"]
+tmpcd[APOE=="E2/ E3",APOE:="E2het"]
+tmpcd[APOE=="E2/ E2",APOE:="E2hom"]
 
-webdsn.wraps <- lapply(c("label_merged","unsupervised_NE","unsupervised_5HT","supervised_NE"),FUN=function(x){
-    if(length(unique(colData(webdsn)[,x]))==2){
-        colData(webdsn)[,x][colData(webdsn)[,x]==TRUE] <- "x1"
-        colData(webdsn)[,x][colData(webdsn)[,x]==FALSE] <- "x0"
-    }
-    colLabels(webdsn) <- as.character(colData(webdsn)[,x]) # accounts for boolean labels
-    rap <- registration_wrapper(webdsn,var_registration = "label",var_sample_id = "Sample",gene_ensembl = "gene_id",gene_name = "gene_name")
-    return(rap)
-})
+flares<-fread("raw-data/ancestryAndHaplotypes/FLARE/global_ancestry_estimates.txt")
+flares[ID=="Br6119",ID:="Br6119(re-dis)"]
+stopifnot(sum(flares$ID %in% unique(tmpcd$brnum))==length(unique(lc3$brnum)))
 
-names(webdsn.wraps) <- c("label_merged","unsupervised_NE","unsupervised_5HT","supervised_NE")
+tmpcd <- merge.data.table(tmpcd,flares[,.(ID,YRI)],by.x="brnum",by.y="ID")
+stopifnot(nrow(tmpcd)==ncol(lc3))
+
+tmpcd <- DataFrame(tmpcd,row.names=tmpcd$rn)[colnames(lc3),]
+tmpcd$rn <- NULL
+colData(lc3) <- tmpcd
+
+rm(tmpcd,flares,anno)
 ```
 
-## for the visium there's just two binary labelings: whether a spot is part of the LC region and whether the spot itself is an LC spot
-```{r}
-webdvis.wraps <- lapply(c("annot_region","annot_spot"),FUN=function(x){
-    if(length(unique(colData(webdvis)[,x]))==2){
-        colData(webdvis)[,x][colData(webdvis)[,x]==TRUE] <- "x1"
-        colData(webdvis)[,x][colData(webdvis)[,x]==FALSE] <- "x0"
-    }
-    colLabels(webdvis) <- as.character(colData(webdvis)[,x]) # accounts for boolean labels
-    rap <- registration_wrapper(webdvis,var_registration = "label",var_sample_id = "sample_id",gene_ensembl = "gene_id",gene_name = "gene_name")
-    return(rap)
-})
 
-names(webdvis.wraps) <- c("annot_region","annot_spot")
+## run registration wrapper
+```{r}
+fulldat.regw <- registration_wrapper(lc3,var_registration="anno",var_sample_id = "sample_id",covars=c("Sex","APOE","Age","YRI"),gene_ensembl = "gene_id",gene_name="gene_name",min_ncells=10)
 ```
 
-reg wrapper for lc3:
+reg wrapper results from sensitivity-analyzed lc3:
 ```{r}
-lc3wrap <- readRDS("processed-data/13_2_markers_and_registration_final/01_2-LCsampsonly_HDGSVG2575louv1_regWrapOut.RDS")
-```
-
-## clean up:
-```{r}
-rm(webdsn,webdvis)
-gc(full=T)
+lcsens.regw <- readRDS("processed-data/16_sensitivityanalysis_reproc_wo3donors/Sens2_markers_and_registration_final/01_2-LCsampsonly_HDGSVG2575louv1_regWrapOut.RDS")
 ```
 
 ## the actual registration (marker t stat correlation) component of spatialLIBD has never worked out of the box in my hands so we'll port over some code that basically rewrote those functions to actually function (and cover multiple sets of data being registered to / multiple sizes of top markers being registered to) (https://github.com/LieberInstitute/spatial_HYP/blob/e017cac5d2cc633dc668ad7cb4c906960d19f9de/xenium_HYP/code/10_Spatial_Registration/01_Yao23_MouseHYP_Subclass_SpatialReg.Rmd)
@@ -98,107 +96,73 @@ gc(full=T)
 ## first, we arrange each enrichment slot of each registration wrapper run into a gene - cluster x t stat - cluster y t stat - ... table and strip the "t-stat" part out of the column names
 ```{r}
 ### for lc3:
-lc3.mk <- as.data.table(lc3wrap$enrichment)
+lc3.mk <- as.data.table(fulldat.regw$enrichment)
 keepcols <- c("ensembl",grep(names(lc3.mk),pattern="^t_stat_",value=T))
 lc3.mk <- lc3.mk[,..keepcols]
     
 setnames(lc3.mk,c(2:ncol(lc3.mk)),gsub(names(lc3.mk)[c(2:ncol(lc3.mk))],pattern="^t_stat_",replacement=""))
 
-### for each slot in the weber divecha spatial data (replace x1 with TRUE and x0 with FALSE in the column names here too)
-webdvis.wraps2 <- mapply(x=webdvis.wraps,y=names(webdvis.wraps),SIMPLIFY=FALSE,FUN=function(x,y){
-    z <- as.data.table(x$enrichment)
-    keepcols <- c("ensembl",grep(names(z),pattern="^t_stat_",value=T))
-    z <- z[,..keepcols]
+### for sensitivity data
+lcsens.mk <- as.data.table(lcsens.regw$enrichment)
+keepcols <- c("ensembl",grep(names(lcsens.mk),pattern="^t_stat_",value=T))
+lcsens.mk <- lcsens.mk[,..keepcols]
     
-    setnames(z,c(2:ncol(z)),gsub(names(z)[c(2:ncol(z))],pattern="^t_stat_",replacement=paste0(y,"_")))
-    setnames(z,c(2:ncol(z)),gsub(names(z)[c(2:ncol(z))],pattern="x1",replacement="TRUE"))
-    setnames(z,c(2:ncol(z)),gsub(names(z)[c(2:ncol(z))],pattern="x0",replacement="FALSE"))
-    
-    return(z)
-})
+setnames(lcsens.mk,c(2:ncol(lcsens.mk)),gsub(names(lcsens.mk)[c(2:ncol(lcsens.mk))],pattern="^t_stat_",replacement=""))
 
-### append spat to the front of these names so we run the visium and snuc data thru one list
-names(webdvis.wraps2) <- paste0("spat_",names(webdvis.wraps2))
-
-
-webdsn.wraps2 <- mapply(x=webdsn.wraps,y=names(webdsn.wraps),SIMPLIFY=FALSE,FUN=function(x,y){
-    z <- as.data.table(x$enrichment)
-    keepcols <- c("ensembl",grep(names(z),pattern="^t_stat_",value=T))
-    z <- z[,..keepcols]
-    
-    setnames(z,c(2:ncol(z)),gsub(names(z)[c(2:ncol(z))],pattern="^t_stat_",replacement=paste0(y,"_")))
-    ### the x0/x1 convention is just for the boolean clusterings, so
-    if(length(keepcols)==3){
-        setnames(z,c(2:ncol(z)),gsub(names(z)[c(2:ncol(z))],pattern="x1",replacement="TRUE"))
-        setnames(z,c(2:ncol(z)),gsub(names(z)[c(2:ncol(z))],pattern="x0",replacement="FALSE"))
-    }
-    
-    return(z)
-})
-
-### append snuc to the front of these names so we run the visium and snuc data thru one list
-names(webdsn.wraps2) <- paste0("snuc_",names(webdsn.wraps2))
-
-allwebd <- c(webdsn.wraps2,webdvis.wraps2)
-rm(webdsn.wraps,webdsn.wraps2,webdvis.wraps,webdvis.wraps2,lc3wrap)
-gc(full=T)
+rm(lcsens.regw,fulldat.regw)
 ```
 
 ## now the rewritten registration function
 ```{r}
-m <- copy(lc3.mk)
-
-spatregs <- mcmapply(s=allwebd,z=names(allwebd),SIMPLIFY=FALSE,mc.cores=3,FUN = function(s,z){
-    # iterator for top number of genes to use for correlation
-    j<-c(seq(10,50,10),seq(75,250,25),seq(300,1000,100))
-    i<-1
-    outlist <- list()
-    for (i in c(1:(length(j)+1))){
-        if(i<length(j)){
-            cortab<-merge.data.table(m,s,by="ensembl")
-            ngene <- j[i]
-        }
-        else{
-            # no value for top_n --> all genes used
-            cortab<-merge.data.table(m,s,by="ensembl")
-            ngene <- nrow(cortab)
-        }
-        # initialize cormat
-        nclaba <- ncol(s)
-        nclhyp <- ncol(m)
-        cormat <- as.data.frame(matrix(nrow=(nclhyp-1),ncol=(nclaba-1)))
-        k <- 2
-        for (k in c(2:nclhyp)){
-            rownames(cormat)[(k-1)] <- colnames(m)[k]
-            l <- 2
-            for (l in c(2:nclaba)){
-                colnames(cormat)[(l-1)] <- colnames(s)[l]
-                
-                curhyp <- colnames(m)[k]
-                curaba <- colnames(s)[l]
-                setorderv(cortab,curhyp,-1)
-                
-                cormat[(k-1),(l-1)] <- cor(cortab[c(1:ngene),..curhyp],cortab[c(1:ngene),..curaba],use="pairwise.complete.obs",method = "spearman")
-            }
-        }
-        plttab <- as.data.table(cormat,keep.rownames=T)
-        setnames(plttab,"rn","LFF_clus")
-        outlist[[i]] <- plttab
-        names(outlist)[i] <- paste0("Webdiv_",z,"_top_",ngene)
-        rm(curj,plttab,cortab)
+m <- copy(lc3.mk) # ref
+s <- copy(lcsens.mk) # query
+j<-c(seq(10,50,10),seq(75,250,25),seq(300,1000,100))
+i<-1
+outlist <- list()
+for (i in c(1:(length(j)+1))){
+    if(i<length(j)){
+        cortab<-merge.data.table(m,s,by="ensembl")
+        ngene <- j[i]
     }
-    return(outlist)
-})
+    else{
+        # no value for top_n --> all genes used
+        cortab<-merge.data.table(m,s,by="ensembl")
+        ngene <- nrow(cortab)
+    }
+    # initialize cormat
+    nclaba <- ncol(s)
+    nclhyp <- ncol(m)
+    cormat <- as.data.frame(matrix(nrow=(nclhyp-1),ncol=(nclaba-1)))
+    k <- 2
+    for (k in c(2:nclhyp)){
+        rownames(cormat)[(k-1)] <- colnames(m)[k]
+        l <- 2
+        for (l in c(2:nclaba)){
+            colnames(cormat)[(l-1)] <- colnames(s)[l]
+            
+            curhyp <- colnames(m)[k]
+            curaba <- colnames(s)[l]
+            setorderv(cortab,curhyp,-1) # by refs top n genes
+            
+            cormat[(k-1),(l-1)] <- cor(cortab[c(1:ngene),..curhyp],cortab[c(1:ngene),..curaba],use="pairwise.complete.obs",method = "spearman")
+        }
+    }
+    plttab <- as.data.table(cormat,keep.rownames=T)
+    setnames(plttab,"rn","LFF_clus")
+    outlist[[i]] <- plttab
+    names(outlist)[i] <- paste0("orig_to_sens_top_",ngene)
+    rm(curj,plttab,cortab)
+}
 
 ### append cluster annots
-anno <- fread("processed-data/07_2_LCsampsonly_featureSelection_dimred_harmony_clustering/08_2-25hdg75svg_louv1_annots.txt")
+sensanno <- fread("processed-data/16_sensitivityanalysis_reproc_wo3donors/Sens1_LCsampsonly_featureSelection_dimred_harmony_clustering/08_2-25hdg75svg_louv1_annots.txt")
 
-spatregs <- lapply(spatregs,function(x){
-  z <- lapply(x,function(y){
-    y <- merge.data.table(y,anno[,.(clusid,anno)],by.x="LFF_clus",by.y="clusid",all.x=T)
-    reordnames <- c("anno",names(y)[!(names(y) %in% c("anno","LFF_clus"))])
+outlist <- lapply(outlist,function(y){
+    y <- setnames(y,sensanno$clusid,sensanno$plot_anno,skip_absent = T)
+    y <- merge.data.table(y,anno[,.(anno,plot_anno)],by.x="LFF_clus",by.y="anno")
+    reordnames <- c("plot_anno",names(y)[!(names(y) %in% c("anno","LFF_clus"))])
     y <- y[,..reordnames]
-    setnames(y,"anno","LFF_clus")
+    setnames(y,"anno","Full Data Cluster",skip_absent=T)
     return(y)
   })
   return(z)
@@ -207,7 +171,7 @@ spatregs <- lapply(spatregs,function(x){
 
 save this output to process further into plottable format by clustering approach (top level list)
 ```{r}
-saveRDS(spatregs,"processed-data/13_2_markers_and_registration_final/02_2-LC3_registration_to_WeberDivecha23_final.RDS")
+saveRDS(outlist,"processed-data/16_sensitivityanalysis_reproc_wo3donors/Sens2_markers_and_registration_final/04_2-fulldata_to_sensitivitydata_label_regists.RDS")
 ```
 
 rep inf
