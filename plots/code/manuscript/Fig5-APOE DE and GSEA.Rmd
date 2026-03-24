@@ -160,10 +160,13 @@ msiglc[pathway=="GOBP_ACIDIC_AMINO_ACID_TRANSPORT",pathway:="Acidic Amino Acid\n
 msiglc[pathway=="REACTOME_BINDING_AND_UPTAKE_OF_LIGANDS_BY_SCAVENGER_RECEPTORS",pathway:="Ligand Uptake by\nScavenger Receptors"]
 msiglc[pathway=="GOBP_NEURON_FATE_COMMITMENT",pathway:="Neuron Fate\nCommitment"]
 
-pdf("plots/manuscript/Fig5/5C-LC_allE4vsAllE2_msigdbGSEA.pdf",height=4,width=4.25)
+#pdf("plots/manuscript/Fig5/5C-LC_allE4vsAllE2_msigdbGSEA.pdf",height=4,width=4.25)
+pdf("plots/manuscript/Fig5/5C-LC_allE4vsAllE2_msigdbGSEA_v2.pdf",height=4,width=4.25)
 ggplot(msiglc,aes(y=pathway,x=-log10(pval),color=NES,size=abs(NES)))+
     geom_point()+
-    scale_color_gradient2(low="red",high="blue")+
+    #scale_color_gradient2(low="red",high="blue")+
+    # changed 032026 to
+    scale_color_gradient2(low="#009E73",high="#D55E00")+
     geom_vline(xintercept = -log10(0.05), linetype="dashed", color="black",linewidth=0.5) +
     scale_x_continuous(breaks=seq(0,15,3),expand=c(0,3)) +
     #scale_y_discrete(expand = c(0,0)) +
