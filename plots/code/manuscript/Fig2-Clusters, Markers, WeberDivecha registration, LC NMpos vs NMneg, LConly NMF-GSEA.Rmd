@@ -198,18 +198,22 @@ globalmk <- fread("processed-data/13_markers_and_registration_final/01-HDGSVG257
 globalmk <- globalmk[fdr<0.05&logFC>0]
 # exclude mtrnrs and mitochondrials
 globalmk <- globalmk[!(gene %in% grep(gene,pattern="MTRNR|MT-",value=T))]
-## get top 5 genes, by logFC, per cluster
-mkg <- unique(globalmk[ , .SD[order(-logFC) , ][1:5] , by = "cluster"][,.(ensembl,cluster)])
+## get top 20 genes, by logFC, per cluster
+mkg <- unique(globalmk[ , .SD[order(-logFC) , ][1:20] , by = "cluster"][,.(ensembl,gene,cluster)])
+## pick the ones readers will know
+mkg <- mkg[gene %in% c("ERMN", "PKP4", "MBP", "MOBP", "KLK6", "DBH", "TH", "SLC6A2", "PHOX2A", "ADRA2A", "SOX9", "APOE", "GJA1", "ATP1A2", "CAPS", "PLTP", "EFEMP1", "SLC6A4", "ACHE", "HTR2C", "TAC1", "ADCYAP1", "SST", "CCK", "HBA1", "HBA2", "HBB", "ACTA2", "TAGLN")]
+
 
 ## reorder the palette/clusters here so that the sort of gradations between glial clusters are apparent
 pal2 <- pal[c(1:5,8,7,9,6)]
 
 ## extract these genes in the reverse order of the palette'd clusters so that they appear top corner to bottom corner in resulting heatmap
-for (cl in names(pal2)){
-    if(cl==names(pal2)[1]){
-        mkg2 <- mkg[cluster==cl,ensembl]
+for (i in c(1:length(names(pal2)))){
+    cllookup <- anno[plot_anno==names(pal2)[i],anno]
+    if(i==1){
+        mkg2 <- mkg[cluster==cllookup,ensembl]
     } else {
-        mkg2 <- unique(c(mkg2,mkg[cluster==cl,ensembl]))
+        mkg2 <- unique(c(mkg2,mkg[cluster==cllookup,ensembl]))
     }
 }
 mkg<-mkg2
@@ -253,14 +257,7 @@ rm(i, curlev)
 
 lc2 <- scater::computeLibraryFactors(lc2)
 lc2 <- scater::logNormCounts(lc2)
-pltdat <- SingleCellExperiment(lc2[mkg, cnames],rowData=rowData(lc2[mkg,])) 
-
-# ^ gets rid of imagedata here but screws up assays somehow
-assays(pltdat)$counts <- assays(lc2[mkg,cnames])$counts
-assays(pltdat)$logcounts <- assays(lc2[mkg,cnames])$logcounts
-
-# dump the screwed up assays in slot 1
-assays(pltdat) <- assays(pltdat)[c(2:3)]
+pltdat <- lc2[mkg, cnames]
 
 # change rownames to gene symbols
 rownames(pltdat) <- rowData(pltdat)$gene_name
@@ -268,7 +265,7 @@ pltdat2 <- scale_rows(as.matrix(logcounts(pltdat)))
 
 ## labels also got bllown away here -_-
 louvs2 <- louvs[colnames(pltdat),]
-pltdat$label <- louvs2$anno
+pltdat$label <- louvs2$plot_anno
 pltdat$label <- factor(pltdat$label,levels=clusord)
 ```
 
@@ -300,7 +297,7 @@ htmap <- ComplexHeatmap::Heatmap(
         title = "Z scored spot log counts",
         direction = "horizontal",
         title_position = "topcenter",
-        at=c(-5,0,5) 
+        at=c(-3,0,3) 
         # at argument forces the - region of the legend to show, it won't by default due to the long positive end 
     ),
     row_names_gp = gpar(fontsize = 5.5),

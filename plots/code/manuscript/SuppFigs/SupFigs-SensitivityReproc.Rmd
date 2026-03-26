@@ -241,7 +241,7 @@ ggplot(cortab,aes(x=contrast,y=variable,fill=value))+
     scale_x_discrete(expand=c(0,0))+
     scale_y_discrete(expand=c(0,0))+
     labs(x="Domain (Reanalysis<br>Domain)",y="DE Contrast",fill="Spearman Cor.<br>(Full DE t-Stats)")+
-    scale_fill_viridis_c()+
+    scale_fill_viridis_c(limits=c(0.5,1))+
     #guides(fill=guide_colorbar(theme =theme(legend.key.height = ggplot2::unit(0.04, "npc"))))+
     theme(axis.text.x=element_markdown(size=8,angle=30,hjust=1,vjust=0.5),
           axis.text.y=element_markdown(size=8),
