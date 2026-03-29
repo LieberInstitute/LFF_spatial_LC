@@ -1,7 +1,7 @@
 ---
 title: "SF-DomainPropsPerDonor"
 author: "Bernie Mulvey"
-date: "2025-09-09"
+date: "2026-03-27"
 output: html_document
 ---
 
@@ -65,7 +65,6 @@ stopifnot(all(names(pal) %in% unique(cd$plot_anno)))
 
 Trying to set y limits to 0,1 without expansion results in dropped bar parts for some donors, whatever just fix it in illustrator after.
 ```{r}
-
 pltdat <- cd[,.N,by=c("brnum","plot_anno")]
 
 pltdat[,totN:=sum(N),by="brnum"]
@@ -115,6 +114,9 @@ contonly <- unique(contonly[!(brnum %in% cats$brnum),.(brnum,Ancestry,APOE,Sex)]
 contonly[,APOE:=ifelse(APOE %in% c("E4hom","E4het"),"E4","E2")]
 contonly <- contonly[,group:=paste0(Ancestry,"_",APOE,"_",Sex)]
 contonly[,allanalyses:="N"]
+## Br1884 is actually CEU % > YRI % but reported as AA; our analyses always designated by genomic ancestry frxn. they're continuous only
+contonly[brnum=="Br1884",group] # AA_E4_M
+contonly[brnum=="Br1884",group:="EA_E4_M"] 
 
 tmpdat <- as.data.table(rbind(cats,contonly))
 tmpdat[,group:=factor(group,levels=c("AA_E4_F","AA_E2_F","EA_E2_F","AA_E4_M","AA_E2_M","EA_E4_M","EA_E2_M"))]
@@ -153,6 +155,60 @@ ggplot(pltdat,aes(x=brnum,y=grouplabprop,fill=plot_anno))+
   )
 dev.off()
 ```
+
+## one more: LC NM+/- proportions only
+```{r}
+lcnm <- fread("processed-data/10_subclustering/04-LCsubclus-by-NM_otherclusts-by-LCorLCNMadjacency.txt")
+lcnm <- merge.data.table(lcnm[label=="LC",.(rn,NMseg_subclus)],cd[,.(rowname,brnum)],by.x="rn",by.y="rowname")
+
+lcnm[brnum=="Br6119(re-dis)",brnum:="Br6119"]
+lcnm[,Nsubclus:=.N,by=c("brnum","NMseg_subclus")]
+lcnm <- unique(lcnm[,.(brnum,NMseg_subclus,Nsubclus)])
+## make 0/0 for remaining donors
+miadon <- brnord[!(brnord %in% lcnm$brnum)]
+tmpdat <- as.data.frame(matrix(nrow=2*length(miadon),ncol=3))
+tmpdat[,1] <- rep(miadon,2)
+tmpdat[,2] <- c(rep("LC_NMpos",length(miadon)),rep("LC_NMneg",length(miadon)))
+tmpdat[,3] <- 0
+colnames(tmpdat) <- names(lcnm)
+
+lcnm <- as.data.table(rbind(lcnm,tmpdat))
+rm(tmpdat,miadon)
+## 
+lcnm[,totLC:=sum(Nsubclus),by="brnum"]
+lcnm[,propsubclus:=Nsubclus/totLC]
+lcnm[is.na(propsubclus),propsubclus:=0]
+lcnm[,brnum:=factor(brnum,levels=brnord)]
+
+
+nmpal <- c(pal[1],"brown4")
+names(nmpal) <- paste0("LC_NM",c("neg","pos"))
+
+
+pdf("plots/manuscript/SuppFigs/SF-LCNMprops_by_donor.pdf",height=2.5,width=7,onefile = FALSE)
+ggplot(lcnm,aes(x=brnum,y=propsubclus,fill=NMseg_subclus))+
+  geom_col()+
+  scale_fill_manual(values = nmpal)+
+  labs(fill="Domain")+
+  labs(x="Donor ID",y="Proportion of LC Spots")+
+  theme(
+        axis.text.x=element_markdown(angle=45,hjust=1,vjust=1.1,size=8,colour = "#000000"),
+        axis.text.y=element_text(size=8,colour = "#000000"),
+        axis.title.x=element_text(size=9,colour = "#000000"),
+        axis.title.y=element_text(size=9,colour = "#000000", margin=margin(0,0,0,-0.02,unit="in")),
+        legend.title=element_text(size=8,hjust=0.5,colour = "#000000"),
+        legend.text=element_markdown(size=7,colour = "#000000"),
+        legend.background=element_blank(),
+        legend.margin=margin(0,-0.08,0,-0.1,unit="in"),
+        axis.ticks.x = element_line(linewidth=0.5,colour="#000000"),
+        axis.ticks.y = element_line(linewidth=0.5,colour="#000000"),
+        panel.grid.major.x = element_line(linewidth=0.5),
+        panel.grid.major.y = element_blank(),
+        panel.grid.minor.y = element_blank()
+  )
+dev.off()
+```
+
 
 ```{r}
 sessionInfo()
