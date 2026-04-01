@@ -1,5 +1,5 @@
 ---
-title: "Fig6-SpotNM_LMMs"
+title: "Fig4-SpotNM_LMMs"
 format: html
 ---
 
@@ -161,7 +161,7 @@ saveplt <- function(g){
               axis.text.x=element_text(size=8),
               axis.text.y=element_text(size=8))
 
-    pdf(paste0("plots/manuscript/Fig6/6x-Spotlogcountquartiles_",g,"_spotNMintensity_nozeros.pdf"),height=2.5,width=2.5)
+    pdf(paste0("plots/manuscript/Fig4/4x-Spotlogcountquartiles_",g,"_spotNMintensity_nozeros.pdf"),height=2.5,width=2.5)
     print(p)
     dev.off()
 }
@@ -241,7 +241,7 @@ plt[Enrichr_database %in% c("MGI_Mammalian_Phenotype_Level_4_2024","LINCS_L1000_
 setorderv(plt,"Databases")
 plt[,Term:=factor(Term,levels=plt$Term)]
 
-pdf("plots/manuscript/Fig6/6C-Enrichr_NMintensity_bonfsig_bidir.pdf",width=5,height=4)
+pdf("plots/manuscript/Fig4/4C-Enrichr_NMintensity_bonfsig_bidir.pdf",width=5,height=4)
 ggplot(plt,aes(y=-log10(Adjusted.P.value),x=Term,color=Databases))+
     geom_point(aes(size=Odds.Ratio))+
     geom_hline(yintercept = -log10(0.05), linetype="dashed", color="black",linewidth=0.5) +

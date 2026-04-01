@@ -1,5 +1,5 @@
 ---
-title: "Fig5-APOE DE and GSEA"
+title: "Fig6-APOE DE and GSEA"
 author: "Bernie Mulvey"
 date: "2025-07-20"
 ---
@@ -118,7 +118,7 @@ p <- ggplot(pltdetabs[!(chr %in% c("chrMT"))],aes(x=logFC,y=-log10(P.Value),col=
 
 p<-rasterize(p,layers="points",dpi=450,dev="cairo_png")
 
-pdf(paste0("plots/manuscript/Fig5/5AB-AllE4vsAllE2_Volcano_LCandAstro.pdf"),width=5,height=2,onefile=FALSE)
+pdf(paste0("plots/manuscript/Fig6/6AB-AllE4vsAllE2_Volcano_LCandAstro.pdf"),width=5,height=2,onefile=FALSE)
 p
 dev.off()
 
@@ -160,8 +160,8 @@ msiglc[pathway=="GOBP_ACIDIC_AMINO_ACID_TRANSPORT",pathway:="Acidic Amino Acid\n
 msiglc[pathway=="REACTOME_BINDING_AND_UPTAKE_OF_LIGANDS_BY_SCAVENGER_RECEPTORS",pathway:="Ligand Uptake by\nScavenger Receptors"]
 msiglc[pathway=="GOBP_NEURON_FATE_COMMITMENT",pathway:="Neuron Fate\nCommitment"]
 
-#pdf("plots/manuscript/Fig5/5C-LC_allE4vsAllE2_msigdbGSEA.pdf",height=4,width=4.25)
-pdf("plots/manuscript/Fig5/5C-LC_allE4vsAllE2_msigdbGSEA_v2.pdf",height=4,width=4.25)
+#pdf("plots/manuscript/Fig6/6C-LC_allE4vsAllE2_msigdbGSEA.pdf",height=4,width=4.25)
+pdf("plots/manuscript/Fig6/6C-LC_allE4vsAllE2_msigdbGSEA_v2.pdf",height=4,width=4.25)
 ggplot(msiglc,aes(y=pathway,x=-log10(pval),color=NES,size=abs(NES)))+
     geom_point()+
     #scale_color_gradient2(low="red",high="blue")+
@@ -262,7 +262,7 @@ lapply(unique(ancapo2$domain),function(d){
               legend.key.width = unit(0,"in"),
               legend.margin=margin(0,-0.08,0,-0.1,unit="in"))
     
-    pdf(paste0("plots/manuscript/Fig5/5DE-AncestryE4E2_",d,".pdf"),height=2.5,width=3)
+    pdf(paste0("plots/manuscript/Fig6/6DE-AncestryE4E2_",d,".pdf"),height=2.5,width=3)
     print(p)
     dev.off()
 })
@@ -292,11 +292,11 @@ lcde <- list("LC YRI E4 Up\nvs. YRI E2"=yrilcup,
               "LC CEU E4 Up\nvs. CEU E2"=ceulcup
 )
 
-pdf("plots/manuscript/Fig5/5FG-APOAnc_Astro_Overlaps.pdf",height=3,width=3.75)
+pdf("plots/manuscript/Fig6/6FG-APOAnc_Astro_Overlaps.pdf",height=3,width=3.75)
 ggvenn(astde,names(astde),set_name_size = 3,text_size = 2,stroke_size = 0.5)
 dev.off()
 
-pdf("plots/manuscript/Fig5/5FG-APOAnc_LC_Overlaps.pdf",height=3,width=3.75)
+pdf("plots/manuscript/Fig6/6FG-APOAnc_LC_Overlaps.pdf",height=3,width=3.75)
 ggvenn(lcde,names(lcde),set_name_size = 3,text_size = 2,stroke_size = 0.5)
 dev.off()
 ```
