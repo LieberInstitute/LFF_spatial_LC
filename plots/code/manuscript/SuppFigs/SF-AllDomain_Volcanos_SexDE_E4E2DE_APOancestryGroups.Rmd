@@ -40,16 +40,6 @@ unloadNamespace("datasets")
 ```
 
 
-### helper function to extract a legend and pipe back to a diff plot: from https://statisticsglobe.com/add-common-legend-to-combined-ggplot2-plots-in-r/#example-2-add-shared-legend-to-ggplot2-plots-using-gridextra-package 
-```{r}
-extract_legend <- function(my_ggp) {
-    step1 <- ggplot_gtable(ggplot_build(my_ggp))
-    step2 <- which(sapply(step1$grobs, function(x) x$name) == "guide-box")
-    step3 <- step1$grobs[[step2]]
-    return(step3)
-}
-```
-
 
 Setup
 ```{r}
@@ -122,6 +112,13 @@ pltdetabs <- lapply(pltdetabs,function(x){
     y <- rbindlist(x,idcol="dom")
     return(y)
 })
+
+
+## drop MTRNRs from plots -- likely false positives
+pltdetabs <- lapply(pltdetabs,function(x){
+    x <- x[!grepl(x$gene_name,pattern="MTRNR")]
+    return(x)
+})
 ```
 
 make and save plots
@@ -145,9 +142,9 @@ mapply(d=pltdetabs,n=names(pltdetabs),SIMPLIFY=FALSE,function(d,n){
             force_pull = 0.65,
             fontface = "italic")+
         scale_color_manual(values=pal)+
-        theme(title=element_markdown(size=10))+
+        theme(title=element_markdown(size=10,vjust=0.5),plot.title.position = "plot")+
         guides(color="none")+
-        ggtitle(paste0(n,": ",gsub(cl,pattern="v",replacement=" vs")))
+        ggtitle(paste0(gsub(n,pattern="v",replacement=" vs "),": ",cl))
         
         
         p<-rasterize(p,layers="points",dpi=450,dev="cairo_png")
