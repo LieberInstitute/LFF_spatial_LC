@@ -1,7 +1,7 @@
 ---
 title: "SupTabs-Fig3Related"
 author: "Bernie Mulvey"
-date: "2025-09-09"
+date: "2025-09-09 and 2026-07-06"
 output: html_document
 ---
 
@@ -102,28 +102,36 @@ fwrite(nmgsea,"plots/manuscript/SuppTabs/TabDelims/LCNMpos_vs_LCNMneg_DE_GSEA.tx
 rm(nmgsea,reordn)
 ```
 
+### Updated 07-06-2026: write out results from using k=53 factors for NMF as determined from crossvalidation in rcppml.
 NMF factor-gene sets; full NMF matrix for supp data
 ```{r}
-nmfmat <- readRDS("processed-data/10_subclustering/07b-lcnmf160_tol1e-9_rowSumLogctFilt18.RDS") # okay that can just be copied over as is
+nmfmat <- readRDS("processed-data/10_subclustering/07b-lcnmf53_tol1e-9_rowSumLogctFilt18.RDS") # okay that can just be copied over as is for supp data file.
+# this is also the source for the background genes so use this and the SPE to figure out
+library(SpatialExperiment)
+spe <- readRDS("processed-data/06-countsOnly_noImgData_QCed_SPE_split_to_tissSections.RDS")
+tmprd <- as.data.table(rowData(spe))
+tmprd <- tmprd[gene_id %in% rownames(nmfmat$w)]
+tmprd <- tmprd[,.(gene_id,gene_name)]
+fwrite(tmprd,"plots/manuscript/SuppTabs/TabDelims/LCNMFk53_Enrichr_backgroundGeneList.txt",sep='\t',quote=F,row.names=F,col.names=T)
 rm(nmfmat)
 
-filt <- fread("processed-data/12_DEanalyses_removedsampsAndFinalNMseg/06b-LCNMFLogCt18Filt_factors_and_factorSpecGenes_min25specGenes.txt")
+filt <- fread("processed-data/10_subclustering/09bV2-LCNMFLogCt18Filt_factors_and_factorSpecGenes_min25specGenes.txt")
 
 filt <- filt[,.(gene_id,gene_name,factor,value,medianloading)]
 setnames(filt,"value","Gene Weight")
 setnames(filt,"medianloading","Median Factor Loading")
 setnames(filt,"factor","NMF Factor(s) Specific to Gene")
-fwrite(filt,"plots/manuscript/SuppTabs/TabDelims/LCNMF_prefiltct_factorspecificgenes.txt",sep='\t',quote=F,row.names=F,col.names=T)
+fwrite(filt,"plots/manuscript/SuppTabs/TabDelims/LCNMFk53_prefiltct_factorspecificgenes.txt",sep='\t',quote=F,row.names=F,col.names=T)
 rm(filt,nmfmat)
-```
 
-NMF factor-gene set enrichr results (FDR-sig only)
-```{r}
-nmfg <- readRDS("processed-data/10_subclustering/09-LCnmfFilt_factorSpecGenes_enrichr_results.RDS")
+# NMF factor-gene set enrichr results (FDR-sig only)
+nmfg <- readRDS("processed-data/10_subclustering/09cV2-LCnmfFilt_factorSpecGenes_enrichr_results.RDS")
 
 nmfg <- nmfg[Adjusted.P.value<0.05]
-fwrite(nmfg,"plots/manuscript/SuppTabs/NMF_factorspecificgene_Enrichr_FDR05.txt",sep='\t',quote=F,row.names=F,col.names=T)
+fwrite(nmfg,"plots/manuscript/SuppTabs/TabDelims/NMFk53_factorspecificgene_Enrichr_FDR05.txt",sep='\t',quote=F,row.names=F,col.names=T)
 rm(nmfg)
+
+
 ```
 
 SCORPION GRN edge comparisons

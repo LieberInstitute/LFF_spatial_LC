@@ -1,0 +1,254 @@
+---
+title: "14-EA_AA_shared_AstroE4down_genes_spatialplots"
+author: "Bernie Mulvey"
+date: "04-29-26"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(fig.height = 10,fig.width = 7,include = FALSE)
+#### sets tab autocompletion for directories to begin from the directory containing the .Rproj session, instead of the script's directory if different
+knitr::opts_knit$set(root.dir = here::here())
+
+library(data.table)
+library(ggplot2)
+library(ggtext)
+library(gridExtra)
+library(ggrastr)
+library(ggrepel)
+library(escheR)
+library(scater)
+library(biomaRt)
+library(SpatialExperiment)
+library(stringr)
+library(spatialLIBD)
+
+## >= and <= comparators that account for floating point error
+greaterOrEqual <- function(x,y) {
+    precision <- sqrt(.Machine$double.eps)
+    (x >= y) | (abs(x-y) <= precision)
+}
+
+lessOrEqual <- function(x,y){
+    precision <- sqrt(.Machine$double.eps)
+    (x <= y) | (abs(x-y) <= precision)
+}
+
+## rstudio GUI tweaks
+require(colorout)
+ColorOut()
+options("styler.addins_style_transformer" = "biocthis::bioc_style()")
+##
+
+## enable forked parallel processing with BiocParallel::multicoreParam, future::, etc. seemed to need this a couple times, but otherwise havent so its here as a preventative measure. part of this is adding the line 
+# OBJC_DISABLE_INITIALIZE_FORK_SAFETY=YES
+# to Renviron.site. see e.g. top response on https://stackoverflow.com/questions/73638290/python-on-mac-is-it-safe-to-set-objc-disable-initialize-fork-safety-yes-globall 
+library(parallelly)
+options(parallelly.supportsMulticore.disableOn="")
+options(parallelly.fork.enable=TRUE)
+library(BiocParallel)
+options(bphost="localhost")
+
+
+## ggplot defaults
+theme_set(theme_bw()+theme(axis.text.x = element_text(size = 8,color = "#000000"), axis.title.x = element_text(size = 9,color = "#000000"), axis.text.y = element_text(size = 8,color = "#000000"), axis.title.y = element_text(size =9,color = "#000000"), plot.title = element_markdown(size = 10,hjust=0.5,color = "#000000"), strip.text = element_text(size=11), legend.text = element_text(size=7,color = "#000000"), legend.title = element_text(size=8,hjust=0.5,color = "#000000"),axis.ticks = element_line(linewidth=0.5),panel.grid.major = element_line(linewidth=0.5),panel.grid.minor=element_line(linewidth=0.25),plot.title.position="plot"))
+
+## last of all, unload the base package datasets, whose data keep getting in the way of autocompletions (e.g., Theoph is priortized over TRUE)
+unloadNamespace("datasets")
+```
+
+
+load spe and annots
+```{r}
+lc3 <- readRDS("processed-data/06-countsOnly_noImgData_QCed_SPE_split_to_tissSections.RDS")
+## calc logcounts on the fly and drop samples not considered for DE
+
+lc3 <- lc3[,!(lc3$brnum %in% paste0("Br",c(5517,5276,5712)))]
+lc3 <- computeLibraryFactors(lc3)
+lc3 <- logNormCounts(lc3)
+
+# labels
+louvs <- readRDS("processed-data/07_featureSelection_dimred_harmony_clustering/04-Initial_louvLeid_res0.5-1-2_clusterings.RDS")
+louvs <- louvs$HARMONYlmbna_HDG_SVG_2575[,.(rn,snnHARMONYlmbna_HDG_SVG_2575_louv_res1)]
+setnames(louvs,2,"clusid")
+anno <- fread("processed-data/08_validitycheck_25hdg75svg_louv1/10-25hdg75svg_louv1_annots.txt")
+louvs <- merge.data.table(louvs,anno,by="clusid")
+
+colLabels(lc3) <- DataFrame(louvs,row.names=louvs$rn)[colnames(lc3),"plot_anno"]
+rm(louvs,anno)
+```
+
+
+## get ancest shared Astro domain E4 downreg genes and subset the term genes to those in the downregs
+```{r}
+deres <- readRDS("processed-data/12_DEanalyses_removedsampsAndFinalNMseg/02b-voomLmFit_objs_and_DE_tables_LabSex_LabE2vE4_LabSingleGenos_LabAnces_LabAncesE4E2_noMixClusts_YRIcontAndCat_JUL2025.RDS")
+
+ancctrl <- deres$cat_ances$E2E4label$detabs
+
+aa <- deres$cat_ances$YRIAPOlabel$detabs
+ea <- aa[grep(names(aa),pattern="E4CEU_vs_E2CEU",value=T)]
+aa <- aa[grep(names(aa),pattern="E4YRI_vs_E2YRI",value=T)]
+
+
+ea.ast <- ea$Astro_E4CEU_vs_E2CEU
+aa.ast <- aa$Astro_E4YRI_vs_E2YRI
+
+setnames(ea.ast,c("logFC","adj.P.Val"),c("logFC.EA","FDR.EA"))
+setnames(aa.ast,c("logFC","adj.P.Val"),c("logFC.AA","FDR.AA"))
+
+shareg <- merge.data.table(ea.ast[lessOrEqual(FDR.EA,0.05),.(gene_id,gene_name,logFC.EA,FDR.EA)],aa.ast[lessOrEqual(FDR.AA,0.05),.(gene_id,gene_name,logFC.AA,FDR.AA)],by=c("gene_id","gene_name"))
+shareg[,signmatch:=ifelse(greaterOrEqual(logFC.EA*logFC.AA,0),1,0)]
+shareg <- shareg[signmatch==1]
+
+### we need to be sure we have entrez symbols for enrichr gene matching
+biomart <- useMart(biomart = "ENSEMBL_MART_ENSEMBL",dataset="hsapiens_gene_ensembl")
+lut <- biomaRt::getBM(attributes=c("ensembl_gene_id",
+                                   "entrezgene_id",
+                                   "entrezgene_accession",
+                                   "entrezgene_description"),
+                      mart=biomart,
+                      filter="ensembl_gene_id",
+                      values=shareg$gene_id) # uh ok "accession" = symbol
+
+lut <- as.data.table(lut)
+dropg <- lut[,.N,by="entrezgene_accession"][N>1,entrezgene_accession]
+lut <- lut[!(entrezgene_accession %in% dropg)]
+lut <- lut[!is.na(entrezgene_accession)]
+## our background list (all genes tested for DE) which was used to make this lookup table should be updated to reflect genes where the symbols are not duplicated. make sure there's only one row per accession-id now:
+stopifnot(length(unique(lut$entrezgene_accession))==nrow(lut))
+
+## merge shareg with the filterd lut, so only keeping genes with unique symbols after merge
+shareg <- merge.data.table(shareg,lut[,.(ensembl_gene_id,entrezgene_accession)],by.x="gene_id",by.y="ensembl_gene_id") # 110 of 113 retained
+
+rm(lut,dropg,ea,ea.ast,aa.ast,deres,ancctrl,biomart,aa)
+gc()
+```
+
+
+### get genes from top cilia terms
+```{r}
+enrichrg <- readRDS("processed-data/12_DEanalyses_removedsampsAndFinalNMseg/14-AncestryShared_Astro_E4E2DEGs_Enrichr.RDS")
+
+enrichrg <- enrichrg[N_genes>15&Adjusted.P.value<0.05]
+enrichrg <- enrichrg[predomAncestWiseE4vsE2=="sharedown"]
+enrichrg <- enrichrg[!(Term %in% grep(Term,pattern="ARCHS4",value=T))]
+
+cilg <- str_split_fixed(enrichrg[Term=="Cilium (GO:0005929)",Genes],pattern = ";",n=Inf)
+
+# make sure we have the same number of genes left in the shared DE table as enrichr reports overlapping the term
+stopifnot(enrichrg[Term=="Cilium (GO:0005929)",N_genes]==nrow(shareg[entrezgene_accession %in% cilg]))
+
+#
+cilg <- shareg[entrezgene_accession %in% cilg,gene_id]
+```
+
+
+### helper function to extract a legend and pipe back to a diff plot: from https://statisticsglobe.com/add-common-legend-to-combined-ggplot2-plots-in-r/#example-2-add-shared-legend-to-ggplot2-plots-using-gridextra-package 
+```{r}
+extract_legend <- function(my_ggp) {
+    step1 <- ggplot_gtable(ggplot_build(my_ggp))
+    step2 <- which(sapply(step1$grobs, function(x) x$name) == "guide-box")
+    step3 <- step1$grobs[[step2]]
+    return(step3)
+}
+```
+
+
+eschers, sorted by ancestry-APOE genotype
+```{r}
+lc3$APOE <- ifelse(lc3$APOE %in% grep(unique(lc3$APOE),pattern="E4",value=T),"E4","E2")
+yris <- fread("raw-data/ancestryAndHaplotypes/FLARE/global_ancestry_estimates.txt")
+lc3$brnum[lc3$brnum=="Br6119(re-dis)"] <- "Br6119"
+sum(yris$ID %in% unique(lc3$brnum))
+
+tmpcd <- as.data.table(colData(lc3),keep.rownames=T)
+tmpcd <- merge.data.table(tmpcd,yris[,.(ID,YRI)],by.x="brnum",by.y="ID",all.x=T)
+tmpcd <- DataFrame(tmpcd,row.names=tmpcd$rn)[colnames(lc3),]
+tmpcd$rn <- NULL
+colData(lc3) <- tmpcd
+lc3$AncesGroup <- ifelse(greaterOrEqual(lc3$YRI,0.5),"AA","EA")
+## keep the colData out for reordering plots in a sec
+tmpcd <- as.data.table(tmpcd)
+
+## subset to domains and cilia genes of interest
+lc3 <- lc3[cilg,]
+lc3 <- lc3[,lc3$label %in% c("Astro","Astro-Oligo Mixed","LC")]
+
+## use spatialLIBD internal function for getting a multigene Z score
+ctmat.t <- t(counts(lc3))
+zscr <- spatialLIBD:::multi_gene_z_score(ctmat.t)
+zscr <- DataFrame(as.matrix(zscr))
+colData(lc3)$GOcilia_hits_Zscr <- zscr[colnames(lc3),]
+
+## get max z score cross-sample legend scale in plots
+zmax <- max(zscr[,1],na.rm=T)
+
+rm(ctmat.t,zscr)
+
+#### for quick plotting
+samps <- lapply(unique(lc3$sample_id),FUN=function(x){
+    subspe <- lc3[,lc3$sample_id==x]
+    return(subspe)
+})
+names(samps) <- unique(lc3$sample_id)
+rm(lc3)
+
+## reorder the samples by ancestry and geno
+aae4 <- unique(tmpcd[APOE=="E4"&AncesGroup=="AA",sample_id])
+aae2 <- unique(tmpcd[APOE=="E2"&AncesGroup=="AA",sample_id])
+eae4 <- unique(tmpcd[APOE=="E4"&AncesGroup=="EA",sample_id])
+eae2 <- unique(tmpcd[APOE=="E2"&AncesGroup=="EA",sample_id])
+sampord <- c(aae4,aae2,eae4,eae2)
+samps <- samps[sampord]
+
+### plots
+pal <- readRDS("plots/finalpal_somuchfornorainbows.RDS")
+pal <- pal[c("LC","Astro","Astro-Oligo Mixed")]
+
+## get one legend to use for all plots
+tmpdat <- as.data.table(cbind(as.data.frame(spatialCoords(samps[[1]])),
+                              as.data.frame(colData(samps[[1]])[,c("label","GOcilia_hits_Zscr")])))
+setnames(tmpdat,c(3,4),c("lab","z"))
+
+tmpplt <- ggplot(tmpdat,aes(x=pxl_col_in_fullres,y=pxl_row_in_fullres,fill=z,col=lab))+
+    geom_point()+
+    scale_fill_gradient(low="#cecece",high="#000000",limits=c(0,zmax),na.value = "#FFFFFF")+
+    scale_color_manual(values=pal)+
+    guides(color="none")+
+    labs(fill=paste0("Sum Xpr Z-score of\n23 E4-Down Cilia Genes"))+
+    theme(legend.title=element_text(size=8))
+
+leg.plt <- extract_legend(tmpplt)
+dev.off()
+    
+## now make the eschers without legends
+plt <- mapply(s=samps,n=names(samps),lmx=zmax,SIMPLIFY =FALSE,FUN=function(s,n,lmn,lmx){
+
+    sp <- make_escheR(s)
+    sp <- sp |> add_ground(var = "label",stroke=0.3,point_size = 0.95)
+    sp <- sp |> add_fill(var = "GOcilia_hits_Zscr",point_size = 0.95)
+    
+    plttitle <- paste0(unique(s$AncesGroup),"_",unique(s$APOE),"_",unique(s$brnum))
+    
+    sp <- sp +
+        scale_fill_gradient(low="#cecece",high="#000000",limits=c(0,zmax),na.value = "#FFFFFF")+
+        scale_color_manual(values=pal) +
+        guides(color="none",fill="none") +
+        ggtitle(plttitle)+
+        theme(title=element_text(size=7))
+    
+    #p <- rasterize(sp,layers="Points",dpi=300,dev="cairo_png")
+    return(sp)
+})
+
+## save
+png("plots/12_DEanalyses_removedsampsAndFinalNMseg/14-Ances_Shared_E4E2AstroDEGs_in_GOcilia_term_sumGeneZ_spatplots.png",height=26,width=37.8,units = "in",res = 300)
+do.call("grid.arrange",list(arrangeGrob(grobs = plt,ncol = 7),leg.plt,ncol=2,widths=c(36.5,1.3)))
+dev.off()
+```
+
+seshinf
+```{r}
+sessionInfo()
+sessioninfo::session_info()
+```
