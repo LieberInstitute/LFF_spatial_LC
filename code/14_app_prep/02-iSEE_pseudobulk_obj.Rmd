@@ -1,7 +1,7 @@
 ---
 title: "02-iSEE_pseudobulk_obj"
 author: "Bernie Mulvey"
-date: "2025-09-19"
+date: "2026-07-09"
 output: html_document
 ---
 
@@ -74,9 +74,9 @@ allens <- unique(c(allens,inh4$ensembl))
 rm(inh4)
 
 # get all genes nominally associated with NM intensity
-nmin <- readRDS("processed-data/12_DEanalyses_removedsampsAndFinalNMseg/11-LCNMspots_NMmetric_LMMed_by_geneLogcounts_3apoeFactorizations.RDS")
+nmin <- readRDS("processed-data/12_DEanalyses_removedsampsAndFinalNMseg/11-LCNMspots_NMmetric_LMMed_by_geneLogcounts_2apoeFactorizations_withRanEfFits.RDS")
 # ugh only symbols in this one..
-nmin <- nmin$E4carrierYN$Intensity_NM[p<0.05,gene_name]
+nmin <- nmin$E4carrierYN$Intensity_NM$fixed[`Pr(>Chisq)`<0.05,gene_name]
 allens <- unique(c(allens,as.data.table(unfilt$genes)[gene_name %in% nmin,gene_id]))
 rm(nmin)
 
@@ -92,10 +92,20 @@ rm(tfxpr,tfxpra,tfxprb)
 perform the minimal/generic filtering used elsewhere with the all-clusters object (we didn't actually use the 9 domain object because some were excluded from DE analyses. but for completeness..);  then calc normalized lib sizes and make a summarizedExperiment obj
 ```{r}
 ## subset
-
 allens <- allens[allens %in% rownames(unfilt)]
 filt <- unfilt[allens,]
+### before we move forward, change "ACHE_SERT_LC_WM" to "ACHE_SERT_NE_WM" to avoid this cluster coming up when searching for "LC" in the pseudobulk browser!
+colnames(filt) <- gsub(colnames(filt),pattern="ACHE_SERT_LC_WM",replacement="ACHE_SERT_NE_WM")
+rownames(filt$samples) <- colnames(filt)
+filt$samples$clus_sample_id <- gsub(filt$samples$clus_sample_id,
+                                    pattern="ACHE_SERT_LC_WM",replacement="ACHE_SERT_NE_WM")
+filt$samples$label <- gsub(filt$samples$label,
+                           pattern="ACHE_SERT_LC_WM",replacement="ACHE_SERT_NE_WM")
+filt$samples$clus_geno_group <- gsub(filt$samples$clus_geno_group,
+                           pattern="ACHE_SERT_LC_WM",replacement="ACHE_SERT_NE_WM")
 
+
+### now filter, normalize etc
 filt <- edgeR::calcNormFactors(filt,method = "TMM")
 
 subcoldat <- as.data.table(filt$samples,keep.rownames=T)
@@ -146,82 +156,81 @@ seshinf
 ```{r}
 sessionInfo()
 ```
-R version 4.4.3 (2025-02-28)
+R version 4.5.2 (2025-10-31)
 Platform: aarch64-apple-darwin20
-Running under: macOS Sequoia 15.3.2
+Running under: macOS Tahoe 26.3.1
 
 Matrix products: default
 BLAS:   /System/Library/Frameworks/Accelerate.framework/Versions/A/Frameworks/vecLib.framework/Versions/A/libBLAS.dylib 
-LAPACK: /Library/Frameworks/R.framework/Versions/4.4-arm64/Resources/lib/libRlapack.dylib;  LAPACK version 3.12.0
+LAPACK: /Library/Frameworks/R.framework/Versions/4.5-arm64/Resources/lib/libRlapack.dylib;  LAPACK version 3.12.1
 
 locale:
 [1] en_US.UTF-8/en_US.UTF-8/en_US.UTF-8/C/en_US.UTF-8/en_US.UTF-8
 
-time zone: America/Chicago
+time zone: America/New_York
 tzcode source: internal
 
 attached base packages:
 [1] stats4    stats     graphics  grDevices utils     datasets  methods   base     
 
 other attached packages:
- [1] shiny_1.10.0                iSEE_2.18.0                 spatialLIBD_1.18.0         
- [4] colorout_1.3-0.2            SpatialExperiment_1.16.0    SingleCellExperiment_1.28.1
- [7] SummarizedExperiment_1.36.0 Biobase_2.66.0              GenomicRanges_1.58.0       
-[10] GenomeInfoDb_1.42.3         IRanges_2.40.1              S4Vectors_0.44.0           
-[13] BiocGenerics_0.52.0         MatrixGenerics_1.18.1       matrixStats_1.5.0          
-[16] edgeR_4.4.2                 limma_3.62.2                data.table_1.17.4          
-[19] rlang_1.1.5                
+ [1] shiny_1.12.1                iSEE_2.22.0                 colorout_1.3-3             
+ [4] spatialLIBD_1.22.0          SpatialExperiment_1.20.0    SingleCellExperiment_1.32.0
+ [7] SummarizedExperiment_1.40.0 Biobase_2.70.0              GenomicRanges_1.62.1       
+[10] Seqinfo_1.0.0               IRanges_2.44.0              S4Vectors_0.48.1           
+[13] BiocGenerics_0.56.0         generics_0.1.4              MatrixGenerics_1.22.0      
+[16] matrixStats_1.5.0           edgeR_4.8.2                 limma_3.66.0               
+[19] data.table_1.18.4          
 
 loaded via a namespace (and not attached):
-  [1] splines_4.4.3            later_1.4.2              BiocIO_1.16.0           
-  [4] bitops_1.0-9             filelock_1.0.3           fields_16.3.1           
-  [7] tibble_3.2.1             XML_3.99-0.18            lifecycle_1.0.4         
- [10] doParallel_1.0.17        rprojroot_2.0.4          lattice_0.22-6          
- [13] crosstalk_1.2.1          magrittr_2.0.3           plotly_4.10.4           
- [16] sass_0.4.10              rmarkdown_2.29           jquerylib_0.1.4         
- [19] yaml_2.3.10              httpuv_1.6.16            spam_2.11-1             
- [22] sessioninfo_1.2.3        cowplot_1.1.3            DBI_1.2.3               
- [25] RColorBrewer_1.1-3       golem_0.5.1              maps_3.4.3              
- [28] abind_1.4-8              zlibbioc_1.52.0          purrr_1.0.4             
- [31] RCurl_1.98-1.17          rappdirs_0.3.3           circlize_0.4.16         
- [34] GenomeInfoDbData_1.2.13  ggrepel_0.9.6            irlba_2.3.5.1           
- [37] codetools_0.2-20         DelayedArray_0.32.0      DT_0.33                 
- [40] scuttle_1.16.0           tidyselect_1.2.1         shape_1.4.6.1           
- [43] UCSC.utils_1.2.0         farver_2.1.2             ScaledMatrix_1.14.0     
- [46] viridis_0.6.5            shinyWidgets_0.9.0       BiocFileCache_2.14.0    
- [49] GenomicAlignments_1.42.0 jsonlite_2.0.0           GetoptLong_1.0.5        
- [52] BiocNeighbors_2.0.1      scater_1.34.1            iterators_1.0.14        
- [55] systemfonts_1.2.3        foreach_1.5.2            tools_4.4.3             
- [58] ragg_1.3.3               Rcpp_1.0.14              glue_1.8.0              
- [61] gridExtra_2.3            SparseArray_1.6.2        mgcv_1.9-1              
- [64] xfun_0.52                here_1.0.1               dplyr_1.1.4             
- [67] withr_3.0.2              shinydashboard_0.7.2     BiocManager_1.30.25     
- [70] fastmap_1.2.0            shinyjs_2.1.0            digest_0.6.37           
- [73] rsvd_1.0.5               R6_2.6.1                 mime_0.13               
- [76] textshaping_1.0.0        listviewer_4.0.0         colorspace_2.1-1        
- [79] Cairo_1.6-2              dichromat_2.0-0.1        RSQLite_2.3.9           
- [82] config_0.3.2             tidyr_1.3.1              generics_0.1.4          
- [85] rtracklayer_1.66.0       httr_1.4.7               htmlwidgets_1.6.4       
- [88] S4Arrays_1.6.0           pkgconfig_2.0.3          gtable_0.3.6            
- [91] rsconnect_1.3.4          blob_1.2.4               ComplexHeatmap_2.22.0   
- [94] XVector_0.46.0           htmltools_0.5.8.1        dotCall64_1.2           
- [97] rintrojs_0.3.4           clue_0.3-66              scales_1.4.0            
-[100] png_0.1-8                attempt_0.3.1            knitr_1.50              
-[103] rstudioapi_0.17.1        rjson_0.2.23             nlme_3.1-167            
-[106] curl_6.2.2               shinyAce_0.4.4           cachem_1.1.0            
-[109] GlobalOptions_0.1.2      BiocVersion_3.20.0       miniUI_0.1.2            
-[112] parallel_4.4.3           vipor_0.4.7              AnnotationDbi_1.68.0    
-[115] restfulr_0.0.15          pillar_1.10.2            grid_4.4.3              
-[118] vctrs_0.6.5              promises_1.3.2           BiocSingular_1.22.0     
-[121] dbplyr_2.5.0             beachmat_2.22.0          cluster_2.1.8.1         
-[124] xtable_1.8-4             beeswarm_0.4.0           paletteer_1.6.0         
-[127] evaluate_1.0.3           magick_2.8.6             cli_3.6.4               
-[130] locfit_1.5-9.12          compiler_4.4.3           Rsamtools_2.22.0        
-[133] crayon_1.5.3             labeling_0.4.3           rematch2_2.1.2          
-[136] ggbeeswarm_0.7.2         viridisLite_0.4.2        BiocParallel_1.40.0     
-[139] Biostrings_2.74.1        lazyeval_0.2.2           colourpicker_1.3.0      
-[142] Matrix_1.7-3             ExperimentHub_2.14.0     benchmarkme_1.0.8       
-[145] bit64_4.6.0-1            ggplot2_3.5.2            KEGGREST_1.46.0         
-[148] statmod_1.5.0            AnnotationHub_3.14.0     fontawesome_0.5.3       
-[151] igraph_2.1.4             memoise_2.0.1            bslib_0.9.0             
-[154] benchmarkmeData_1.0.4    bit_4.6.0     
+  [1] splines_4.5.2            later_1.4.5              BiocIO_1.20.0           
+  [4] bitops_1.0-9             filelock_1.0.3           tibble_3.3.1            
+  [7] XML_3.99-0.20            lifecycle_1.0.5          httr2_1.2.2             
+ [10] doParallel_1.0.17        rprojroot_2.1.1          lattice_0.22-7          
+ [13] crosstalk_1.2.2          magrittr_2.0.4           plotly_4.12.0           
+ [16] sass_0.4.10              rmarkdown_2.30           jquerylib_0.1.4         
+ [19] yaml_2.3.12              httpuv_1.6.16            otel_0.2.0              
+ [22] sessioninfo_1.2.3        cowplot_1.2.0            DBI_1.2.3               
+ [25] RColorBrewer_1.1-3       golem_0.5.1              abind_1.4-8             
+ [28] purrr_1.2.1              RCurl_1.98-1.17          rappdirs_0.3.4          
+ [31] circlize_0.4.17          ggrepel_0.9.6            irlba_2.3.7             
+ [34] codetools_0.2-20         DelayedArray_0.36.1      DT_0.34.0               
+ [37] scuttle_1.20.0           tidyselect_1.2.1         shape_1.4.6.1           
+ [40] farver_2.1.2             ScaledMatrix_1.18.0      viridis_0.6.5           
+ [43] shinyWidgets_0.9.0       BiocFileCache_3.0.0      GenomicAlignments_1.46.0
+ [46] jsonlite_2.0.0           GetoptLong_1.1.0         BiocNeighbors_2.4.0     
+ [49] scater_1.38.1            iterators_1.0.14         systemfonts_1.3.1       
+ [52] foreach_1.5.2            tools_4.5.2              ragg_1.5.0              
+ [55] Rcpp_1.1.1               glue_1.8.0               gridExtra_2.3           
+ [58] SparseArray_1.10.8       mgcv_1.9-4               xfun_0.56               
+ [61] here_1.0.2               dplyr_1.2.0              withr_3.0.2             
+ [64] shinydashboard_0.7.3     BiocManager_1.30.27      fastmap_1.2.0           
+ [67] shinyjs_2.1.1            digest_0.6.39            rsvd_1.0.5              
+ [70] R6_2.6.1                 mime_0.13                textshaping_1.0.4       
+ [73] colorspace_2.1-2         listviewer_4.0.0         Cairo_1.7-0             
+ [76] dichromat_2.0-0.1        RSQLite_2.4.5            cigarillo_1.0.0         
+ [79] config_0.3.2             tidyr_1.3.2              rtracklayer_1.70.1      
+ [82] httr_1.4.7               htmlwidgets_1.6.4        S4Arrays_1.10.1         
+ [85] pkgconfig_2.0.3          gtable_0.3.6             rsconnect_1.7.0         
+ [88] blob_1.3.0               ComplexHeatmap_2.26.1    S7_0.2.1                
+ [91] XVector_0.50.0           htmltools_0.5.9          rintrojs_0.3.4          
+ [94] clue_0.3-66              scales_1.4.0             png_0.1-8               
+ [97] attempt_0.3.1            knitr_1.51               rstudioapi_0.18.0       
+[100] rjson_0.2.23             nlme_3.1-168             curl_7.0.0              
+[103] shinyAce_0.4.4           cachem_1.1.0             GlobalOptions_0.1.3     
+[106] BiocVersion_3.22.0       parallel_4.5.2           miniUI_0.1.2            
+[109] vipor_0.4.7              AnnotationDbi_1.72.0     restfulr_0.0.16         
+[112] pillar_1.11.1            grid_4.5.2               vctrs_0.7.1             
+[115] promises_1.5.0           BiocSingular_1.26.0      dbplyr_2.5.1            
+[118] beachmat_2.26.0          xtable_1.8-4             cluster_2.1.8.1         
+[121] beeswarm_0.4.0           paletteer_1.7.0          evaluate_1.0.5          
+[124] magick_2.9.0             cli_3.6.5                locfit_1.5-9.12         
+[127] compiler_4.5.2           Rsamtools_2.26.0         rlang_1.1.7             
+[130] crayon_1.5.3             labeling_0.4.3           rematch2_2.1.2          
+[133] ggbeeswarm_0.7.3         viridisLite_0.4.3        BiocParallel_1.44.0     
+[136] Biostrings_2.78.0        lazyeval_0.2.2           colourpicker_1.3.0      
+[139] Matrix_1.7-4             ExperimentHub_3.0.0      benchmarkme_1.0.8       
+[142] bit64_4.6.0-1            ggplot2_4.0.2            KEGGREST_1.50.0         
+[145] statmod_1.5.1            AnnotationHub_4.0.0      fontawesome_0.5.3       
+[148] igraph_2.2.1             memoise_2.0.1            bslib_0.10.0            
+[151] benchmarkmeData_2.0.0    bit_4.6.0   

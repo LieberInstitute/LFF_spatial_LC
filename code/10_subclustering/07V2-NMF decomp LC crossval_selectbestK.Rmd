@@ -183,7 +183,7 @@ View(cbind(check$breaks[2:length(check$breaks)],check$counts))
 # <10^1.25 is the last major drop-off point, so let's set total gene logcounts 10^1.25 as the cutoff
 dev.off()
 
-## drop genes w less than 56 counts
+## drop genes w less than 10^1.25 total logcounts
 keepg <- rownames(lc3)[rowSums(logcounts(lc3))>=10^1.25]
 length(keepg) ## 15170
 lc3 <- lc3[keepg,]

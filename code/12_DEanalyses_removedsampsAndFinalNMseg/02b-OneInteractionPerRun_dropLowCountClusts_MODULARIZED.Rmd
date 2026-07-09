@@ -106,7 +106,7 @@ sexfun <- function(dgel,n){
     colnames(des) <- gsub(x = colnames(des), pattern = "label_sex", replacement = "")
     
     
-    # filter using design
+    # filter using design. filtering looks for expression in at least half the samples of the smallest group (which are always going to be label_variable here, since each sample (with one value of APOE, Age, YRI) will have several different labels across it, i.e. one sample -> 5 pseudobulks with a given genotype and Age, but only one pseudobulk that's LC and [sex]. so, genes that are expressed in at least one cluster-sex group will be retained for analysis--in all clusters.)
     dgelsex <- edgeR::normLibSizes(dgelsex)
     keep <- filterByExpr.DGEList(dgelsex, design = des)
     dgelsex <- dgelsex[keep, , keep.lib.sizes = FALSE]

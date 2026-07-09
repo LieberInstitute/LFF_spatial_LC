@@ -1,0 +1,314 @@
+---
+title: "sharedAstroE4downreg_Enrichr"
+author: "Bernie Mulvey"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(fig.height = 10,fig.width = 7,include = FALSE)
+#### sets tab autocompletion for directories to begin from the directory containing the .Rproj session, instead of the script's directory if different
+knitr::opts_knit$set(root.dir = here::here())
+
+library(data.table)
+library(enrichR)
+library(biomaRt)
+library(stringr)
+
+## >= and <= comparators that account for floating point error
+greaterOrEqual <- function(x,y) {
+    precision <- sqrt(.Machine$double.eps)
+    (x >= y) | (abs(x-y) <= precision)
+}
+
+lessOrEqual <- function(x,y){
+    precision <- sqrt(.Machine$double.eps)
+    (x <= y) | (abs(x-y) <= precision)
+}
+
+## rstudio GUI tweaks
+require(colorout)
+ColorOut()
+options("styler.addins_style_transformer" = "biocthis::bioc_style()")
+##
+
+## enable forked parallel processing with BiocParallel::multicoreParam, future::, etc. seemed to need this a couple times, but otherwise havent so its here as a preventative measure. part of this is adding the line 
+# OBJC_DISABLE_INITIALIZE_FORK_SAFETY=YES
+# to Renviron.site. see e.g. top response on https://stackoverflow.com/questions/73638290/python-on-mac-is-it-safe-to-set-objc-disable-initialize-fork-safety-yes-globall 
+library(parallelly)
+options(parallelly.supportsMulticore.disableOn="")
+options(parallelly.fork.enable=TRUE)
+library(BiocParallel)
+options(bphost="localhost")
+
+
+## last of all, unload the base package datasets, whose data keep getting in the way of autocompletions (e.g., Theoph is priortized over TRUE)
+unloadNamespace("datasets")
+```
+
+```{r}
+deres <- readRDS("processed-data/12_DEanalyses_removedsampsAndFinalNMseg/02b-voomLmFit_objs_and_DE_tables_LabSex_LabE2vE4_LabSingleGenos_LabAnces_LabAncesE4E2_noMixClusts_YRIcontAndCat_JUL2025.RDS")
+
+ancctrl <- deres$cat_ances$E2E4label$detabs
+
+aa <- deres$cat_ances$YRIAPOlabel$detabs
+ea <- aa[grep(names(aa),pattern="E4CEU_vs_E2CEU",value=T)]
+aa <- aa[grep(names(aa),pattern="E4YRI_vs_E2YRI",value=T)]
+
+
+ea.ast <- ea$Astro_E4CEU_vs_E2CEU
+aa.ast <- aa$Astro_E4YRI_vs_E2YRI
+
+setnames(ea.ast,c("logFC","adj.P.Val"),c("logFC.EA","FDR.EA"))
+setnames(aa.ast,c("logFC","adj.P.Val"),c("logFC.AA","FDR.AA"))
+
+shareg <- merge.data.table(ea.ast[lessOrEqual(FDR.EA,0.05),.(gene_id,gene_name,logFC.EA,FDR.EA)],aa.ast[lessOrEqual(FDR.AA,0.05),.(gene_id,gene_name,logFC.AA,FDR.AA)],by=c("gene_id","gene_name"))
+shareg[,signmatch:=ifelse(greaterOrEqual(logFC.EA*logFC.AA,0),1,0)]
+shareg <- shareg[signmatch==1]
+
+# same DGE so same filtering was applied upstream for both EA and AA contrasts:
+bkg <- ea.ast$gene_id
+```
+
+we need to be sure we have entrez symbols for enrichr gene matching
+
+```{r}
+biomart <- useMart(biomart = "ENSEMBL_MART_ENSEMBL",dataset="hsapiens_gene_ensembl")
+lut <- biomaRt::getBM(attributes=c("ensembl_gene_id",
+                                   "entrezgene_id",
+                                   "entrezgene_accession",
+                                   "entrezgene_description"),
+                      mart=biomart,
+                      filter="ensembl_gene_id",
+                      values=bkg) # uh ok "accession" = symbol
+
+lut <- as.data.table(lut)
+dropg <- lut[,.N,by="entrezgene_accession"][N>1,entrezgene_accession]
+lut <- lut[!(entrezgene_accession %in% dropg)]
+lut <- lut[!is.na(entrezgene_accession)]
+## our background list (all genes tested for DE) which was used to make this lookup table should be updated to reflect genes where the symbols are not duplicated. make sure there's only one row per accession-id now:
+stopifnot(length(unique(lut$entrezgene_accession))==nrow(lut))
+bkg <- lut$entrezgene_accession
+
+## merge shareg with the filterd lut, so only keeping genes with unique symbols after merge
+shareg <- merge.data.table(shareg,lut[,.(ensembl_gene_id,entrezgene_accession)],by.x="gene_id",by.y="ensembl_gene_id") # 110 of 113 retained
+
+## clean up
+rm(biomart,aa,deres,ea,lut,dropg)
+```
+
+```{r}
+### enrichr setup
+## rummagenes don't work here unfortunately.
+checkdbs <- enrichR::listEnrichrDbs()
+enrichr_dbs <- grep(checkdbs$libraryName,pattern="Aging|Allen|ARCHS4|Azimuth|BioPlex|CellMarker|ChEA_2022|CORUM|DepMap_CRISPR_GeneDependency_CellLines_2023|Descartes|DGIdb_Drug_Targets_2024|Disease_Perturbations|Disease_Signatures|Drug_Perturbations|DrugMatrix|Elsevier_Pathway|ENCODE_Histone_Modifications_2015|ENCODE_TF_ChIP-seq_2015|Roadmap|FANTOM6|Gene_Perturbations|GO_Biological_Process_2025|GO_Cellular_Component_2025|GO_Molecular_Function_2025|HMS_LINCS|HuBMAP|huMAP|IDG_Drug_Targs_2022|Jensen_DISEASES_Curated_2025|KEGG_2021_Human|Kinase_Perturbations|KOMP2|L1000|Ligand_Perturbations|lncHUB|MAGNET|MGI_Mammalian_Phenotype_Level_4_2024|NIBR_DRUGseq_2025|PerturbAtlas|PFOCR_Pathways_2023|PPI_Hub_Proteins|Proteomics|Reactome_Pathways_2024|SILAC|SubCell|SynGO_2024|Tabula_Muris|Tabula_Sapiens|TF_Perturbations|TF-LOF_Expression|TG_GATES_2020|The_Kinase_Library_2024|Tissue_Protein_Expression|Transcription_Factor_PPIs|TRANSFAC_and_JASPAR|TRRUST|WikiPathways_2024_Human|^DSigDB",value=T)
+
+## filter out the ARCHS4 predictions re: rare disease, NIH PIs--interesting but not useful here
+enrichr_dbs <- grep(enrichr_dbs,pattern="AutoRIF|GeneRIF|from_GEO",value=T,invert=T)
+
+rm(checkdbs)
+```
+
+# run enrichr for these dbs for downreg shared genes, upreg shared, and all shared genes
+```{r}
+sharegs <- list(shareup=shareg[greaterOrEqual(logFC.EA,0)&greaterOrEqual(logFC.AA,0),entrezgene_accession],
+                sharedown=shareg[lessOrEqual(logFC.EA,0)&lessOrEqual(logFC.AA,0),entrezgene_accession],
+                allshare=shareg$entrezgene_accession)
+shareg.res <- list()
+i <- 3
+for (i in c(3:length(sharegs))){
+    curhits <- sharegs[[i]]
+    cursname <- names(sharegs)[i]
+    cur_enrichr_dbs <- enrichr_dbs
+    
+    ## drop any dbs that throw weird factor-geneset-specific errors
+    if(cursname=="sharedown"|cursname=="allshare"){
+        cur_enrichr_dbs <- enrichr_dbs[enrichr_dbs!="CellMarker_2024"]
+        cur_enrichr_dbs <- cur_enrichr_dbs[cur_enrichr_dbs!="PerturbAtlas_MouseGenePerturbationSigs"]
+    } else {
+      cur_enrichr_dbs <- enrichr_dbs
+    }
+    
+    # run enrichr
+    enrichreslist <- enrichr(genes=curhits,
+                        background = bkg,
+                        databases=cur_enrichr_dbs)
+    
+    eres.dt <- rbindlist(enrichreslist,idcol="Enrichr_database")
+    eres.dt[,predomAncestWiseE4vsE2:=cursname]
+    
+    shareg.res[[i]] <- eres.dt
+    names(shareg.res)[i] <- cursname
+    
+    rm(curhits,eres.dt,cur_enrichr_dbs)
+    gc(full=T)
+}
+
+shareg.res <- rbindlist(shareg.res)
+# tabulate how many genes were hit in the set
+shareg.res[,N_genes:=apply(.SD,MARGIN=1,simplify=FALSE,FUN=function(x){
+  max(c(1,length(str_split_fixed(x,";",n=Inf)))) # if no separator, 1 gene matched
+}),.SDcols="Genes"]
+shareg.res[,N_genes:=unlist(N_genes)] ## fix weirdness with apply within d.t.
+
+# get rid of deprecated columns
+shareg.res[,Old.P.value:=NULL]
+shareg.res[,Old.Adjusted.P.value:=NULL]
+shareg.res[,Rank:=as.integer(Rank)]
+
+### save
+saveRDS(shareg.res,"processed-data/12_DEanalyses_removedsampsAndFinalNMseg/14-AncestryShared_Astro_E4E2DEGs_Enrichr.RDS")
+```
+
+seshinf
+```{r}
+sessionInfo()
+sessioninfo::session_info()
+```
+R version 4.5.2 (2025-10-31)
+Platform: aarch64-apple-darwin20
+Running under: macOS Tahoe 26.3.1
+
+Matrix products: default
+BLAS:   /System/Library/Frameworks/Accelerate.framework/Versions/A/Frameworks/vecLib.framework/Versions/A/libBLAS.dylib 
+LAPACK: /Library/Frameworks/R.framework/Versions/4.5-arm64/Resources/lib/libRlapack.dylib;  LAPACK version 3.12.1
+
+locale:
+[1] en_US.UTF-8/en_US.UTF-8/en_US.UTF-8/C/en_US.UTF-8/en_US.UTF-8
+
+time zone: America/Chicago
+tzcode source: internal
+
+attached base packages:
+[1] stats     graphics  grDevices utils     methods   base     
+
+other attached packages:
+[1] stringr_1.6.0       biomaRt_2.66.0      BiocParallel_1.44.0 parallelly_1.46.1   colorout_1.3-3     
+[6] enrichR_3.4         data.table_1.18.2.1
+
+loaded via a namespace (and not attached):
+ [1] KEGGREST_1.50.0      gtable_0.3.6         rjson_0.2.23         xfun_0.56           
+ [5] ggplot2_4.0.2        httr2_1.2.2          Biobase_2.70.0       lattice_0.22-7      
+ [9] vctrs_0.7.1          tools_4.5.2          generics_0.1.4       stats4_4.5.2        
+[13] curl_7.0.0           parallel_4.5.2       AnnotationDbi_1.72.0 tibble_3.3.1        
+[17] RSQLite_2.4.5        blob_1.3.0           pkgconfig_2.0.3      dbplyr_2.5.1        
+[21] RColorBrewer_1.1-3   S4Vectors_0.48.0     S7_0.2.1             lifecycle_1.0.5     
+[25] compiler_4.5.2       farver_2.1.2         Biostrings_2.78.0    progress_1.2.3      
+[29] statmod_1.5.1        Seqinfo_1.0.0        codetools_0.2-20     htmltools_0.5.9     
+[33] yaml_2.3.12          pillar_1.11.1        crayon_1.5.3         rsconnect_1.7.0     
+[37] cachem_1.1.0         limma_3.66.0         tidyselect_1.2.1     locfit_1.5-9.12     
+[41] digest_0.6.39        stringi_1.8.7        purrr_1.2.1          dplyr_1.2.0         
+[45] WriteXLS_6.8.0       rprojroot_2.1.1      fastmap_1.2.0        grid_4.5.2          
+[49] here_1.0.2           cli_3.6.5            magrittr_2.0.4       dichromat_2.0-0.1   
+[53] withr_3.0.2          edgeR_4.8.2          prettyunits_1.2.0    filelock_1.0.3      
+[57] scales_1.4.0         rappdirs_0.3.4       bit64_4.6.0-1        XVector_0.50.0      
+[61] rmarkdown_2.30       httr_1.4.7           bit_4.6.0            otel_0.2.0          
+[65] png_0.1-8            datasets_4.5.2       hms_1.1.4            memoise_2.0.1       
+[69] evaluate_1.0.5       knitr_1.51           IRanges_2.44.0       BiocFileCache_3.0.0 
+[73] rlang_1.1.7.9000     glue_1.8.0           DBI_1.2.3            xml2_1.5.2          
+[77] BiocGenerics_0.56.0  rstudioapi_0.18.0    R6_2.6.1            
+> sessioninfo::session_info()
+─ Session info ────────────────────────────────────────────────────────────────────────────────────────
+ setting  value
+ version  R version 4.5.2 (2025-10-31)
+ os       macOS Tahoe 26.3.1
+ system   aarch64, darwin20
+ ui       RStudio
+ language (EN)
+ collate  en_US.UTF-8
+ ctype    en_US.UTF-8
+ tz       America/Chicago
+ date     2026-04-28
+ rstudio  2026.01.1+403 Apple Blossom (desktop)
+ pandoc   3.6.3 @ /Applications/RStudio.app/Contents/Resources/app/quarto/bin/tools/aarch64/ (via rmarkdown)
+ quarto   1.8.25 @ /Applications/RStudio.app/Contents/Resources/app/quarto/bin/quarto
+
+─ Packages ────────────────────────────────────────────────────────────────────────────────────────────
+ package       * version    date (UTC) lib source
+ AnnotationDbi   1.72.0     2025-10-29 [2] Bioconductor 3.22 (R 4.5.1)
+ Biobase         2.70.0     2025-10-29 [2] Bioconductor 3.22 (R 4.5.1)
+ BiocFileCache   3.0.0      2025-10-29 [2] Bioconductor 3.22 (R 4.5.1)
+ BiocGenerics    0.56.0     2025-10-29 [2] Bioconductor 3.22 (R 4.5.1)
+ BiocParallel  * 1.44.0     2025-10-29 [2] Bioconductor 3.22 (R 4.5.1)
+ biomaRt       * 2.66.0     2025-10-29 [2] Bioconductor 3.22 (R 4.5.1)
+ Biostrings      2.78.0     2025-10-29 [2] Bioconductor 3.22 (R 4.5.1)
+ bit             4.6.0      2025-03-06 [2] CRAN (R 4.5.0)
+ bit64           4.6.0-1    2025-01-16 [2] CRAN (R 4.5.0)
+ blob            1.3.0      2026-01-14 [2] CRAN (R 4.5.2)
+ cachem          1.1.0      2024-05-16 [2] CRAN (R 4.5.0)
+ cli             3.6.5      2025-04-23 [2] CRAN (R 4.5.0)
+ codetools       0.2-20     2024-03-31 [2] CRAN (R 4.5.2)
+ colorout      * 1.3-3      2026-01-31 [2] Github (jalvesaq/colorout@64863bb)
+ crayon          1.5.3      2024-06-20 [2] CRAN (R 4.5.0)
+ curl            7.0.0      2025-08-19 [2] CRAN (R 4.5.0)
+ data.table    * 1.18.2.1   2026-01-27 [2] CRAN (R 4.5.2)
+ DBI             1.2.3      2024-06-02 [2] CRAN (R 4.5.0)
+ dbplyr          2.5.1      2025-09-10 [2] CRAN (R 4.5.0)
+ dichromat       2.0-0.1    2022-05-02 [2] CRAN (R 4.5.0)
+ digest          0.6.39     2025-11-19 [2] CRAN (R 4.5.2)
+ dplyr           1.2.0      2026-02-03 [2] CRAN (R 4.5.2)
+ edgeR           4.8.2      2025-12-23 [2] https://bioc-release.r-universe.dev (R 4.5.2)
+ enrichR       * 3.4        2025-02-02 [2] CRAN (R 4.5.0)
+ evaluate        1.0.5      2025-08-27 [2] CRAN (R 4.5.0)
+ farver          2.1.2      2024-05-13 [2] CRAN (R 4.5.0)
+ fastmap         1.2.0      2024-05-15 [2] CRAN (R 4.5.0)
+ filelock        1.0.3      2023-12-11 [2] CRAN (R 4.5.0)
+ generics        0.1.4      2025-05-09 [2] CRAN (R 4.5.0)
+ ggplot2         4.0.2      2026-02-03 [2] CRAN (R 4.5.2)
+ glue            1.8.0      2024-09-30 [2] CRAN (R 4.5.0)
+ gtable          0.3.6      2024-10-25 [2] CRAN (R 4.5.0)
+ here            1.0.2      2025-09-15 [2] CRAN (R 4.5.0)
+ hms             1.1.4      2025-10-17 [2] CRAN (R 4.5.0)
+ htmltools       0.5.9      2025-12-04 [2] CRAN (R 4.5.2)
+ httr            1.4.7      2023-08-15 [2] CRAN (R 4.5.0)
+ httr2           1.2.2      2025-12-08 [2] CRAN (R 4.5.2)
+ IRanges         2.44.0     2025-10-29 [2] Bioconductor 3.22 (R 4.5.1)
+ KEGGREST        1.50.0     2025-10-29 [2] Bioconductor 3.22 (R 4.5.1)
+ knitr           1.51       2025-12-20 [2] CRAN (R 4.5.2)
+ lattice         0.22-7     2025-04-02 [2] CRAN (R 4.5.2)
+ lifecycle       1.0.5      2026-01-08 [2] CRAN (R 4.5.2)
+ limma           3.66.0     2025-10-29 [2] Bioconductor 3.22 (R 4.5.1)
+ locfit          1.5-9.12   2025-03-05 [2] CRAN (R 4.5.0)
+ magrittr        2.0.4      2025-09-12 [2] CRAN (R 4.5.0)
+ memoise         2.0.1      2021-11-26 [2] CRAN (R 4.5.0)
+ otel            0.2.0      2025-08-29 [2] CRAN (R 4.5.0)
+ parallelly    * 1.46.1     2026-01-08 [2] CRAN (R 4.5.2)
+ pillar          1.11.1     2025-09-17 [2] CRAN (R 4.5.0)
+ pkgconfig       2.0.3      2019-09-22 [2] CRAN (R 4.5.0)
+ png             0.1-8      2022-11-29 [2] CRAN (R 4.5.0)
+ prettyunits     1.2.0      2023-09-24 [2] CRAN (R 4.5.0)
+ progress        1.2.3      2023-12-06 [2] CRAN (R 4.5.0)
+ purrr           1.2.1      2026-01-09 [2] CRAN (R 4.5.2)
+ R6              2.6.1      2025-02-15 [2] CRAN (R 4.5.0)
+ rappdirs        0.3.4      2026-01-17 [2] CRAN (R 4.5.2)
+ RColorBrewer    1.1-3      2022-04-03 [2] CRAN (R 4.5.0)
+ rjson           0.2.23     2024-09-16 [2] CRAN (R 4.5.0)
+ rlang           1.1.7.9000 2026-02-04 [1] Github (r-lib/rlang@bae1fe1)
+ rmarkdown       2.30       2025-09-28 [2] CRAN (R 4.5.0)
+ rprojroot       2.1.1      2025-08-26 [2] CRAN (R 4.5.0)
+ rsconnect       1.7.0      2025-12-06 [2] CRAN (R 4.5.2)
+ RSQLite         2.4.5      2025-11-30 [2] CRAN (R 4.5.2)
+ rstudioapi      0.18.0     2026-01-16 [2] CRAN (R 4.5.2)
+ S4Vectors       0.48.0     2025-10-29 [2] Bioconductor 3.22 (R 4.5.1)
+ S7              0.2.1      2025-11-14 [2] CRAN (R 4.5.2)
+ scales          1.4.0      2025-04-24 [2] CRAN (R 4.5.0)
+ Seqinfo         1.0.0      2025-10-29 [2] Bioconductor 3.22 (R 4.5.2)
+ sessioninfo     1.2.3      2025-02-05 [2] CRAN (R 4.5.0)
+ statmod         1.5.1      2025-10-09 [2] CRAN (R 4.5.0)
+ stringi         1.8.7      2025-03-27 [2] CRAN (R 4.5.0)
+ stringr       * 1.6.0      2025-11-04 [2] CRAN (R 4.5.0)
+ tibble          3.3.1      2026-01-11 [2] CRAN (R 4.5.2)
+ tidyselect      1.2.1      2024-03-11 [2] CRAN (R 4.5.0)
+ vctrs           0.7.1      2026-01-23 [2] CRAN (R 4.5.2)
+ withr           3.0.2      2024-10-28 [2] CRAN (R 4.5.0)
+ WriteXLS        6.8.0      2025-05-22 [2] CRAN (R 4.5.0)
+ xfun            0.56       2026-01-18 [2] CRAN (R 4.5.2)
+ xml2            1.5.2      2026-01-17 [2] CRAN (R 4.5.2)
+ XVector         0.50.0     2025-10-29 [2] Bioconductor 3.22 (R 4.5.1)
+ yaml            2.3.12     2025-12-10 [2] CRAN (R 4.5.2)
+
+ [1] /Users/bmulvey/Library/R/arm64/4.5/library
+ [2] /Library/Frameworks/R.framework/Versions/4.5-arm64/Resources/library
+ * ── Packages attached to the search path.
+
+───────────────────────────────────────────────────────────────────────────────────────────────────────
