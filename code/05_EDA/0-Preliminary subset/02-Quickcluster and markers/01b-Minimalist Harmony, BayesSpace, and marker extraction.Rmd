@@ -60,6 +60,11 @@ library(BayesSpace)
 colData(lc2)$row <- colData(lc2)$array_row
 colData(lc2)$col <- colData(lc2)$array_col
 
+## -- 2026-08-13 update --
+## Note that the spatial coordinates were not offset and should have been.
+## See http://edward130603.github.io/BayesSpace/articles/joint_clustering.html#clustering-1
+## for more details.
+
 set.seed(42)
 tmp <- BayesSpace::spatialCluster(sce = lc2,q = 10,use.dimred="HARMONY",d = 50,platform = "Visium",nrep = 7500,init.method = "mclust")
 
